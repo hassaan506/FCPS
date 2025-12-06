@@ -307,7 +307,7 @@ function createQuestionCard(q, index, isTest) {
     let headerHTML = `<div style="font-size:0.85em; color:#666; margin-bottom:10px;">${q.Subject} • ${q.Topic}`;
     if (!isTest) {
         const isSaved = userBookmarks.includes(q.ID);
-        headerHTML += ` <span onclick="toggleBookmark('${q.ID}', this)" style="cursor:pointer; float:right; font-size:1.2em; color:${isSaved ? '#ffc107' : '#ccc'}">${isSaved ? '★' : '☆'}</span>`;
+        headerHTML += ` <span onclick="toggleBookmark('${q.ID}', this)" class="bookmark-icon" style="color:${isSaved ? '#ffc107' : '#e2e8f0'}">${isSaved ? '★' : '☆'}</span>`;
     }
     headerHTML += `</div>`;
     
@@ -563,3 +563,4 @@ function saveProfile() {
         alert("Error updating profile: " + error.message);
     });
 }
+
