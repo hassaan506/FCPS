@@ -42,4 +42,13 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 .hidden { display: none !important; }
 #explanation-box { background: #fff3cd; padding: 15px; border-radius: 6px; margin-top: 20px; border-left: 5px solid #ffc107; }
 #bookmark-btn.saved { color: #ffc107; font-weight: bold; }
+
 .quiz-footer { margin-top: 20px; display: flex; justify-content: space-between; align-items: center; }
+
+/* Fix for Explanation Formatting */
+#exp-text {
+    white-space: pre-wrap;  /* This is the magic command */
+    display: block;
+    margin-top: 10px;
+    line-height: 1.6;       /* Adds space between lines for easier reading */
+}
