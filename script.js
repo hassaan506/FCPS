@@ -42,7 +42,6 @@ auth.onAuthStateChanged(user => {
     if (user) {
         currentUser = user;
         showScreen('dashboard-screen');
-        // Update Name
         document.getElementById('user-display').innerText = user.displayName || "Doctor";
         loadUserData();
         loadQuestions();
@@ -68,7 +67,7 @@ function signup() {
 
 function logout() { auth.signOut(); }
 
-// --- PROFILE SYSTEM ---
+// --- PROFILE & DATA ---
 function openProfileModal() {
     document.getElementById('profile-modal').classList.remove('hidden');
     if (currentUser.displayName) document.getElementById('new-display-name').value = currentUser.displayName;
@@ -83,7 +82,6 @@ function saveProfile() {
     }).catch(e => alert(e.message));
 }
 
-// --- DATA ---
 async function loadUserData() {
     if (!currentUser) return;
     try {
@@ -141,7 +139,7 @@ function processData(data) {
     const seen = new Set();
     allQuestions = [];
     const subjects = new Set();
-    const map = {}; // Subject -> Set(Topics)
+    const map = {}; 
 
     data.forEach(row => {
         if (!row.Question) return;
@@ -160,11 +158,10 @@ function processData(data) {
         map[subj].add(topic);
     });
 
-    renderMenus(subjects, map); // For Practice Mode
-    renderTestFilters(subjects, map); // For Test Mode (The New Feature)
+    renderMenus(subjects, map); 
+    renderTestFilters(subjects, map); 
 }
 
-// Practice Mode Menus
 function renderMenus(subjects, map) {
     const container = document.getElementById('dynamic-menus');
     container.innerHTML = "";
@@ -190,21 +187,18 @@ function renderMenus(subjects, map) {
     });
 }
 
-// --- NEW: GENERATE CHECKBOXES FOR TEST MODE ---
 function renderTestFilters(subjects, map) {
     const container = document.getElementById('filter-container');
+    if (!container) return; // Logic check if element exists
     container.innerHTML = "";
 
     subjects.forEach(subj => {
         const group = document.createElement('div');
         group.className = 'filter-group';
-
-        // Subject Checkbox (Parent)
         const subLabel = document.createElement('label');
         subLabel.className = 'filter-subject-label';
         subLabel.innerHTML = `<input type="checkbox" class="filter-checkbox subj-chk" value="${subj}"> ${subj}`;
         
-        // Topic Container
         const topicList = document.createElement('div');
         topicList.className = 'filter-topic-list';
 
@@ -215,7 +209,6 @@ function renderTestFilters(subjects, map) {
             topicList.appendChild(topLabel);
         });
 
-        // "Select All" Logic for UX
         const subInput = subLabel.querySelector('input');
         subInput.onchange = (e) => {
             const topicInputs = topicList.querySelectorAll('input');
@@ -229,7 +222,7 @@ function renderTestFilters(subjects, map) {
 }
 
 // ======================================================
-// 5. QUIZ LOGIC
+// 5. QUIZ LOGIC (FIXED)
 // ======================================================
 
 function setMode(mode) {
@@ -254,39 +247,29 @@ function startPractice(subject, topic) {
     renderPage();
 }
 
-// --- NEW: START TEST WITH MULTI-SELECTION ---
 function startTest() {
     const count = parseInt(document.getElementById('q-count').value);
     const mins = parseInt(document.getElementById('t-limit').value);
     
-    // 1. Gather Selected Filters
+    // 1. Gather Filters
     const selectedSubjects = Array.from(document.querySelectorAll('.subj-chk:checked')).map(cb => cb.value);
     const selectedTopics = Array.from(document.querySelectorAll('.topic-chk:checked')).map(cb => cb.value);
 
-    // 2. Filter the Pool
+    // 2. Filter Pool
     let pool = [];
-    
     if (selectedSubjects.length === 0 && selectedTopics.length === 0) {
-        // If nothing selected, Use ALL questions
         pool = [...allQuestions];
     } else {
-        // Filter based on selection
         pool = allQuestions.filter(q => {
-            const subjMatch = selectedSubjects.includes(q.Subject);
-            const topicMatch = selectedTopics.includes(q.Topic);
-            
-            // Logic: Include if Subject is checked OR if specific Topic is checked
-            return subjMatch || topicMatch;
+            return selectedSubjects.includes(q.Subject) || selectedTopics.includes(q.Topic);
         });
     }
 
-    if(pool.length === 0) return alert("No questions found for the selected criteria.");
-    if(pool.length < count) alert(`Note: Only ${pool.length} questions available for this selection.`);
-
-    // 3. Randomize and Slice
+    if(pool.length === 0) return alert("No questions found for selection.");
+    
+    // 3. Randomize
     filteredQuestions = pool.sort(() => Math.random() - 0.5).slice(0, count);
     
-    // 4. Start
     currentMode = 'test';
     currentIndex = 0;
     testAnswers = {};
@@ -308,7 +291,7 @@ function startSavedQuestions() {
     renderPage();
 }
 
-// --- RENDERING ENGINE ---
+// --- RENDERING ENGINE (FIXED ID CONFLICTS) ---
 
 function renderPage() {
     const container = document.getElementById('quiz-content-area');
@@ -324,8 +307,9 @@ function renderPage() {
     if (currentMode === 'practice') {
         document.getElementById('timer').classList.add('hidden');
         submitBtn.classList.add('hidden');
-        nextBtn.classList.add('hidden'); 
+        nextBtn.classList.add('hidden'); // Initially hidden
         
+        // Pass 'currentIndex' as ID to ensure uniqueness
         container.appendChild(createQuestionCard(filteredQuestions[currentIndex], currentIndex, false));
 
     } else {
@@ -337,6 +321,7 @@ function renderPage() {
         const end = Math.min(start + 5, filteredQuestions.length);
         
         for (let i = start; i < end; i++) {
+            // Pass 'i' as ID to ensure uniqueness
             container.appendChild(createQuestionCard(filteredQuestions[i], i, true));
         }
 
@@ -360,60 +345,99 @@ function createQuestionCard(q, index, isTest) {
     
     let html = headerHTML + `<div class="test-q-text">${index+1}. ${q.Question}</div>`;
     
-    html += `<div class="options-group" id="opts-${q.ID}">`;
+    // IMPORTANT: ID uses 'index' now, not q.ID, to prevent Test Mode duplicate ID bugs
+    html += `<div class="options-group" id="opts-${index}">`;
     const opts = ['A','B','C','D'];
     if(q.OptionE) opts.push('E');
     
     opts.forEach(opt => {
         let isSelected = false;
+        // Check using real ID for logic
         if(isTest && testAnswers[q.ID] === opt) isSelected = true;
         
+        // Button ID uses unique INDEX to prevent conflicts
         html += `<button class="option-btn ${isSelected ? 'selected' : ''}" 
                   onclick="handleClick('${q.ID}', '${opt}', ${index})" 
-                  id="btn-${q.ID}-${opt}">
+                  id="btn-${index}-${opt}">
                   <b>${opt}.</b> ${q['Option'+opt]}
                  </button>`;
     });
     html += `</div>`;
+
+    // New: Hidden "Show Explanation" button for Practice Mode re-opening
+    if (!isTest) {
+        html += `<button id="reopen-exp-${index}" class="secondary hidden" style="margin-top:15px; width:auto; font-size:13px;" onclick="reOpenModal(${index})">📖 View Explanation Again</button>`;
+    }
 
     card.innerHTML = html;
     return card;
 }
 
 function handleClick(qID, opt, index) {
+    // We use 'index' to find the DOM elements to avoid ID conflicts
     if (currentMode === 'test') {
-        testAnswers[qID] = opt;
-        const container = document.getElementById(`opts-${qID}`);
+        // Test Mode: Just select
+        testAnswers[qID] = opt; // Save using real ID
+        const container = document.getElementById(`opts-${index}`); // Target using Page Index
         container.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
-        document.getElementById(`btn-${qID}-${opt}`).classList.add('selected');
+        document.getElementById(`btn-${index}-${opt}`).classList.add('selected');
     } else {
         // PRACTICE MODE
         const q = filteredQuestions[index];
         const correct = getCorrectLetter(q);
-        const btn = document.getElementById(`btn-${qID}-${opt}`);
+        const btn = document.getElementById(`btn-${index}-${opt}`); // Target using Page Index
         
         if (opt === correct) {
+            // Correct
             btn.classList.add('correct');
-            const container = document.getElementById(`opts-${qID}`);
+            
+            // Disable buttons
+            const container = document.getElementById(`opts-${index}`);
             container.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
 
+            // Show Next Button
             if (currentIndex < filteredQuestions.length - 1) {
                 document.getElementById('next-btn').classList.remove('hidden');
             }
 
+            // Show "View Exp Again" button
+            document.getElementById(`reopen-exp-${index}`).classList.remove('hidden');
+
+            // OPEN POPUP
             const modal = document.getElementById('explanation-modal');
             const content = document.getElementById('modal-content');
             content.innerHTML = q.Explanation || "No explanation provided.";
             modal.classList.remove('hidden');
 
+            // Save Progress
             if (currentUser && !userSolvedIDs.includes(qID)) {
                 userSolvedIDs.push(qID);
                 db.collection('users').doc(currentUser.uid).set({ solved: userSolvedIDs }, { merge: true });
             }
         } else {
+            // Wrong
             btn.classList.add('wrong');
         }
     }
+}
+
+// --- MODAL HELPERS ---
+function closeModal() {
+    document.getElementById('explanation-modal').classList.add('hidden');
+}
+
+// New function to re-open modal if user closed it
+function reOpenModal(index) {
+    const q = filteredQuestions[index];
+    const modal = document.getElementById('explanation-modal');
+    const content = document.getElementById('modal-content');
+    content.innerHTML = q.Explanation || "No explanation provided.";
+    modal.classList.remove('hidden');
+}
+
+function nextPageFromModal() {
+    closeModal();
+    setTimeout(() => { nextPage(); }, 200);
 }
 
 // --- NAV & UTILS ---
@@ -503,5 +527,3 @@ function goHome() {
     showScreen('dashboard-screen');
     loadQuestions();
 }
-function closeModal() { document.getElementById('explanation-modal').classList.add('hidden'); }
-function nextPageFromModal() { closeModal(); setTimeout(() => { nextPage(); }, 200); }
