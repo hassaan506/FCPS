@@ -28,6 +28,7 @@ let currentUser = null;
 let allQuestions = [];
 let filteredQuestions = [];
 let userBookmarks = []; 
+let userSolvedIDs = []; // Track questions solved in Practice Mode
 
 // Quiz State
 let currentMode = 'practice'; 
@@ -45,7 +46,7 @@ auth.onAuthStateChanged(user => {
         currentUser = user;
         showScreen('dashboard-screen');
         document.getElementById('user-display').innerText = user.email;
-        loadUserData();
+        loadUserData(); // Load stats immediately
         loadQuestions();
     } else {
         currentUser = null;
@@ -71,37 +72,53 @@ function logout() {
     auth.signOut();
 }
 
+// --- NEW: ADVANCED STATS LOADER ---
 async function loadUserData() {
     if(!currentUser) return;
-
-    // 1. Load Bookmarks
-    const userDoc = await db.collection('users').doc(currentUser.uid).get();
-    if (userDoc.exists) {
-        userBookmarks = userDoc.data().bookmarks || [];
-    }
-
-    // 2. Load Test Results & Calculate Average
-    const statsSnapshot = await db.collection('users').doc(currentUser.uid).collection('results').get();
     
-    let totalTests = 0;
-    let totalScore = 0;
+    try {
+        // 1. Get Main Profile (Bookmarks + Solved Practice Questions)
+        const userDoc = await db.collection('users').doc(currentUser.uid).get();
+        if (userDoc.exists) {
+            const data = userDoc.data();
+            userBookmarks = data.bookmarks || [];
+            userSolvedIDs = data.solved || [];
+        }
 
-    statsSnapshot.forEach(doc => {
-        totalTests++;
-        totalScore += doc.data().score;
-    });
+        // 2. Get Test Results
+        const resultsSnapshot = await db.collection('users').doc(currentUser.uid).collection('results').get();
+        let totalTests = 0;
+        let totalScore = 0;
+        
+        resultsSnapshot.forEach(doc => {
+            totalTests++;
+            totalScore += doc.data().score;
+        });
 
-    // Avoid dividing by zero if new user
-    const avgScore = totalTests > 0 ? Math.round(totalScore / totalTests) : 0;
+        const avgScore = totalTests > 0 ? Math.round(totalScore / totalTests) : 0;
+        const practiceCount = userSolvedIDs.length;
 
-    // 3. Update the Dashboard Box
-    const statsBox = document.getElementById('stats-box');
-    if (statsBox) {
-        statsBox.innerHTML = `
-            <h3>Your Progress</h3>
-            <p style="font-size: 1.1rem; margin: 5px 0;">Tests Taken: <b>${totalTests}</b></p>
-            <p style="font-size: 1.1rem; margin: 0;">Average Score: <b style="color: ${avgScore >= 70 ? 'green' : 'red'}">${avgScore}%</b></p>
-        `;
+        // 3. UPDATE THE DASHBOARD HTML
+        const statsBox = document.getElementById('stats-box');
+        if (statsBox) {
+            statsBox.innerHTML = `
+                <h3 style="margin-top:0;">Your Progress</h3>
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                    <span>Tests Taken:</span> <b>${totalTests}</b>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                    <span>Test Average:</span> <b style="color:${avgScore >= 70 ? '#2e7d32' : '#d32f2f'}">${avgScore}%</b>
+                </div>
+                <div style="border-top:1px solid #eee; padding-top:10px; margin-top:5px;">
+                    <span style="font-size:0.9em; color:#666;">Practice Solved:</span><br>
+                    <b style="font-size:1.2em;">${practiceCount} Questions</b>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error("Stats Error:", error);
+        const statsBox = document.getElementById('stats-box');
+        if (statsBox) statsBox.innerText = "Error loading stats. Check console.";
     }
 }
 
@@ -129,7 +146,6 @@ function processData(rawData) {
     rawData.forEach(row => {
         if (!row.Question) return;
         
-        // Remove duplicates
         const qSignature = row.Question.trim().toLowerCase();
         if (seenQuestions.has(qSignature)) return; 
         seenQuestions.add(qSignature);
@@ -370,7 +386,6 @@ function handleOptionClick(selectedOpt) {
         let correctOpt = getCorrectLetter(q);
         
         const selectedBtn = document.getElementById(`btn-${selectedOpt}`);
-        const correctBtn = document.getElementById(`btn-${correctOpt}`);
 
         if (correctOpt === '?') {
             alert("Check Sheet: CorrectAnswer column must match one of the options.");
@@ -378,15 +393,22 @@ function handleOptionClick(selectedOpt) {
         }
 
         if (selectedOpt === correctOpt) {
+            // CORRECT
             selectedBtn.classList.add('correct');
             document.getElementById('explanation-box').classList.remove('hidden');
-            
-            // --- FIX: USE INNERHTML TO SHOW BOLD/COLORS ---
             document.getElementById('exp-text').innerHTML = q.Explanation || "No explanation provided.";
-            // ----------------------------------------------
-            
             document.getElementById('next-btn').classList.remove('hidden');
             document.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+
+            // --- SAVE PROGRESS TO DATABASE (New Feature) ---
+            if (currentUser && !userSolvedIDs.includes(q.ID)) {
+                userSolvedIDs.push(q.ID);
+                db.collection('users').doc(currentUser.uid).set({
+                    solved: userSolvedIDs
+                }, { merge: true });
+            }
+            // ------------------------------------------------
+
         } else {
             selectedBtn.classList.add('wrong');
         }
@@ -447,6 +469,8 @@ function submitTest() {
             date: new Date(),
             score: percentage,
             total: filteredQuestions.length
+        }).then(() => {
+            loadUserData(); // Refresh dashboard stats immediately
         });
     }
 
@@ -473,7 +497,6 @@ function renderReviewList(wrongQuestions) {
         div.style.borderRadius = "5px";
         div.style.boxShadow = "0 1px 3px rgba(0,0,0,0.1)";
         
-        // --- FIX: Ensure Explanation here also supports HTML ---
         div.innerHTML = `
             <p><b>Q:</b> ${item.q.Question}</p>
             <p style="color:red">Your Answer: ${item.user || "Skipped"}</p>
@@ -518,6 +541,5 @@ function goHome() {
     clearInterval(testTimer);
     document.getElementById('timer').classList.add('hidden');
     showScreen('dashboard-screen');
-    loadQuestions(); 
+    loadQuestions(); // Triggers reload to update dashboard if needed
 }
-
