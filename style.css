@@ -321,3 +321,51 @@ summary { padding: 18px; cursor: pointer; font-weight: 600; }
         order: -1; /* Puts it above questions */
     }
 }
+
+/* =========================================
+   FIX: SCROLLABLE EXPLANATION POPUP
+   ========================================= */
+
+/* 1. Limit the Popup Height so it never exceeds screen */
+.modal-overlay .joinCard {
+    max-height: 85vh;        /* Max height = 85% of screen viewport */
+    display: flex;           /* Use Flexbox to manage layout */
+    flex-direction: column;  /* Stack items (Title, Text, Buttons) */
+    overflow: hidden;        /* Prevent the card itself from scrolling */
+}
+
+/* 2. Make the Explanation Text Area Scrollable */
+#modal-content {
+    overflow-y: auto;        /* Scroll vertical ONLY if text is long */
+    flex: 1;                 /* Take up all remaining space in the middle */
+    margin: 15px 0;          /* Add breathing room */
+    padding-right: 10px;     /* Prevent text from touching the scrollbar */
+    
+    /* Visual separation */
+    border-top: 1px solid #f0f0f0;
+    border-bottom: 1px solid #f0f0f0;
+    padding-top: 15px;
+    padding-bottom: 15px;
+}
+
+/* 3. Customize the Scrollbar (Optional, makes it look nicer) */
+#modal-content::-webkit-scrollbar {
+    width: 8px;
+}
+#modal-content::-webkit-scrollbar-track {
+    background: #f1f1f1; 
+    border-radius: 4px;
+}
+#modal-content::-webkit-scrollbar-thumb {
+    background: #ccc; 
+    border-radius: 4px;
+}
+#modal-content::-webkit-scrollbar-thumb:hover {
+    background: #bbb; 
+}
+
+/* 4. Ensure Buttons are always visible at the bottom */
+.modal-overlay .joinCard > div:last-child {
+    flex-shrink: 0;          /* Prevent buttons from being squished */
+    margin-top: 0;
+}
