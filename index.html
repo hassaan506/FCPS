@@ -21,14 +21,14 @@
             <input type="email" id="email" placeholder="Email Address">
             <input type="password" id="password" placeholder="Password">
             
-            <button class="primary" onclick="login()">Enter Portal</button>
+            <button class="primary" onclick="login()">Log In</button>
             <button class="secondary" onclick="signup()">Create New ID</button>
             
             <p id="auth-msg" style="margin-top:15px; color:#dc3545; font-size:13px;"></p>
         </div>
     </div>
 
-    <div id="dashboard-screen" class="screen hidden">
+    <div id="dashboard-screen" class="screen">
         
         <div class="topBar">
             <div style="display:flex; flex-direction:column;">
@@ -77,7 +77,7 @@
         </div>
     </div>
 
-    <div id="quiz-screen" class="screen hidden">
+    <div id="quiz-screen" class="screen">
         <div class="gameContainer" style="max-width: 800px;">
             
             <div class="quiz-header">
@@ -85,8 +85,7 @@
                 <div id="timer" class="hidden">00:00</div>
             </div>
 
-            <div id="quiz-content-area">
-                </div>
+            <div id="quiz-content-area"></div>
 
             <div class="quiz-footer">
                 <button id="prev-btn" onclick="prevPage()" class="secondary hidden" style="width:auto;">Previous</button>
@@ -98,15 +97,14 @@
         </div>
     </div>
 
-    <div id="result-screen" class="screen hidden">
+    <div id="result-screen" class="screen">
         <div class="joinCard" style="max-width: 700px;">
             <h1 class="gameTitle">Exam Results</h1>
             <div class="score-display">
                 <span id="final-score">0%</span>
             </div>
             
-            <div id="review-list" style="text-align:left; max-height:400px; overflow-y:auto; margin-bottom:20px;">
-                </div>
+            <div id="review-list" style="text-align:left; max-height:400px; overflow-y:auto; margin-bottom:20px;"></div>
             
             <button onclick="goHome()" class="primary">Return to Dashboard</button>
         </div>
