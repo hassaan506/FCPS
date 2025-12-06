@@ -92,22 +92,31 @@
         </div>
     </div>
 
-    <div id="quiz-screen" class="screen">
-        <div class="gameContainer">
+    <<div id="quiz-screen" class="screen">
+        
+        <div class="gameContainer" style="position: relative;">
+            
             <div class="quiz-header">
                 <button onclick="goHome()" class="secondary" style="width:auto; padding:8px 20px;">Exit Session</button>
                 <div id="timer" class="hidden">00:00</div>
             </div>
+
+            <div id="test-sidebar" class="test-sidebar">
+                <h4 style="font-size:14px; color:#333; font-weight:700; border-bottom:1px solid #eee; padding-bottom:10px;">Question Navigator</h4>
+                <div id="nav-grid" class="nav-grid">
+                    </div>
+            </div>
+
             <div id="quiz-content-area"></div>
+
             <div class="quiz-footer">
-                <button id="prev-btn" onclick="prevPage()" class="secondary hidden" style="width:auto;">Back</button>
+                <button id="prev-btn" onclick="prevPage()" class="secondary hidden" style="width:auto;">Previous</button>
                 <span id="q-progress"></span>
-                <button id="next-btn" onclick="nextPage()" class="primary" style="width:auto;">Next Question</button>
+                <button id="next-btn" onclick="nextPage()" class="primary" style="width:auto;">Next</button>
                 <button id="submit-btn" onclick="submitTest()" class="primary hidden" style="background:#10b981;">Submit Exam</button>
             </div>
         </div>
     </div>
-
     <div id="result-screen" class="screen">
         <div class="joinCard" style="max-width: 700px; padding:30px;">
             <h1 class="gameTitle">Session Report</h1>
@@ -147,4 +156,5 @@
     <script src="script.js"></script>
 </body>
 </html>
+
 
