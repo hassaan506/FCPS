@@ -109,8 +109,20 @@
             <button onclick="goHome()" class="primary">Return to Dashboard</button>
         </div>
     </div>
+    <div id="explanation-modal" class="modal-overlay hidden">
+        <div class="joinCard" style="max-width: 600px; border-left: 6px solid #28a745;">
+            <h2 style="color:#28a745; margin-bottom:10px;">✅ Correct!</h2>
+            <div id="modal-content" class="dynamic-explanation" style="margin-top:0; border:none; background:#f9f9f9;">
+                </div>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button class="secondary" onclick="closeModal()">Review Options</button>
+                <button class="primary" onclick="nextPageFromModal()">Next Question ➜</button>
+            </div>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>
 </html>
+
 
