@@ -73,9 +73,35 @@ function logout() {
 
 async function loadUserData() {
     if(!currentUser) return;
-    const doc = await db.collection('users').doc(currentUser.uid).get();
-    if (doc.exists) {
-        userBookmarks = doc.data().bookmarks || [];
+
+    // 1. Load Bookmarks
+    const userDoc = await db.collection('users').doc(currentUser.uid).get();
+    if (userDoc.exists) {
+        userBookmarks = userDoc.data().bookmarks || [];
+    }
+
+    // 2. Load Test Results & Calculate Average
+    const statsSnapshot = await db.collection('users').doc(currentUser.uid).collection('results').get();
+    
+    let totalTests = 0;
+    let totalScore = 0;
+
+    statsSnapshot.forEach(doc => {
+        totalTests++;
+        totalScore += doc.data().score;
+    });
+
+    // Avoid dividing by zero if new user
+    const avgScore = totalTests > 0 ? Math.round(totalScore / totalTests) : 0;
+
+    // 3. Update the Dashboard Box
+    const statsBox = document.getElementById('stats-box');
+    if (statsBox) {
+        statsBox.innerHTML = `
+            <h3>Your Progress</h3>
+            <p style="font-size: 1.1rem; margin: 5px 0;">Tests Taken: <b>${totalTests}</b></p>
+            <p style="font-size: 1.1rem; margin: 0;">Average Score: <b style="color: ${avgScore >= 70 ? 'green' : 'red'}">${avgScore}%</b></p>
+        `;
     }
 }
 
@@ -494,3 +520,4 @@ function goHome() {
     showScreen('dashboard-screen');
     loadQuestions(); 
 }
+
