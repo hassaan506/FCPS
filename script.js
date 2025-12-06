@@ -354,7 +354,7 @@ function handleOptionClick(selectedOpt) {
         if (selectedOpt === correctOpt) {
             selectedBtn.classList.add('correct');
             document.getElementById('explanation-box').classList.remove('hidden');
-            document.getElementById('exp-text').innerText = q.Explanation || "No explanation provided.";
+            document.getElementById('exp-text').innerHTML = q.Explanation || "No explanation provided.";
             document.getElementById('next-btn').classList.remove('hidden');
             document.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
         } else {
@@ -489,3 +489,4 @@ function goHome() {
     showScreen('dashboard-screen');
     loadQuestions(); 
 }
+
