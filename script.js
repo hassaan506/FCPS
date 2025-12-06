@@ -338,41 +338,92 @@ function createQuestionCard(q, index, isTest) {
 
 // --- INTERACTION ---
 
+// --- INTERACTION ---
+
 function handleClick(qID, opt, index) {
     if (currentMode === 'test') {
+        // Test Mode: Just select
         testAnswers[qID] = opt;
         const container = document.getElementById(`opts-${qID}`);
         container.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
         document.getElementById(`btn-${qID}-${opt}`).classList.add('selected');
     } else {
-        // PRACTICE MODE
+        // PRACTICE MODE: Popup Logic
         const q = filteredQuestions[index];
         const correct = getCorrectLetter(q);
         
         const btn = document.getElementById(`btn-${qID}-${opt}`);
         
         if (opt === correct) {
+            // 1. Visual Feedback
             btn.classList.add('correct');
-            const expBox = document.getElementById(`exp-${qID}`);
-            expBox.innerHTML = `<strong>EXPLANATION</strong><br>` + (q.Explanation || "No explanation.");
-            expBox.classList.remove('hidden');
             
-            // SHOW NEXT BUTTON ONLY AFTER CORRECT ANSWER
+            // 2. Disable buttons so they can't double click
+            const container = document.getElementById(`opts-${qID}`);
+            container.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+
+            // 3. Show Next Button on Main Screen (in case they close modal)
             if (currentIndex < filteredQuestions.length - 1) {
                 document.getElementById('next-btn').classList.remove('hidden');
             }
 
-            const container = document.getElementById(`opts-${qID}`);
-            container.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+            // 4. OPEN THE POPUP!
+            openModal(q.Explanation);
 
+            // 5. Save Progress
             if (currentUser && !userSolvedIDs.includes(qID)) {
                 userSolvedIDs.push(qID);
                 db.collection('users').doc(currentUser.uid).set({ solved: userSolvedIDs }, { merge: true });
             }
         } else {
+            // Wrong Answer
             btn.classList.add('wrong');
         }
     }
+}
+
+// --- MODAL FUNCTIONS ---
+
+function openModal(explanationText) {
+    const modal = document.getElementById('explanation-modal');
+    const content = document.getElementById('modal-content');
+    
+    // Inject text (using innerHTML for bold/colors)
+    content.innerHTML = explanationText || "No explanation provided.";
+    
+    // Show Modal
+    modal.classList.remove('hidden');
+}
+
+function closeModal() {
+    document.getElementById('explanation-modal').classList.add('hidden');
+}
+
+function nextPageFromModal() {
+    closeModal();
+    // Small delay to make it look smooth
+    setTimeout(() => {
+        nextPage();
+    }, 200);
+}
+
+// --- NAVIGATION (Existing code, just ensuring it matches) ---
+function nextPage() {
+    if (currentMode === 'practice') {
+        currentIndex++; 
+    } else {
+        currentIndex += 5; 
+    }
+    renderPage();
+}
+
+function prevPage() {
+    if (currentMode === 'practice') {
+        currentIndex--;
+    } else {
+        currentIndex -= 5;
+    }
+    renderPage();
 }
 
 // --- NAVIGATION ---
@@ -483,3 +534,4 @@ function goHome() {
     document.getElementById('timer').classList.add('hidden');
     showScreen('dashboard-screen');
 }
+
