@@ -1,5 +1,5 @@
 /* ---------------------------------------------
-   STYLE.CSS (RESPONSIVE & PROFESSIONAL FIX)
+   STYLE.CSS (WIDE SCREEN / FLUID LAYOUT)
 --------------------------------------------- */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
 
@@ -19,7 +19,8 @@ body {
 .screen { 
     display: none; 
     width: 100%; 
-    max-width: 1000px; /* Increased width for better reading */
+    /* CHANGED: Increased from 1000px to 96% to fill the screen */
+    max-width: 96%; 
     min-height: 90vh; 
     padding: 20px; 
     flex-direction: column; 
@@ -37,7 +38,6 @@ body::before {
 @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 
 /* === CARDS & PANELS === */
-/* Shared Styles */
 .joinCard, .panel, .test-question-block { 
     background: rgba(255, 255, 255, 0.95); 
     border-radius: 20px; 
@@ -52,13 +52,13 @@ body::before {
     margin-top: 10vh; 
     padding: 40px; 
     width: 100%; 
-    max-width: 400px; /* Login stays compact */
+    max-width: 400px; 
 }
 
-/* Panels & Questions - Let them expand! */
+/* Panels & Questions */
 .panel, .test-question-block {
     width: 100%; 
-    max-width: 100%; /* FIX: Allows full width */
+    max-width: 100%; 
     padding: 30px;
     margin-bottom: 20px;
 }
@@ -91,8 +91,20 @@ button {
 }
 .logout-btn { width: auto; padding: 8px 20px; font-size: 14px; background: #ffebee; color: #c62828; margin: 0; }
 
-.gameContainer { width: 100%; display: grid; grid-template-columns: 1fr; gap: 20px; }
-@media(min-width: 900px) { .gameContainer { grid-template-columns: 1fr 2fr; } }
+.gameContainer { 
+    width: 100%; 
+    display: grid; 
+    grid-template-columns: 1fr; /* Default mobile (stacked) */
+    gap: 20px; 
+}
+
+/* CHANGED: Wider Layout Ratio for Desktop */
+@media(min-width: 900px) { 
+    .gameContainer { 
+        /* Sidebar takes 1 part, Main Content takes 3 parts */
+        grid-template-columns: 1fr 3fr; 
+    } 
+}
 
 .panel h3 { color: #2c3e50; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; margin-bottom: 20px; font-size: 18px; }
 
@@ -121,7 +133,7 @@ summary { padding: 15px; background: #fff; cursor: pointer; font-weight: 600; co
     color: #2c3e50; 
     margin-bottom: 25px; 
     line-height: 1.6; 
-    text-align: justify; /* Keeps text neat */
+    text-align: justify;
 }
 
 /* Option Buttons */
@@ -137,7 +149,7 @@ summary { padding: 15px; background: #fff; cursor: pointer; font-weight: 600; co
 .option-btn.correct { background: #d4edda !important; border-color: #28a745 !important; color: #155724; }
 .option-btn.wrong { background: #f8d7da !important; border-color: #dc3545 !important; color: #721c24; }
 
-/* === EXPLANATION FIX === */
+/* EXPLANATION FIX */
 .dynamic-explanation {
     background: #fff9db; 
     border-left: 5px solid #ffc107; 
@@ -145,8 +157,8 @@ summary { padding: 15px; background: #fff; cursor: pointer; font-weight: 600; co
     border-radius: 8px; 
     margin-top: 25px; 
     color: #333; 
-    line-height: 1.7; /* Easier reading */
-    white-space: pre-wrap; /* FIX: Respects Enter Keys/Paragraphs */
+    line-height: 1.7; 
+    white-space: pre-wrap;
 }
 .dynamic-explanation strong { 
     display: block; 
@@ -163,11 +175,11 @@ summary { padding: 15px; background: #fff; cursor: pointer; font-weight: 600; co
 #final-score { font-size: 48px; font-weight: 800; color: #007bff; display: block; margin: 20px 0; }
 #review-list div { text-align: left; background: white; padding: 20px; margin-bottom: 15px; border-radius: 10px; border-left: 5px solid #dc3545; }
 
-/* === MOBILE OPTIMIZATIONS (The Compatibility Fix) === */
+/* === MOBILE OPTIMIZATIONS === */
 @media (max-width: 600px) {
-    .screen { padding: 10px; }
-    .joinCard, .panel, .test-question-block { padding: 20px; } /* Smaller padding on phone */
-    .test-q-text { font-size: 1rem; } /* Slightly smaller text */
+    .screen { padding: 10px; max-width: 100%; } /* Full width on mobile */
+    .joinCard, .panel, .test-question-block { padding: 20px; }
+    .test-q-text { font-size: 1rem; }
     .gameTitle { font-size: 24px; }
     .topBar { flex-direction: column; gap: 10px; align-items: flex-start; }
     .logout-btn { align-self: flex-end; }
