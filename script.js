@@ -13,7 +13,6 @@ const firebaseConfig = {
   appId: "1:949920276784:web:c9af3432814c0f80e028f5"
 };
 
-// Initialize
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
@@ -43,6 +42,7 @@ auth.onAuthStateChanged(user => {
     if (user) {
         currentUser = user;
         showScreen('dashboard-screen');
+        // Update Name
         document.getElementById('user-display').innerText = user.displayName || "Doctor";
         loadUserData();
         loadQuestions();
@@ -68,76 +68,66 @@ function signup() {
 
 function logout() { auth.signOut(); }
 
+// --- PROFILE SYSTEM ---
+function openProfileModal() {
+    document.getElementById('profile-modal').classList.remove('hidden');
+    if (currentUser.displayName) document.getElementById('new-display-name').value = currentUser.displayName;
+}
+
+function saveProfile() {
+    const newName = document.getElementById('new-display-name').value;
+    if (!newName) return alert("Please enter a name.");
+    currentUser.updateProfile({ displayName: newName }).then(() => {
+        document.getElementById('user-display').innerText = newName;
+        document.getElementById('profile-modal').classList.add('hidden');
+    }).catch(e => alert(e.message));
+}
+
+// --- DATA ---
 async function loadUserData() {
     if (!currentUser) return;
-    
     try {
-        // Load Profile
         const userDoc = await db.collection('users').doc(currentUser.uid).get();
         if (userDoc.exists) {
             userBookmarks = userDoc.data().bookmarks || [];
             userSolvedIDs = userDoc.data().solved || [];
         } else {
-            userBookmarks = [];
-            userSolvedIDs = [];
+            userBookmarks = []; userSolvedIDs = [];
         }
 
-        // Load Test Stats
         const resultsSnap = await db.collection('users').doc(currentUser.uid).collection('results').get();
         let totalTests = 0, totalScore = 0;
         resultsSnap.forEach(doc => { totalTests++; totalScore += doc.data().score; });
         const avgScore = totalTests > 0 ? Math.round(totalScore / totalTests) : 0;
 
-        // Update Dashboard
         const statsBox = document.getElementById('stats-box');
         if (statsBox) {
             statsBox.innerHTML = `
                 <h3>Your Progress</h3>
-                <p>Test Average: <b style="color:${avgScore >= 70 ? 'green' : 'red'}">${avgScore}%</b> (${totalTests} tests)</p>
-                <p style="border-top:1px solid #eee; padding-top:5px; margin-top:5px;">
-                Practice Solved: <b>${userSolvedIDs.length}</b> Questions
-                </p>
+                <div class="stat-row"><span class="stat-lbl">Test Average:</span> <span class="stat-val" style="color:${avgScore>=70?'#2ecc71':'#e74c3c'}">${avgScore}%</span></div>
+                <div class="stat-row"><span class="stat-lbl">Tests Taken:</span> <span class="stat-val">${totalTests}</span></div>
+                <div class="stat-row" style="border:none;"><span class="stat-lbl">Practice Solved:</span> <span class="stat-val">${userSolvedIDs.length}</span></div>
             `;
         }
-    } catch (e) {
-        console.error("Load Data Error", e);
-    }
+    } catch (e) { console.error(e); }
 }
 
-// --- FIXED RESET FUNCTION ---
 async function resetAccountData() {
-    if(!currentUser) return alert("Please log in first.");
-    
-    if (!confirm("⚠️ WARNING: This will permanently delete ALL your progress, scores, and bookmarks.\n\nAre you sure you want to continue?")) return;
-    
+    if(!currentUser) return alert("Please log in.");
+    if (!confirm("⚠️ WARNING: This will delete ALL progress/bookmarks. Continue?")) return;
     try {
-        // 1. Delete Results Subcollection (Must loop through them)
         const resultsRef = db.collection('users').doc(currentUser.uid).collection('results');
         const snapshot = await resultsRef.get();
-        
-        // Use a batch to delete properly
-        if (!snapshot.empty) {
-            const batch = db.batch();
-            snapshot.forEach(doc => {
-                batch.delete(doc.ref);
-            });
-            await batch.commit();
-        }
-
-        // 2. Delete Main User Document
+        const batch = db.batch();
+        snapshot.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
         await db.collection('users').doc(currentUser.uid).delete();
-
-        alert("✅ Progress has been reset successfully. The page will now reload.");
-        window.location.reload(); // Force refresh to clear memory
-
-    } catch (error) {
-        console.error(error);
-        alert("Error resetting data: " + error.message);
-    }
+        alert("✅ Reset Complete."); window.location.reload();
+    } catch (e) { alert(e.message); }
 }
 
 // ======================================================
-// 4. DATA LOADING
+// 4. DATA LOADING & FILTER GENERATION
 // ======================================================
 
 function loadQuestions() {
@@ -151,7 +141,7 @@ function processData(data) {
     const seen = new Set();
     allQuestions = [];
     const subjects = new Set();
-    const map = {};
+    const map = {}; // Subject -> Set(Topics)
 
     data.forEach(row => {
         if (!row.Question) return;
@@ -170,20 +160,22 @@ function processData(data) {
         map[subj].add(topic);
     });
 
-    renderMenus(subjects, map);
+    renderMenus(subjects, map); // For Practice Mode
+    renderTestFilters(subjects, map); // For Test Mode (The New Feature)
 }
 
+// Practice Mode Menus
 function renderMenus(subjects, map) {
     const container = document.getElementById('dynamic-menus');
     container.innerHTML = "";
     subjects.forEach(subj => {
         const details = document.createElement('details');
-        details.innerHTML = `<summary style="padding:10px; font-weight:bold; cursor:pointer;">${subj}</summary>`;
+        details.innerHTML = `<summary>${subj}</summary>`;
         
         const allBtn = document.createElement('button');
         allBtn.textContent = `Practice All ${subj}`;
         allBtn.className = "category-btn";
-        allBtn.style.cssText = "width:100%; background:#2c3e50; color:white; margin-top:10px;";
+        allBtn.style.fontWeight = "bold";
         allBtn.onclick = () => startPractice(subj, null);
         details.appendChild(allBtn);
 
@@ -195,6 +187,44 @@ function renderMenus(subjects, map) {
             details.appendChild(btn);
         });
         container.appendChild(details);
+    });
+}
+
+// --- NEW: GENERATE CHECKBOXES FOR TEST MODE ---
+function renderTestFilters(subjects, map) {
+    const container = document.getElementById('filter-container');
+    container.innerHTML = "";
+
+    subjects.forEach(subj => {
+        const group = document.createElement('div');
+        group.className = 'filter-group';
+
+        // Subject Checkbox (Parent)
+        const subLabel = document.createElement('label');
+        subLabel.className = 'filter-subject-label';
+        subLabel.innerHTML = `<input type="checkbox" class="filter-checkbox subj-chk" value="${subj}"> ${subj}`;
+        
+        // Topic Container
+        const topicList = document.createElement('div');
+        topicList.className = 'filter-topic-list';
+
+        map[subj].forEach(topic => {
+            const topLabel = document.createElement('label');
+            topLabel.className = 'filter-topic-label';
+            topLabel.innerHTML = `<input type="checkbox" class="filter-checkbox topic-chk" value="${topic}" data-subject="${subj}"> ${topic}`;
+            topicList.appendChild(topLabel);
+        });
+
+        // "Select All" Logic for UX
+        const subInput = subLabel.querySelector('input');
+        subInput.onchange = (e) => {
+            const topicInputs = topicList.querySelectorAll('input');
+            topicInputs.forEach(inp => inp.checked = e.target.checked);
+        };
+
+        group.appendChild(subLabel);
+        group.appendChild(topicList);
+        container.appendChild(group);
     });
 }
 
@@ -224,13 +254,39 @@ function startPractice(subject, topic) {
     renderPage();
 }
 
+// --- NEW: START TEST WITH MULTI-SELECTION ---
 function startTest() {
     const count = parseInt(document.getElementById('q-count').value);
     const mins = parseInt(document.getElementById('t-limit').value);
     
-    filteredQuestions = [...allQuestions].sort(() => Math.random() - 0.5).slice(0, count);
-    if(filteredQuestions.length === 0) return alert("Questions loading, please wait...");
+    // 1. Gather Selected Filters
+    const selectedSubjects = Array.from(document.querySelectorAll('.subj-chk:checked')).map(cb => cb.value);
+    const selectedTopics = Array.from(document.querySelectorAll('.topic-chk:checked')).map(cb => cb.value);
+
+    // 2. Filter the Pool
+    let pool = [];
     
+    if (selectedSubjects.length === 0 && selectedTopics.length === 0) {
+        // If nothing selected, Use ALL questions
+        pool = [...allQuestions];
+    } else {
+        // Filter based on selection
+        pool = allQuestions.filter(q => {
+            const subjMatch = selectedSubjects.includes(q.Subject);
+            const topicMatch = selectedTopics.includes(q.Topic);
+            
+            // Logic: Include if Subject is checked OR if specific Topic is checked
+            return subjMatch || topicMatch;
+        });
+    }
+
+    if(pool.length === 0) return alert("No questions found for the selected criteria.");
+    if(pool.length < count) alert(`Note: Only ${pool.length} questions available for this selection.`);
+
+    // 3. Randomize and Slice
+    filteredQuestions = pool.sort(() => Math.random() - 0.5).slice(0, count);
+    
+    // 4. Start
     currentMode = 'test';
     currentIndex = 0;
     testAnswers = {};
@@ -266,19 +322,13 @@ function renderPage() {
     prevBtn.classList.toggle('hidden', currentIndex === 0);
 
     if (currentMode === 'practice') {
-        // 1 Q per page
         document.getElementById('timer').classList.add('hidden');
         submitBtn.classList.add('hidden');
-        nextBtn.classList.add('hidden'); // Initially hidden until answered
+        nextBtn.classList.add('hidden'); 
         
-        // But if it's NOT the last question, we allow showing Next later
-        // If it IS the last question, Next stays hidden forever
-        
-        document.getElementById('q-progress').innerText = `Question ${currentIndex + 1} of ${filteredQuestions.length}`;
         container.appendChild(createQuestionCard(filteredQuestions[currentIndex], currentIndex, false));
 
     } else {
-        // 5 Q per page
         document.getElementById('timer').classList.remove('hidden');
         nextBtn.classList.remove('hidden');
         submitBtn.classList.add('hidden');
@@ -286,8 +336,6 @@ function renderPage() {
         const start = currentIndex;
         const end = Math.min(start + 5, filteredQuestions.length);
         
-        document.getElementById('q-progress').innerText = `Questions ${start + 1}-${end} of ${filteredQuestions.length}`;
-
         for (let i = start; i < end; i++) {
             container.appendChild(createQuestionCard(filteredQuestions[i], i, true));
         }
@@ -301,17 +349,15 @@ function renderPage() {
 
 function createQuestionCard(q, index, isTest) {
     const card = document.createElement('div');
-    if (isTest) card.className = "test-question-block"; 
-    else card.className = ""; 
+    card.className = "test-question-block"; 
 
-    let headerHTML = `<div style="font-size:0.85em; color:#666; margin-bottom:10px;">${q.Subject} • ${q.Topic}`;
+    let headerHTML = `<div style="font-size:0.85em; color:#999; margin-bottom:10px; text-transform:uppercase; letter-spacing:1px;">${q.Subject} • ${q.Topic}`;
     if (!isTest) {
         const isSaved = userBookmarks.includes(q.ID);
         headerHTML += ` <span onclick="toggleBookmark('${q.ID}', this)" class="bookmark-icon" style="color:${isSaved ? '#ffc107' : '#e2e8f0'}">${isSaved ? '★' : '☆'}</span>`;
     }
     headerHTML += `</div>`;
     
-    // Justified Question Text
     let html = headerHTML + `<div class="test-q-text">${index+1}. ${q.Question}</div>`;
     
     html += `<div class="options-group" id="opts-${q.ID}">`;
@@ -330,129 +376,59 @@ function createQuestionCard(q, index, isTest) {
     });
     html += `</div>`;
 
-    html += `<div id="exp-${q.ID}" class="dynamic-explanation hidden"></div>`;
-
     card.innerHTML = html;
     return card;
 }
 
-// --- INTERACTION ---
-
-// --- INTERACTION ---
-
 function handleClick(qID, opt, index) {
     if (currentMode === 'test') {
-        // Test Mode: Just select
         testAnswers[qID] = opt;
         const container = document.getElementById(`opts-${qID}`);
         container.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
         document.getElementById(`btn-${qID}-${opt}`).classList.add('selected');
     } else {
-        // PRACTICE MODE: Popup Logic
+        // PRACTICE MODE
         const q = filteredQuestions[index];
         const correct = getCorrectLetter(q);
-        
         const btn = document.getElementById(`btn-${qID}-${opt}`);
         
         if (opt === correct) {
-            // 1. Visual Feedback
             btn.classList.add('correct');
-            
-            // 2. Disable buttons so they can't double click
             const container = document.getElementById(`opts-${qID}`);
             container.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
 
-            // 3. Show Next Button on Main Screen (in case they close modal)
             if (currentIndex < filteredQuestions.length - 1) {
                 document.getElementById('next-btn').classList.remove('hidden');
             }
 
-            // 4. OPEN THE POPUP!
-            openModal(q.Explanation);
+            const modal = document.getElementById('explanation-modal');
+            const content = document.getElementById('modal-content');
+            content.innerHTML = q.Explanation || "No explanation provided.";
+            modal.classList.remove('hidden');
 
-            // 5. Save Progress
             if (currentUser && !userSolvedIDs.includes(qID)) {
                 userSolvedIDs.push(qID);
                 db.collection('users').doc(currentUser.uid).set({ solved: userSolvedIDs }, { merge: true });
             }
         } else {
-            // Wrong Answer
             btn.classList.add('wrong');
         }
     }
 }
 
-// --- MODAL FUNCTIONS ---
-
-function openModal(explanationText) {
-    const modal = document.getElementById('explanation-modal');
-    const content = document.getElementById('modal-content');
-    
-    // Inject text (using innerHTML for bold/colors)
-    content.innerHTML = explanationText || "No explanation provided.";
-    
-    // Show Modal
-    modal.classList.remove('hidden');
-}
-
-function closeModal() {
-    document.getElementById('explanation-modal').classList.add('hidden');
-}
-
-function nextPageFromModal() {
-    closeModal();
-    // Small delay to make it look smooth
-    setTimeout(() => {
-        nextPage();
-    }, 200);
-}
-
-// --- NAVIGATION (Existing code, just ensuring it matches) ---
+// --- NAV & UTILS ---
 function nextPage() {
-    if (currentMode === 'practice') {
-        currentIndex++; 
-    } else {
-        currentIndex += 5; 
-    }
+    currentIndex += (currentMode === 'practice') ? 1 : 5;
     renderPage();
 }
-
 function prevPage() {
-    if (currentMode === 'practice') {
-        currentIndex--;
-    } else {
-        currentIndex -= 5;
-    }
+    currentIndex -= (currentMode === 'practice') ? 1 : 5;
     renderPage();
 }
-
-// --- NAVIGATION ---
-
-function nextPage() {
-    if (currentMode === 'practice') {
-        currentIndex++; 
-    } else {
-        currentIndex += 5; 
-    }
-    renderPage();
-}
-
-function prevPage() {
-    if (currentMode === 'practice') {
-        currentIndex--;
-    } else {
-        currentIndex -= 5;
-    }
-    renderPage();
-}
-
-// --- UTILS ---
 
 function getCorrectLetter(q) {
     let dbAns = String(q.CorrectAnswer || "?").trim();
     if (/^[a-eA-E]$/.test(dbAns)) return dbAns.toUpperCase();
-    
-    // Fuzzy Match
     function clean(str) { return str.toLowerCase().replace(/[^a-z0-9]/g, ""); }
     let cleanTarget = clean(dbAns);
     const options = ['A', 'B', 'C', 'D', 'E'];
@@ -468,18 +444,15 @@ function getCorrectLetter(q) {
 function toggleBookmark(qID, span) {
     if(userBookmarks.includes(qID)) {
         userBookmarks = userBookmarks.filter(id => id !== qID);
-        span.innerText = "☆";
-        span.style.color = "#ccc";
+        span.innerText = "☆"; span.style.color = "#e2e8f0";
     } else {
         userBookmarks.push(qID);
-        span.innerText = "★";
-        span.style.color = "#ffc107";
+        span.innerText = "★"; span.style.color = "#ffc107";
     }
     db.collection('users').doc(currentUser.uid).set({ bookmarks: userBookmarks }, { merge: true });
 }
 
 // --- TEST SUBMISSION ---
-
 function updateTimer() {
     testTimeRemaining--;
     const m = Math.floor(testTimeRemaining/60);
@@ -492,22 +465,18 @@ function submitTest() {
     clearInterval(testTimer);
     let score = 0;
     let wrongList = [];
-    
     filteredQuestions.forEach(q => {
         const user = testAnswers[q.ID];
         const correct = getCorrectLetter(q);
         if(user === correct) score++;
         else wrongList.push({q, user, correct});
     });
-
     const percent = Math.round((score/filteredQuestions.length)*100);
-    
     if(currentUser) {
         db.collection('users').doc(currentUser.uid).collection('results').add({
             date: new Date(), score: percent, total: filteredQuestions.length
         }).then(() => loadUserData());
     }
-
     showScreen('result-screen');
     document.getElementById('final-score').innerText = `${percent}% (${score}/${filteredQuestions.length})`;
     
@@ -515,16 +484,15 @@ function submitTest() {
     list.innerHTML = "";
     wrongList.forEach(item => {
         list.innerHTML += `
-            <div style="background:white; padding:15px; margin-bottom:10px; border-left:4px solid red; border-radius:5px;">
+            <div style="background:white; padding:15px; margin-bottom:10px; border-left:4px solid #ef4444; border-radius:5px;">
                 <b>${item.q.Question}</b><br>
-                <span style="color:red">You: ${item.user||'-'}</span> | 
-                <span style="color:green">Correct: ${item.correct}</span>
+                <span style="color:#ef4444">You: ${item.user||'-'}</span> | 
+                <span style="color:#22c55e">Correct: ${item.correct}</span>
                 <div style="background:#f9f9f9; padding:10px; margin-top:5px; font-size:0.9em; white-space: pre-wrap;">${item.q.Explanation || 'No explanation.'}</div>
             </div>`;
     });
 }
 
-// --- HELPERS ---
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
@@ -533,34 +501,7 @@ function goHome() {
     clearInterval(testTimer);
     document.getElementById('timer').classList.add('hidden');
     showScreen('dashboard-screen');
+    loadQuestions();
 }
-
-// ==========================================
-// PROFILE SYSTEM LOGIC
-// ==========================================
-
-function openProfileModal() {
-    document.getElementById('profile-modal').classList.remove('hidden');
-    // Pre-fill current name if it exists
-    if (currentUser.displayName) {
-        document.getElementById('new-display-name').value = currentUser.displayName;
-    }
-}
-
-function saveProfile() {
-    const newName = document.getElementById('new-display-name').value;
-    if (!newName) return alert("Please enter a name.");
-
-    // Update Firebase Auth Profile
-    currentUser.updateProfile({
-        displayName: newName
-    }).then(() => {
-        // Update UI immediately
-        document.getElementById('user-display').innerText = newName;
-        document.getElementById('profile-modal').classList.add('hidden');
-        alert("Profile Updated Successfully!");
-    }).catch((error) => {
-        alert("Error updating profile: " + error.message);
-    });
-}
-
+function closeModal() { document.getElementById('explanation-modal').classList.add('hidden'); }
+function nextPageFromModal() { closeModal(); setTimeout(() => { nextPage(); }, 200); }
