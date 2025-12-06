@@ -187,3 +187,91 @@ summary { padding: 15px; background: #fff; cursor: pointer; font-weight: 600; co
     .quiz-footer { flex-wrap: wrap; }
     #q-progress { width: 100%; text-align: center; order: -1; margin-bottom: 10px; }
 }
+
+/* =========================================
+   FIX FOR QUIZ SCREEN LAYOUT
+   ========================================= */
+
+/* Force the Quiz Container to be Single Column (Not Grid) */
+#quiz-screen .gameContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 850px; /* Perfect reading width */
+    margin: 0 auto;   /* Centers it in the middle of screen */
+    gap: 0;
+}
+
+/* Fix the Header alignment */
+#quiz-screen .quiz-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+/* Make the Exit Button look better */
+#quiz-screen .quiz-header button {
+    width: auto;
+    background: white;
+    color: #666;
+    border: 1px solid #ddd;
+    padding: 8px 20px;
+    margin: 0;
+    font-size: 14px;
+}
+#quiz-screen .quiz-header button:hover {
+    background: #f8f9fa;
+    color: #333;
+    border-color: #bbb;
+}
+
+/* Make the Question Card nicer */
+#quiz-content-area {
+    width: 100%;
+}
+
+.test-question-block {
+    width: 100%;
+    background: white;
+    padding: 40px;          /* More breathing room */
+    border-radius: 20px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.05); /* Softer shadow */
+    border: 1px solid rgba(0,0,0,0.02);
+    border-left: 6px solid #007bff;
+}
+
+/* Make the text larger and easier to read */
+.test-q-text {
+    font-size: 1.35rem;     /* Bigger font */
+    line-height: 1.7;
+    color: #2c3e50;
+    margin-bottom: 30px;
+}
+
+/* Fix Options Spacing */
+.options-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.option-btn {
+    padding: 18px 25px;     /* Bigger clickable area */
+    font-size: 1rem;
+    transition: transform 0.1s ease, background 0.2s;
+}
+
+/* Mobile Fix for Quiz */
+@media (max-width: 768px) {
+    #quiz-screen .gameContainer {
+        padding: 0;
+    }
+    .test-question-block {
+        padding: 20px;
+    }
+    .test-q-text {
+        font-size: 1.1rem;
+    }
+}
