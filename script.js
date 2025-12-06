@@ -43,7 +43,7 @@ auth.onAuthStateChanged(user => {
     if (user) {
         currentUser = user;
         showScreen('dashboard-screen');
-        document.getElementById('user-display').innerText = user.email;
+        document.getElementById('user-display').innerText = user.displayName || "Doctor";
         loadUserData();
         loadQuestions();
     } else {
@@ -535,3 +535,31 @@ function goHome() {
     showScreen('dashboard-screen');
 }
 
+// ==========================================
+// PROFILE SYSTEM LOGIC
+// ==========================================
+
+function openProfileModal() {
+    document.getElementById('profile-modal').classList.remove('hidden');
+    // Pre-fill current name if it exists
+    if (currentUser.displayName) {
+        document.getElementById('new-display-name').value = currentUser.displayName;
+    }
+}
+
+function saveProfile() {
+    const newName = document.getElementById('new-display-name').value;
+    if (!newName) return alert("Please enter a name.");
+
+    // Update Firebase Auth Profile
+    currentUser.updateProfile({
+        displayName: newName
+    }).then(() => {
+        // Update UI immediately
+        document.getElementById('user-display').innerText = newName;
+        document.getElementById('profile-modal').classList.add('hidden');
+        alert("Profile Updated Successfully!");
+    }).catch((error) => {
+        alert("Error updating profile: " + error.message);
+    });
+}
