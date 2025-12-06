@@ -30,9 +30,9 @@ let userSolvedIDs = [];
 
 // Quiz State
 let currentMode = 'practice';
-let currentIndex = 0; // Tracks which question (or page start) we are on
+let currentIndex = 0; 
 let testTimer = null;
-let testAnswers = {}; // { qID: "A" }
+let testAnswers = {}; 
 let testTimeRemaining = 0;
 
 // ======================================================
@@ -71,49 +71,69 @@ function logout() { auth.signOut(); }
 async function loadUserData() {
     if (!currentUser) return;
     
-    // Load Profile
-    const userDoc = await db.collection('users').doc(currentUser.uid).get();
-    if (userDoc.exists) {
-        userBookmarks = userDoc.data().bookmarks || [];
-        userSolvedIDs = userDoc.data().solved || [];
-    } else {
-        userBookmarks = [];
-        userSolvedIDs = [];
-    }
+    try {
+        // Load Profile
+        const userDoc = await db.collection('users').doc(currentUser.uid).get();
+        if (userDoc.exists) {
+            userBookmarks = userDoc.data().bookmarks || [];
+            userSolvedIDs = userDoc.data().solved || [];
+        } else {
+            userBookmarks = [];
+            userSolvedIDs = [];
+        }
 
-    // Load Test Stats
-    const resultsSnap = await db.collection('users').doc(currentUser.uid).collection('results').get();
-    let totalTests = 0, totalScore = 0;
-    resultsSnap.forEach(doc => { totalTests++; totalScore += doc.data().score; });
-    const avgScore = totalTests > 0 ? Math.round(totalScore / totalTests) : 0;
+        // Load Test Stats
+        const resultsSnap = await db.collection('users').doc(currentUser.uid).collection('results').get();
+        let totalTests = 0, totalScore = 0;
+        resultsSnap.forEach(doc => { totalTests++; totalScore += doc.data().score; });
+        const avgScore = totalTests > 0 ? Math.round(totalScore / totalTests) : 0;
 
-    // Update Dashboard
-    const statsBox = document.getElementById('stats-box');
-    if (statsBox) {
-        statsBox.innerHTML = `
-            <h3>Your Progress</h3>
-            <p>Test Average: <b style="color:${avgScore >= 70 ? 'green' : 'red'}">${avgScore}%</b> (${totalTests} tests)</p>
-            <p style="border-top:1px solid #eee; padding-top:5px; margin-top:5px;">
-               Practice Solved: <b>${userSolvedIDs.length}</b> Questions
-            </p>
-        `;
+        // Update Dashboard
+        const statsBox = document.getElementById('stats-box');
+        if (statsBox) {
+            statsBox.innerHTML = `
+                <h3>Your Progress</h3>
+                <p>Test Average: <b style="color:${avgScore >= 70 ? 'green' : 'red'}">${avgScore}%</b> (${totalTests} tests)</p>
+                <p style="border-top:1px solid #eee; padding-top:5px; margin-top:5px;">
+                Practice Solved: <b>${userSolvedIDs.length}</b> Questions
+                </p>
+            `;
+        }
+    } catch (e) {
+        console.error("Load Data Error", e);
     }
 }
 
+// --- FIXED RESET FUNCTION ---
 async function resetAccountData() {
-    if (!confirm("⚠️ Are you sure? This will delete ALL your test history, solved questions, and bookmarks. This cannot be undone.")) return;
+    if(!currentUser) return alert("Please log in first.");
     
-    // 1. Delete Subcollection (Results)
-    const results = await db.collection('users').doc(currentUser.uid).collection('results').get();
-    const batch = db.batch();
-    results.forEach(doc => batch.delete(doc.ref));
-    await batch.commit();
+    if (!confirm("⚠️ WARNING: This will permanently delete ALL your progress, scores, and bookmarks.\n\nAre you sure you want to continue?")) return;
+    
+    try {
+        // 1. Delete Results Subcollection (Must loop through them)
+        const resultsRef = db.collection('users').doc(currentUser.uid).collection('results');
+        const snapshot = await resultsRef.get();
+        
+        // Use a batch to delete properly
+        if (!snapshot.empty) {
+            const batch = db.batch();
+            snapshot.forEach(doc => {
+                batch.delete(doc.ref);
+            });
+            await batch.commit();
+        }
 
-    // 2. Delete Main Profile
-    await db.collection('users').doc(currentUser.uid).delete();
+        // 2. Delete Main User Document
+        await db.collection('users').doc(currentUser.uid).delete();
 
-    alert("Progress Reset Complete.");
-    loadUserData(); // Refresh UI
+        alert("✅ Progress has been reset successfully. The page will now reload.");
+        window.location.reload(); // Force refresh to clear memory
+
+    } catch (error) {
+        console.error(error);
+        alert("Error resetting data: " + error.message);
+    }
 }
 
 // ======================================================
@@ -179,7 +199,7 @@ function renderMenus(subjects, map) {
 }
 
 // ======================================================
-// 5. QUIZ LOGIC (PAGINATION SYSTEM)
+// 5. QUIZ LOGIC
 // ======================================================
 
 function setMode(mode) {
@@ -190,8 +210,6 @@ function setMode(mode) {
     document.getElementById('test-settings').classList.toggle('hidden', mode !== 'test');
     document.getElementById('dynamic-menus').classList.toggle('hidden', mode === 'test');
 }
-
-// --- START FUNCTIONS ---
 
 function startPractice(subject, topic) {
     filteredQuestions = allQuestions.filter(q => {
@@ -210,8 +228,8 @@ function startTest() {
     const count = parseInt(document.getElementById('q-count').value);
     const mins = parseInt(document.getElementById('t-limit').value);
     
-    // Get random questions
     filteredQuestions = [...allQuestions].sort(() => Math.random() - 0.5).slice(0, count);
+    if(filteredQuestions.length === 0) return alert("Questions loading, please wait...");
     
     currentMode = 'test';
     currentIndex = 0;
@@ -241,7 +259,6 @@ function renderPage() {
     container.innerHTML = "";
     window.scrollTo(0,0);
 
-    // NAVIGATION BUTTONS LOGIC
     const prevBtn = document.getElementById('prev-btn');
     const nextBtn = document.getElementById('next-btn');
     const submitBtn = document.getElementById('submit-btn');
@@ -249,42 +266,32 @@ function renderPage() {
     prevBtn.classList.toggle('hidden', currentIndex === 0);
 
     if (currentMode === 'practice') {
-        // --- PRACTICE MODE: 1 QUESTION PER PAGE ---
+        // 1 Q per page
         document.getElementById('timer').classList.add('hidden');
         submitBtn.classList.add('hidden');
+        nextBtn.classList.add('hidden'); // Initially hidden until answered
         
-        // Hide NEXT if it's the last question
-        if (currentIndex >= filteredQuestions.length - 1) {
-            nextBtn.classList.add('hidden');
-        } else {
-            // Only show Next if they answered correctly (handled in click logic) OR initially hidden
-            nextBtn.classList.add('hidden'); 
-        }
+        // But if it's NOT the last question, we allow showing Next later
+        // If it IS the last question, Next stays hidden forever
         
         document.getElementById('q-progress').innerText = `Question ${currentIndex + 1} of ${filteredQuestions.length}`;
-        
-        // Render Single Question
-        const q = filteredQuestions[currentIndex];
-        container.appendChild(createQuestionCard(q, currentIndex, false));
+        container.appendChild(createQuestionCard(filteredQuestions[currentIndex], currentIndex, false));
 
     } else {
-        // --- TEST MODE: 5 QUESTIONS PER PAGE ---
+        // 5 Q per page
         document.getElementById('timer').classList.remove('hidden');
         nextBtn.classList.remove('hidden');
         submitBtn.classList.add('hidden');
 
-        // Calculate Range
         const start = currentIndex;
         const end = Math.min(start + 5, filteredQuestions.length);
         
         document.getElementById('q-progress').innerText = `Questions ${start + 1}-${end} of ${filteredQuestions.length}`;
 
-        // Loop to render 5 questions
         for (let i = start; i < end; i++) {
             container.appendChild(createQuestionCard(filteredQuestions[i], i, true));
         }
 
-        // If this is the last page, Swap Next for Submit
         if (end === filteredQuestions.length) {
             nextBtn.classList.add('hidden');
             submitBtn.classList.remove('hidden');
@@ -292,25 +299,21 @@ function renderPage() {
     }
 }
 
-// --- CARD BUILDER ---
 function createQuestionCard(q, index, isTest) {
     const card = document.createElement('div');
     if (isTest) card.className = "test-question-block"; 
-    else card.className = ""; // Plain for practice
+    else card.className = ""; 
 
-    // Header (Subject/Topic/Bookmark)
     let headerHTML = `<div style="font-size:0.85em; color:#666; margin-bottom:10px;">${q.Subject} • ${q.Topic}`;
     if (!isTest) {
-        // Add bookmark star only in practice mode
         const isSaved = userBookmarks.includes(q.ID);
         headerHTML += ` <span onclick="toggleBookmark('${q.ID}', this)" style="cursor:pointer; float:right; font-size:1.2em; color:${isSaved ? '#ffc107' : '#ccc'}">${isSaved ? '★' : '☆'}</span>`;
     }
     headerHTML += `</div>`;
     
-    // Question Text
+    // Justified Question Text
     let html = headerHTML + `<div class="test-q-text">${index+1}. ${q.Question}</div>`;
     
-    // Options
     html += `<div class="options-group" id="opts-${q.ID}">`;
     const opts = ['A','B','C','D'];
     if(q.OptionE) opts.push('E');
@@ -327,7 +330,6 @@ function createQuestionCard(q, index, isTest) {
     });
     html += `</div>`;
 
-    // Explanation Box (Hidden initially)
     html += `<div id="exp-${q.ID}" class="dynamic-explanation hidden"></div>`;
 
     card.innerHTML = html;
@@ -338,37 +340,31 @@ function createQuestionCard(q, index, isTest) {
 
 function handleClick(qID, opt, index) {
     if (currentMode === 'test') {
-        // Just select, no colors
         testAnswers[qID] = opt;
-        // Update UI
         const container = document.getElementById(`opts-${qID}`);
         container.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
         document.getElementById(`btn-${qID}-${opt}`).classList.add('selected');
     } else {
-        // PRACTICE MODE: Colors & Explanation
+        // PRACTICE MODE
         const q = filteredQuestions[index];
         const correct = getCorrectLetter(q);
         
         const btn = document.getElementById(`btn-${qID}-${opt}`);
-        const correctBtn = document.getElementById(`btn-${qID}-${correct}`);
         
         if (opt === correct) {
             btn.classList.add('correct');
-            // Show Explanation
             const expBox = document.getElementById(`exp-${qID}`);
             expBox.innerHTML = `<strong>EXPLANATION</strong><br>` + (q.Explanation || "No explanation.");
             expBox.classList.remove('hidden');
             
-            // Show NEXT button (if not last question)
+            // SHOW NEXT BUTTON ONLY AFTER CORRECT ANSWER
             if (currentIndex < filteredQuestions.length - 1) {
                 document.getElementById('next-btn').classList.remove('hidden');
             }
 
-            // Disable all buttons for this Q
             const container = document.getElementById(`opts-${qID}`);
             container.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
 
-            // SAVE PROGRESS
             if (currentUser && !userSolvedIDs.includes(qID)) {
                 userSolvedIDs.push(qID);
                 db.collection('users').doc(currentUser.uid).set({ solved: userSolvedIDs }, { merge: true });
@@ -385,7 +381,7 @@ function nextPage() {
     if (currentMode === 'practice') {
         currentIndex++; 
     } else {
-        currentIndex += 5; // Jump 5 for test
+        currentIndex += 5; 
     }
     renderPage();
 }
@@ -405,8 +401,17 @@ function getCorrectLetter(q) {
     let dbAns = String(q.CorrectAnswer || "?").trim();
     if (/^[a-eA-E]$/.test(dbAns)) return dbAns.toUpperCase();
     
-    // Fuzzy logic (stripped for brevity, assuming you use letters mostly now)
-    return dbAns.charAt(0).toUpperCase(); 
+    // Fuzzy Match
+    function clean(str) { return str.toLowerCase().replace(/[^a-z0-9]/g, ""); }
+    let cleanTarget = clean(dbAns);
+    const options = ['A', 'B', 'C', 'D', 'E'];
+    for (let opt of options) {
+        let optText = q['Option' + opt];
+        if (!optText) continue;
+        if (clean(optText) === cleanTarget) return opt;
+        if (cleanTarget.length > 3 && clean(optText).includes(cleanTarget)) return opt;
+    }
+    return '?';
 }
 
 function toggleBookmark(qID, span) {
@@ -455,16 +460,15 @@ function submitTest() {
     showScreen('result-screen');
     document.getElementById('final-score').innerText = `${percent}% (${score}/${filteredQuestions.length})`;
     
-    // Render Review
     const list = document.getElementById('review-list');
     list.innerHTML = "";
     wrongList.forEach(item => {
         list.innerHTML += `
-            <div style="background:white; padding:15px; margin-bottom:10px; border-left:4px solid red;">
+            <div style="background:white; padding:15px; margin-bottom:10px; border-left:4px solid red; border-radius:5px;">
                 <b>${item.q.Question}</b><br>
                 <span style="color:red">You: ${item.user||'-'}</span> | 
                 <span style="color:green">Correct: ${item.correct}</span>
-                <div style="background:#f9f9f9; padding:5px; margin-top:5px; font-size:0.9em;">${item.q.Explanation}</div>
+                <div style="background:#f9f9f9; padding:10px; margin-top:5px; font-size:0.9em; white-space: pre-wrap;">${item.q.Explanation || 'No explanation.'}</div>
             </div>`;
     });
 }
