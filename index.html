@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FCPS Prep Portal 2026</title>
+    <title>FCPS Preparation 2026</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
@@ -14,8 +14,8 @@
 
     <div id="auth-screen" class="screen active">
         <div class="card auth-card">
-            <h1>FCPS Prep Portal</h1>
-            <p>Target: April 5, 2026</p>
+            <h1>FCPS Preparation</h1>
+            <p><b>Target: April 5, 2026</b></p>
             <input type="email" id="email" placeholder="Email Address">
             <input type="password" id="password" placeholder="Password">
             <div class="auth-buttons">
@@ -33,9 +33,9 @@
         </header>
 
         <div class="stats-container">
-            <div class="stat-box">
-                <h3>Start Here</h3>
-                <p>Select a subject below to begin.</p>
+            <div class="stat-box" id="stats-box">
+                <h3>Your Progress</h3>
+                <p>Loading stats...</p>
             </div>
             <div class="stat-box">
                 <h3>Quick Actions</h3>
@@ -104,4 +104,5 @@
 
     <script src="script.js"></script>
 </body>
+
 </html>
