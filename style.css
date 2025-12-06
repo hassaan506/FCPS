@@ -275,3 +275,105 @@ summary { padding: 15px; background: #fff; cursor: pointer; font-weight: 600; co
         font-size: 1.1rem;
     }
 }
+
+/* =========================================
+   PROFESSIONAL ANIMATIONS MODULE
+   ========================================= */
+
+/* 1. SCREEN FADE IN
+   Makes every new screen (Dashboard, Quiz) fade in smoothly */
+.screen.active {
+    animation: fadeIn 0.4s ease-out forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 2. QUESTION SLIDE UP
+   Makes the question card slide up gently when loaded */
+.test-question-block {
+    animation: slideUp 0.5s ease-out forwards;
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 3. WRONG ANSWER SHAKE 
+   Gives immediate tactile feedback for errors */
+.option-btn.wrong {
+    animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes shake {
+    10%, 90% { transform: translate3d(-1px, 0, 0); }
+    20%, 80% { transform: translate3d(2px, 0, 0); }
+    30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+    40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+
+/* 4. CORRECT ANSWER POP 
+   Satisfying "success" pulse */
+.option-btn.correct {
+    animation: successPop 0.3s ease-out forwards;
+}
+
+@keyframes successPop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); box-shadow: 0 0 15px rgba(40, 167, 69, 0.4); }
+    100% { transform: scale(1); }
+}
+
+/* 5. BUTTON HOVER SMOOTHNESS 
+   Makes buttons feel magnetic */
+button:hover {
+    transition: all 0.2s ease;
+}
+
+/* 6. EXPLANATION REVEAL 
+   Unfolds the explanation smoothly */
+.dynamic-explanation {
+    animation: expandOpen 0.5s ease-out forwards;
+    transform-origin: top;
+}
+
+@keyframes expandOpen {
+    from { opacity: 0; transform: scaleY(0.9); max-height: 0; }
+    to { opacity: 1; transform: scaleY(1); max-height: 500px; }
+}
+
+/* =========================================
+   POPUP MODAL STYLES
+   ========================================= */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6); /* Darkens background */
+    backdrop-filter: blur(5px);      /* Blurs the background */
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Animation for the card popping in */
+.modal-overlay .joinCard {
+    animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    margin: 0; /* Override default margin */
+    text-align: left; /* Easier to read explanations */
+}
+
+@keyframes popIn {
+    from { opacity: 0; transform: scale(0.8) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
