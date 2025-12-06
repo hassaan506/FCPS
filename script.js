@@ -178,7 +178,7 @@ function getCorrectLetter(q) {
         return dbAns.toUpperCase();
     }
     
-    // 2. FUZZY TEXT MATCHING (If you write full text)
+    // 2. FUZZY TEXT MATCHING
     function clean(str) { return str.toLowerCase().replace(/[^a-z0-9]/g, ""); }
 
     let cleanTarget = clean(dbAns);
@@ -354,7 +354,11 @@ function handleOptionClick(selectedOpt) {
         if (selectedOpt === correctOpt) {
             selectedBtn.classList.add('correct');
             document.getElementById('explanation-box').classList.remove('hidden');
+            
+            // --- FIX: USE INNERHTML TO SHOW BOLD/COLORS ---
             document.getElementById('exp-text').innerHTML = q.Explanation || "No explanation provided.";
+            // ----------------------------------------------
+            
             document.getElementById('next-btn').classList.remove('hidden');
             document.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
         } else {
@@ -443,13 +447,14 @@ function renderReviewList(wrongQuestions) {
         div.style.borderRadius = "5px";
         div.style.boxShadow = "0 1px 3px rgba(0,0,0,0.1)";
         
+        // --- FIX: Ensure Explanation here also supports HTML ---
         div.innerHTML = `
             <p><b>Q:</b> ${item.q.Question}</p>
             <p style="color:red">Your Answer: ${item.user || "Skipped"}</p>
             <p style="color:green">Correct Answer: ${item.correct}</p>
-            <p style="background:#f8f9fa; padding:10px; border-radius:4px; font-size:0.9em; margin-top:5px;">
+            <div style="background:#f8f9fa; padding:10px; border-radius:4px; font-size:0.9em; margin-top:5px; white-space: pre-wrap;">
                 <i>${item.q.Explanation || "No explanation."}</i>
-            </p>
+            </div>
         `;
         list.appendChild(div);
     });
@@ -489,4 +494,3 @@ function goHome() {
     showScreen('dashboard-screen');
     loadQuestions(); 
 }
-
