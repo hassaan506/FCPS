@@ -18,7 +18,7 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 
 // ======================================================
-// 2. STATE VARIABLES
+// 2. STATE
 // ======================================================
 
 let currentUser = null;
@@ -27,15 +27,14 @@ let filteredQuestions = [];
 let userBookmarks = [];
 let userSolvedIDs = [];
 
-// Quiz State
 let currentMode = 'practice';
 let currentIndex = 0; 
 let testTimer = null;
-let testAnswers = {}; // Stores answers by internal unique ID
+let testAnswers = {}; // { q_uid: "A" }
 let testTimeRemaining = 0;
 
 // ======================================================
-// 3. AUTH & DASHBOARD
+// 3. AUTH
 // ======================================================
 
 auth.onAuthStateChanged(user => {
@@ -54,17 +53,13 @@ auth.onAuthStateChanged(user => {
 function login() {
     const email = document.getElementById('email').value;
     const pass = document.getElementById('password').value;
-    auth.signInWithEmailAndPassword(email, pass)
-        .catch(err => document.getElementById('auth-msg').innerText = err.message);
+    auth.signInWithEmailAndPassword(email, pass).catch(e => document.getElementById('auth-msg').innerText = e.message);
 }
-
 function signup() {
     const email = document.getElementById('email').value;
     const pass = document.getElementById('password').value;
-    auth.createUserWithEmailAndPassword(email, pass)
-        .catch(err => document.getElementById('auth-msg').innerText = err.message);
+    auth.createUserWithEmailAndPassword(email, pass).catch(e => document.getElementById('auth-msg').innerText = e.message);
 }
-
 function logout() { auth.signOut(); }
 
 // --- PROFILE & DATA ---
@@ -72,14 +67,13 @@ function openProfileModal() {
     document.getElementById('profile-modal').classList.remove('hidden');
     if (currentUser.displayName) document.getElementById('new-display-name').value = currentUser.displayName;
 }
-
 function saveProfile() {
     const newName = document.getElementById('new-display-name').value;
-    if (!newName) return alert("Please enter a name.");
+    if (!newName) return;
     currentUser.updateProfile({ displayName: newName }).then(() => {
         document.getElementById('user-display').innerText = newName;
         document.getElementById('profile-modal').classList.add('hidden');
-    }).catch(e => alert(e.message));
+    });
 }
 
 async function loadUserData() {
@@ -89,30 +83,26 @@ async function loadUserData() {
         if (userDoc.exists) {
             userBookmarks = userDoc.data().bookmarks || [];
             userSolvedIDs = userDoc.data().solved || [];
-        } else {
-            userBookmarks = []; userSolvedIDs = [];
         }
-
         const resultsSnap = await db.collection('users').doc(currentUser.uid).collection('results').get();
         let totalTests = 0, totalScore = 0;
         resultsSnap.forEach(doc => { totalTests++; totalScore += doc.data().score; });
         const avgScore = totalTests > 0 ? Math.round(totalScore / totalTests) : 0;
-
+        
         const statsBox = document.getElementById('stats-box');
-        if (statsBox) {
+        if(statsBox) {
             statsBox.innerHTML = `
                 <h3>Your Progress</h3>
                 <div class="stat-row"><span class="stat-lbl">Test Average:</span> <span class="stat-val" style="color:${avgScore>=70?'#2ecc71':'#e74c3c'}">${avgScore}%</span></div>
                 <div class="stat-row"><span class="stat-lbl">Tests Taken:</span> <span class="stat-val">${totalTests}</span></div>
-                <div class="stat-row" style="border:none;"><span class="stat-lbl">Practice Solved:</span> <span class="stat-val">${userSolvedIDs.length}</span></div>
-            `;
+                <div class="stat-row" style="border:none;"><span class="stat-lbl">Practice Solved:</span> <span class="stat-val">${userSolvedIDs.length}</span></div>`;
         }
     } catch (e) { console.error(e); }
 }
 
 async function resetAccountData() {
-    if(!currentUser) return alert("Please log in.");
-    if (!confirm("⚠️ WARNING: This will delete ALL progress/bookmarks. Continue?")) return;
+    if(!currentUser) return;
+    if (!confirm("⚠️ WARNING: This will delete ALL progress. Continue?")) return;
     try {
         const resultsRef = db.collection('users').doc(currentUser.uid).collection('results');
         const snapshot = await resultsRef.get();
@@ -120,12 +110,12 @@ async function resetAccountData() {
         snapshot.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
         await db.collection('users').doc(currentUser.uid).delete();
-        alert("✅ Reset Complete."); window.location.reload();
+        window.location.reload();
     } catch (e) { alert(e.message); }
 }
 
 // ======================================================
-// 4. DATA LOADING (FIXED ID GENERATION)
+// 4. DATA LOADING
 // ======================================================
 
 function loadQuestions() {
@@ -140,24 +130,18 @@ function processData(data) {
     allQuestions = [];
     const subjects = new Set();
     const map = {}; 
-    let uniqueCounter = 0; // Internal ID generator
+    let uniqueCounter = 0; 
 
     data.forEach(row => {
         if (!row.Question) return;
-        
-        // --- DUPLICATE REMOVER ---
-        const qSignature = row.Question.trim().toLowerCase();
-        if (seen.has(qSignature)) return;
-        seen.add(qSignature);
+        const sig = row.Question.trim().toLowerCase();
+        if (seen.has(sig)) return;
+        seen.add(sig);
 
-        // --- ASSIGN UNIQUE INTERNAL ID ---
-        // We use this '_uid' instead of the Sheet ID to prevent conflicts
         row._uid = "q_" + uniqueCounter++; 
-
         const subj = row.Subject ? row.Subject.trim() : "General";
         const topic = row.Topic ? row.Topic.trim() : "Mixed";
-        row.Subject = subj; 
-        row.Topic = topic;
+        row.Subject = subj; row.Topic = topic;
         allQuestions.push(row);
 
         subjects.add(subj);
@@ -175,14 +159,11 @@ function renderMenus(subjects, map) {
     subjects.forEach(subj => {
         const details = document.createElement('details');
         details.innerHTML = `<summary>${subj}</summary>`;
-        
         const allBtn = document.createElement('button');
         allBtn.textContent = `Practice All ${subj}`;
         allBtn.className = "category-btn";
-        allBtn.style.fontWeight = "bold";
         allBtn.onclick = () => startPractice(subj, null);
         details.appendChild(allBtn);
-
         map[subj].forEach(topic => {
             const btn = document.createElement('button');
             btn.textContent = topic;
@@ -198,30 +179,25 @@ function renderTestFilters(subjects, map) {
     const container = document.getElementById('filter-container');
     if (!container) return; 
     container.innerHTML = "";
-
     subjects.forEach(subj => {
         const group = document.createElement('div');
         group.className = 'filter-group';
         const subLabel = document.createElement('label');
         subLabel.className = 'filter-subject-label';
         subLabel.innerHTML = `<input type="checkbox" class="filter-checkbox subj-chk" value="${subj}"> ${subj}`;
-        
         const topicList = document.createElement('div');
         topicList.className = 'filter-topic-list';
-
         map[subj].forEach(topic => {
             const topLabel = document.createElement('label');
             topLabel.className = 'filter-topic-label';
             topLabel.innerHTML = `<input type="checkbox" class="filter-checkbox topic-chk" value="${topic}" data-subject="${subj}"> ${topic}`;
             topicList.appendChild(topLabel);
         });
-
         const subInput = subLabel.querySelector('input');
         subInput.onchange = (e) => {
             const topicInputs = topicList.querySelectorAll('input');
             topicInputs.forEach(inp => inp.checked = e.target.checked);
         };
-
         group.appendChild(subLabel);
         group.appendChild(topicList);
         container.appendChild(group);
@@ -236,17 +212,13 @@ function setMode(mode) {
     currentMode = mode;
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     if(event.target) event.target.classList.add('active');
-    
     document.getElementById('test-settings').classList.toggle('hidden', mode !== 'test');
     document.getElementById('dynamic-menus').classList.toggle('hidden', mode === 'test');
 }
 
 function startPractice(subject, topic) {
-    filteredQuestions = allQuestions.filter(q => {
-        return q.Subject === subject && (!topic || q.Topic === topic);
-    });
+    filteredQuestions = allQuestions.filter(q => q.Subject === subject && (!topic || q.Topic === topic));
     if (filteredQuestions.length === 0) return alert("No questions!");
-
     filteredQuestions.sort(() => Math.random() - 0.5);
     currentMode = 'practice';
     currentIndex = 0;
@@ -257,21 +229,14 @@ function startPractice(subject, topic) {
 function startTest() {
     const count = parseInt(document.getElementById('q-count').value);
     const mins = parseInt(document.getElementById('t-limit').value);
-    
     const selectedSubjects = Array.from(document.querySelectorAll('.subj-chk:checked')).map(cb => cb.value);
     const selectedTopics = Array.from(document.querySelectorAll('.topic-chk:checked')).map(cb => cb.value);
 
     let pool = [];
-    if (selectedSubjects.length === 0 && selectedTopics.length === 0) {
-        pool = [...allQuestions];
-    } else {
-        pool = allQuestions.filter(q => {
-            return selectedSubjects.includes(q.Subject) || selectedTopics.includes(q.Topic);
-        });
-    }
+    if (selectedSubjects.length === 0 && selectedTopics.length === 0) pool = [...allQuestions];
+    else pool = allQuestions.filter(q => selectedSubjects.includes(q.Subject) || selectedTopics.includes(q.Topic));
 
-    if(pool.length === 0) return alert("No questions found for selection.");
-    
+    if(pool.length === 0) return alert("No questions found.");
     filteredQuestions = pool.sort(() => Math.random() - 0.5).slice(0, count);
     
     currentMode = 'test';
@@ -281,6 +246,11 @@ function startTest() {
     
     showScreen('quiz-screen');
     document.getElementById('timer').classList.remove('hidden');
+    
+    // Show Sidebar
+    document.getElementById('test-sidebar').classList.add('active');
+    renderNavigator();
+
     clearInterval(testTimer);
     testTimer = setInterval(updateTimer, 1000);
     renderPage();
@@ -288,23 +258,14 @@ function startTest() {
 
 function startSavedQuestions() {
     if(userBookmarks.length === 0) return alert("No bookmarks!");
-    // We match bookmark IDs against our new _uid or original ID? 
-    // Ideally original ID if possible, but for stability let's rely on internal filtering logic
-    // NOTE: If bookmarks were saved with OLD IDs, this might break old bookmarks. 
-    // We'll try to match by Question Text if needed, but for now let's assume we use row.ID if present, else fallback.
-    
-    // Simple filter:
-    filteredQuestions = allQuestions.filter(q => userBookmarks.includes(q.ID)); 
-    
-    if(filteredQuestions.length === 0) return alert("No matching bookmarks found in current sheet.");
-
+    filteredQuestions = allQuestions.filter(q => userBookmarks.includes(q.ID));
     currentMode = 'practice';
     currentIndex = 0;
     showScreen('quiz-screen');
     renderPage();
 }
 
-// --- RENDERING ENGINE ---
+// --- RENDERING ---
 
 function renderPage() {
     const container = document.getElementById('quiz-content-area');
@@ -319,17 +280,22 @@ function renderPage() {
 
     if (currentMode === 'practice') {
         document.getElementById('timer').classList.add('hidden');
+        document.getElementById('test-sidebar').classList.remove('active'); // Hide sidebar in practice
         submitBtn.classList.add('hidden');
         nextBtn.classList.add('hidden'); 
-        
         container.appendChild(createQuestionCard(filteredQuestions[currentIndex], currentIndex, false));
-
     } else {
+        // Test Mode
         document.getElementById('timer').classList.remove('hidden');
         nextBtn.classList.remove('hidden');
         submitBtn.classList.add('hidden');
 
-        const start = currentIndex;
+        // Logic for 5 per page
+        const start = currentIndex; // currentIndex tracks the START of the current page in Test Mode?
+        // Wait, if we jump to Q17, currentIndex should probably align to page start (15).
+        // Let's ensure currentIndex is always a multiple of 5 if we are rendering a page.
+        // Actually, let's keep currentIndex as the "First Question of the Page".
+        
         const end = Math.min(start + 5, filteredQuestions.length);
         
         for (let i = start; i < end; i++) {
@@ -340,33 +306,33 @@ function renderPage() {
             nextBtn.classList.add('hidden');
             submitBtn.classList.remove('hidden');
         }
+        
+        renderNavigator(); // Update highlights
     }
 }
 
 function createQuestionCard(q, index, isTest) {
     const card = document.createElement('div');
     card.className = "test-question-block"; 
+    card.id = `q-card-${index}`; // Add ID for scrolling
 
-    // Header
-    let headerHTML = `<div style="font-size:0.85em; color:#999; margin-bottom:10px; text-transform:uppercase; letter-spacing:1px;">${q.Subject} • ${q.Topic}`;
+    let headerHTML = "";
+    
+    // CLEAN EXAM MODE: If Test, NO Subject/Topic
     if (!isTest) {
         const isSaved = userBookmarks.includes(q.ID);
-        // Use q.ID for bookmarks (permanent storage), q._uid for current session logic
-        headerHTML += ` <span onclick="toggleBookmark('${q.ID}', this)" class="bookmark-icon" style="color:${isSaved ? '#ffc107' : '#e2e8f0'}">${isSaved ? '★' : '☆'}</span>`;
+        headerHTML = `<div style="font-size:0.85em; color:#999; margin-bottom:10px; text-transform:uppercase; letter-spacing:1px;">${q.Subject} • ${q.Topic} 
+        <span onclick="toggleBookmark('${q.ID}', this)" class="bookmark-icon" style="color:${isSaved ? '#ffc107' : '#e2e8f0'}">${isSaved ? '★' : '☆'}</span></div>`;
     }
-    headerHTML += `</div>`;
     
-    // Question Text
     let html = headerHTML + `<div class="test-q-text">${index+1}. ${q.Question}</div>`;
     
-    // Options Container
     html += `<div class="options-group" id="opts-${index}">`;
     const opts = ['A','B','C','D'];
     if(q.OptionE) opts.push('E');
     
     opts.forEach(opt => {
         let isSelected = false;
-        // TEST MODE FIX: Use unique internal ID (_uid) to check selection
         if(isTest && testAnswers[q._uid] === opt) isSelected = true;
         
         html += `<button class="option-btn ${isSelected ? 'selected' : ''}" 
@@ -377,7 +343,6 @@ function createQuestionCard(q, index, isTest) {
     });
     html += `</div>`;
 
-    // PRACTICE MODE: "View Explanation" Button (Hidden initially)
     if (!isTest) {
         html += `<button id="reopen-exp-${index}" class="secondary hidden" style="margin-top:15px; width:auto; font-size:13px;" onclick="reOpenModal(${index})">📖 View Explanation Again</button>`;
     }
@@ -386,63 +351,84 @@ function createQuestionCard(q, index, isTest) {
     return card;
 }
 
-// --- INTERACTION ---
+// --- NAVIGATOR SIDEBAR GENERATOR ---
+function renderNavigator() {
+    if(currentMode !== 'test') return;
+    
+    const navGrid = document.getElementById('nav-grid');
+    navGrid.innerHTML = "";
+    
+    // Determine current page range (e.g., 0-4, 5-9)
+    const pageStart = currentIndex; 
+    const pageEnd = Math.min(currentIndex + 5, filteredQuestions.length);
+
+    filteredQuestions.forEach((q, idx) => {
+        const btn = document.createElement('div');
+        btn.className = "nav-btn";
+        btn.innerText = idx + 1;
+        
+        // Is it answered?
+        if (testAnswers[q._uid]) btn.classList.add('answered');
+        
+        // Is it on the current page?
+        if (idx >= pageStart && idx < pageEnd) btn.classList.add('current');
+        
+        // Click to Jump
+        btn.onclick = () => jumpToQuestion(idx);
+        
+        navGrid.appendChild(btn);
+    });
+}
+
+function jumpToQuestion(targetIndex) {
+    // 1. Calculate which page this question belongs to
+    // e.g. Target 17 (index 16). 16 / 5 = 3.2 -> Floor 3. 3 * 5 = 15. Page starts at 15.
+    const newPageStart = Math.floor(targetIndex / 5) * 5;
+    
+    // 2. Set index and render
+    currentIndex = newPageStart;
+    renderPage();
+    
+    // 3. Scroll to specific question
+    setTimeout(() => {
+        const el = document.getElementById(`q-card-${targetIndex}`);
+        if(el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100); // Small delay to allow DOM to build
+}
 
 function handleClick(index, opt) {
     const q = filteredQuestions[index];
-    
     if (currentMode === 'test') {
-        // TEST MODE LOGIC (Fixed)
-        // Store answer using Unique ID
         testAnswers[q._uid] = opt; 
-        
-        // Update UI using Page Index
         const container = document.getElementById(`opts-${index}`);
         container.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
         document.getElementById(`btn-${index}-${opt}`).classList.add('selected');
-        
+        renderNavigator(); // Update sidebar color
     } else {
-        // PRACTICE MODE LOGIC
         const correct = getCorrectLetter(q);
         const btn = document.getElementById(`btn-${index}-${opt}`);
-        
         if (opt === correct) {
-            // Correct
             btn.classList.add('correct');
             const container = document.getElementById(`opts-${index}`);
             container.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
-
-            // Show Nav Buttons
-            if (currentIndex < filteredQuestions.length - 1) {
-                document.getElementById('next-btn').classList.remove('hidden');
-            }
-            
-            // Show "View Again" Button
+            if (currentIndex < filteredQuestions.length - 1) document.getElementById('next-btn').classList.remove('hidden');
             document.getElementById(`reopen-exp-${index}`).classList.remove('hidden');
-
-            // Open Modal
             const modal = document.getElementById('explanation-modal');
             const content = document.getElementById('modal-content');
             content.innerHTML = q.Explanation || "No explanation provided.";
             modal.classList.remove('hidden');
-
-            // Save Progress (using ID for database persistence)
             if (currentUser && !userSolvedIDs.includes(q.ID)) {
                 userSolvedIDs.push(q.ID);
                 db.collection('users').doc(currentUser.uid).set({ solved: userSolvedIDs }, { merge: true });
             }
         } else {
-            // Wrong
             btn.classList.add('wrong');
         }
     }
 }
 
-// --- MODAL HELPERS ---
-function closeModal() {
-    document.getElementById('explanation-modal').classList.add('hidden');
-}
-
+// --- UTILS ---
+function closeModal() { document.getElementById('explanation-modal').classList.add('hidden'); }
 function reOpenModal(index) {
     const q = filteredQuestions[index];
     const modal = document.getElementById('explanation-modal');
@@ -450,13 +436,8 @@ function reOpenModal(index) {
     content.innerHTML = q.Explanation || "No explanation provided.";
     modal.classList.remove('hidden');
 }
+function nextPageFromModal() { closeModal(); setTimeout(() => { nextPage(); }, 200); }
 
-function nextPageFromModal() {
-    closeModal();
-    setTimeout(() => { nextPage(); }, 200);
-}
-
-// --- NAV & UTILS ---
 function nextPage() {
     currentIndex += (currentMode === 'practice') ? 1 : 5;
     renderPage();
@@ -492,7 +473,6 @@ function toggleBookmark(qID, span) {
     db.collection('users').doc(currentUser.uid).set({ bookmarks: userBookmarks }, { merge: true });
 }
 
-// --- TEST SUBMISSION ---
 function updateTimer() {
     testTimeRemaining--;
     const m = Math.floor(testTimeRemaining/60);
@@ -506,7 +486,7 @@ function submitTest() {
     let score = 0;
     let wrongList = [];
     filteredQuestions.forEach(q => {
-        const user = testAnswers[q._uid]; // Retrieve using Unique ID
+        const user = testAnswers[q._uid];
         const correct = getCorrectLetter(q);
         if(user === correct) score++;
         else wrongList.push({q, user, correct});
@@ -519,7 +499,6 @@ function submitTest() {
     }
     showScreen('result-screen');
     document.getElementById('final-score').innerText = `${percent}% (${score}/${filteredQuestions.length})`;
-    
     const list = document.getElementById('review-list');
     list.innerHTML = "";
     wrongList.forEach(item => {
@@ -540,6 +519,7 @@ function showScreen(id) {
 function goHome() {
     clearInterval(testTimer);
     document.getElementById('timer').classList.add('hidden');
+    document.getElementById('test-sidebar').classList.remove('active'); // Hide sidebar
     showScreen('dashboard-screen');
     loadQuestions();
 }
