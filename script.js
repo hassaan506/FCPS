@@ -31,7 +31,7 @@ let userSolvedIDs = [];
 let currentMode = 'practice';
 let currentIndex = 0; 
 let testTimer = null;
-let testAnswers = {}; 
+let testAnswers = {}; // Stores answers by internal unique ID
 let testTimeRemaining = 0;
 
 // ======================================================
@@ -125,7 +125,7 @@ async function resetAccountData() {
 }
 
 // ======================================================
-// 4. DATA LOADING & FILTER GENERATION
+// 4. DATA LOADING (FIXED ID GENERATION)
 // ======================================================
 
 function loadQuestions() {
@@ -140,12 +140,19 @@ function processData(data) {
     allQuestions = [];
     const subjects = new Set();
     const map = {}; 
+    let uniqueCounter = 0; // Internal ID generator
 
     data.forEach(row => {
         if (!row.Question) return;
-        const sig = row.Question.trim().toLowerCase();
-        if (seen.has(sig)) return;
-        seen.add(sig);
+        
+        // --- DUPLICATE REMOVER ---
+        const qSignature = row.Question.trim().toLowerCase();
+        if (seen.has(qSignature)) return;
+        seen.add(qSignature);
+
+        // --- ASSIGN UNIQUE INTERNAL ID ---
+        // We use this '_uid' instead of the Sheet ID to prevent conflicts
+        row._uid = "q_" + uniqueCounter++; 
 
         const subj = row.Subject ? row.Subject.trim() : "General";
         const topic = row.Topic ? row.Topic.trim() : "Mixed";
@@ -189,7 +196,7 @@ function renderMenus(subjects, map) {
 
 function renderTestFilters(subjects, map) {
     const container = document.getElementById('filter-container');
-    if (!container) return; // Logic check if element exists
+    if (!container) return; 
     container.innerHTML = "";
 
     subjects.forEach(subj => {
@@ -222,7 +229,7 @@ function renderTestFilters(subjects, map) {
 }
 
 // ======================================================
-// 5. QUIZ LOGIC (FIXED)
+// 5. QUIZ LOGIC
 // ======================================================
 
 function setMode(mode) {
@@ -251,11 +258,9 @@ function startTest() {
     const count = parseInt(document.getElementById('q-count').value);
     const mins = parseInt(document.getElementById('t-limit').value);
     
-    // 1. Gather Filters
     const selectedSubjects = Array.from(document.querySelectorAll('.subj-chk:checked')).map(cb => cb.value);
     const selectedTopics = Array.from(document.querySelectorAll('.topic-chk:checked')).map(cb => cb.value);
 
-    // 2. Filter Pool
     let pool = [];
     if (selectedSubjects.length === 0 && selectedTopics.length === 0) {
         pool = [...allQuestions];
@@ -267,7 +272,6 @@ function startTest() {
 
     if(pool.length === 0) return alert("No questions found for selection.");
     
-    // 3. Randomize
     filteredQuestions = pool.sort(() => Math.random() - 0.5).slice(0, count);
     
     currentMode = 'test';
@@ -284,14 +288,23 @@ function startTest() {
 
 function startSavedQuestions() {
     if(userBookmarks.length === 0) return alert("No bookmarks!");
-    filteredQuestions = allQuestions.filter(q => userBookmarks.includes(q.ID));
+    // We match bookmark IDs against our new _uid or original ID? 
+    // Ideally original ID if possible, but for stability let's rely on internal filtering logic
+    // NOTE: If bookmarks were saved with OLD IDs, this might break old bookmarks. 
+    // We'll try to match by Question Text if needed, but for now let's assume we use row.ID if present, else fallback.
+    
+    // Simple filter:
+    filteredQuestions = allQuestions.filter(q => userBookmarks.includes(q.ID)); 
+    
+    if(filteredQuestions.length === 0) return alert("No matching bookmarks found in current sheet.");
+
     currentMode = 'practice';
     currentIndex = 0;
     showScreen('quiz-screen');
     renderPage();
 }
 
-// --- RENDERING ENGINE (FIXED ID CONFLICTS) ---
+// --- RENDERING ENGINE ---
 
 function renderPage() {
     const container = document.getElementById('quiz-content-area');
@@ -307,9 +320,8 @@ function renderPage() {
     if (currentMode === 'practice') {
         document.getElementById('timer').classList.add('hidden');
         submitBtn.classList.add('hidden');
-        nextBtn.classList.add('hidden'); // Initially hidden
+        nextBtn.classList.add('hidden'); 
         
-        // Pass 'currentIndex' as ID to ensure uniqueness
         container.appendChild(createQuestionCard(filteredQuestions[currentIndex], currentIndex, false));
 
     } else {
@@ -321,7 +333,6 @@ function renderPage() {
         const end = Math.min(start + 5, filteredQuestions.length);
         
         for (let i = start; i < end; i++) {
-            // Pass 'i' as ID to ensure uniqueness
             container.appendChild(createQuestionCard(filteredQuestions[i], i, true));
         }
 
@@ -336,35 +347,37 @@ function createQuestionCard(q, index, isTest) {
     const card = document.createElement('div');
     card.className = "test-question-block"; 
 
+    // Header
     let headerHTML = `<div style="font-size:0.85em; color:#999; margin-bottom:10px; text-transform:uppercase; letter-spacing:1px;">${q.Subject} • ${q.Topic}`;
     if (!isTest) {
         const isSaved = userBookmarks.includes(q.ID);
+        // Use q.ID for bookmarks (permanent storage), q._uid for current session logic
         headerHTML += ` <span onclick="toggleBookmark('${q.ID}', this)" class="bookmark-icon" style="color:${isSaved ? '#ffc107' : '#e2e8f0'}">${isSaved ? '★' : '☆'}</span>`;
     }
     headerHTML += `</div>`;
     
+    // Question Text
     let html = headerHTML + `<div class="test-q-text">${index+1}. ${q.Question}</div>`;
     
-    // IMPORTANT: ID uses 'index' now, not q.ID, to prevent Test Mode duplicate ID bugs
+    // Options Container
     html += `<div class="options-group" id="opts-${index}">`;
     const opts = ['A','B','C','D'];
     if(q.OptionE) opts.push('E');
     
     opts.forEach(opt => {
         let isSelected = false;
-        // Check using real ID for logic
-        if(isTest && testAnswers[q.ID] === opt) isSelected = true;
+        // TEST MODE FIX: Use unique internal ID (_uid) to check selection
+        if(isTest && testAnswers[q._uid] === opt) isSelected = true;
         
-        // Button ID uses unique INDEX to prevent conflicts
         html += `<button class="option-btn ${isSelected ? 'selected' : ''}" 
-                  onclick="handleClick('${q.ID}', '${opt}', ${index})" 
+                  onclick="handleClick(${index}, '${opt}')" 
                   id="btn-${index}-${opt}">
                   <b>${opt}.</b> ${q['Option'+opt]}
                  </button>`;
     });
     html += `</div>`;
 
-    // New: Hidden "Show Explanation" button for Practice Mode re-opening
+    // PRACTICE MODE: "View Explanation" Button (Hidden initially)
     if (!isTest) {
         html += `<button id="reopen-exp-${index}" class="secondary hidden" style="margin-top:15px; width:auto; font-size:13px;" onclick="reOpenModal(${index})">📖 View Explanation Again</button>`;
     }
@@ -373,45 +386,49 @@ function createQuestionCard(q, index, isTest) {
     return card;
 }
 
-function handleClick(qID, opt, index) {
-    // We use 'index' to find the DOM elements to avoid ID conflicts
+// --- INTERACTION ---
+
+function handleClick(index, opt) {
+    const q = filteredQuestions[index];
+    
     if (currentMode === 'test') {
-        // Test Mode: Just select
-        testAnswers[qID] = opt; // Save using real ID
-        const container = document.getElementById(`opts-${index}`); // Target using Page Index
+        // TEST MODE LOGIC (Fixed)
+        // Store answer using Unique ID
+        testAnswers[q._uid] = opt; 
+        
+        // Update UI using Page Index
+        const container = document.getElementById(`opts-${index}`);
         container.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
         document.getElementById(`btn-${index}-${opt}`).classList.add('selected');
+        
     } else {
-        // PRACTICE MODE
-        const q = filteredQuestions[index];
+        // PRACTICE MODE LOGIC
         const correct = getCorrectLetter(q);
-        const btn = document.getElementById(`btn-${index}-${opt}`); // Target using Page Index
+        const btn = document.getElementById(`btn-${index}-${opt}`);
         
         if (opt === correct) {
             // Correct
             btn.classList.add('correct');
-            
-            // Disable buttons
             const container = document.getElementById(`opts-${index}`);
             container.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
 
-            // Show Next Button
+            // Show Nav Buttons
             if (currentIndex < filteredQuestions.length - 1) {
                 document.getElementById('next-btn').classList.remove('hidden');
             }
-
-            // Show "View Exp Again" button
+            
+            // Show "View Again" Button
             document.getElementById(`reopen-exp-${index}`).classList.remove('hidden');
 
-            // OPEN POPUP
+            // Open Modal
             const modal = document.getElementById('explanation-modal');
             const content = document.getElementById('modal-content');
             content.innerHTML = q.Explanation || "No explanation provided.";
             modal.classList.remove('hidden');
 
-            // Save Progress
-            if (currentUser && !userSolvedIDs.includes(qID)) {
-                userSolvedIDs.push(qID);
+            // Save Progress (using ID for database persistence)
+            if (currentUser && !userSolvedIDs.includes(q.ID)) {
+                userSolvedIDs.push(q.ID);
                 db.collection('users').doc(currentUser.uid).set({ solved: userSolvedIDs }, { merge: true });
             }
         } else {
@@ -426,7 +443,6 @@ function closeModal() {
     document.getElementById('explanation-modal').classList.add('hidden');
 }
 
-// New function to re-open modal if user closed it
 function reOpenModal(index) {
     const q = filteredQuestions[index];
     const modal = document.getElementById('explanation-modal');
@@ -490,7 +506,7 @@ function submitTest() {
     let score = 0;
     let wrongList = [];
     filteredQuestions.forEach(q => {
-        const user = testAnswers[q.ID];
+        const user = testAnswers[q._uid]; // Retrieve using Unique ID
         const correct = getCorrectLetter(q);
         if(user === correct) score++;
         else wrongList.push({q, user, correct});
