@@ -24,56 +24,57 @@
             <button class="primary" onclick="login()">Log In</button>
             <button class="secondary" onclick="signup()">Create New ID</button>
             
-            <p id="auth-msg" style="margin-top:15px; color:#dc3545; font-size:13px;"></p>
+            <p id="auth-msg" style="margin-top:20px; color:#e74c3c; font-size:13px;"></p>
         </div>
     </div>
 
     <div id="dashboard-screen" class="screen">
         
         <div class="topBar">
-            <div style="display:flex; flex-direction:column;">
-                <span style="font-size:12px; color:#888;">Welcome back,</span>
-                <span id="user-display" style="font-weight:600; font-size:16px;">Doctor</span>
+            <div class="user-badge">
+                <span style="font-size:12px; color:#888; font-weight:500;">Welcome back,</span>
+                <span id="user-display" style="font-weight:700; font-size:16px; color:#333;">Doctor</span>
             </div>
             <button onclick="logout()" class="logout-btn">Log Out</button>
         </div>
 
         <div class="gameContainer">
             
-            <div class="panel" id="stats-box">
-                <h3>Your Progress</h3>
-                <p>Loading stats...</p>
+            <div style="display:flex; flex-direction:column; gap:25px;">
+                <div class="panel" id="stats-box">
+                    <h3>📊 Your Progress</h3>
+                    <p>Loading stats...</p>
+                </div>
+
+                <div class="panel">
+                    <h3>⚙️ Settings</h3>
+                    <button onclick="startSavedQuestions()" style="background:#fff8e1; color:#b7791f; border:1px solid #f6e05e; margin-bottom:10px;">⭐ Review Bookmarks</button>
+                    <button onclick="resetAccountData()" style="background:#fff5f5; color:#c53030; border:1px solid #fc8181;">⚠️ Reset Progress</button>
+                </div>
             </div>
 
             <div class="panel">
-                <h3>Study Session</h3>
+                <h3>📚 Study Session</h3>
                 
                 <div class="tabs">
                     <button class="tab-btn active" onclick="setMode('practice')">Practice</button>
                     <button class="tab-btn" onclick="setMode('test')">Exam Mode</button>
                 </div>
 
-                <div id="test-settings" class="hidden" style="background:#f8f9fa; padding:20px; border-radius:12px; margin-bottom:20px; border:1px solid #e9ecef;">
-                    <label style="color:#555; font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">NUMBER OF QUESTIONS</label>
-                    <input type="number" id="q-count" value="20" style="background:white; border-color:#ddd;">
+                <div id="test-settings" class="hidden" style="background:#f8fafc; padding:20px; border-radius:16px; margin-bottom:20px; border:1px solid #e2e8f0;">
+                    <label style="color:#64748b; font-size:12px; font-weight:700; display:block; margin-bottom:8px; text-transform:uppercase;">Questions</label>
+                    <input type="number" id="q-count" value="20" style="background:white; margin:0 0 15px 0;">
                     
-                    <label style="color:#555; font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">TIME LIMIT (MINUTES)</label>
-                    <input type="number" id="t-limit" value="30" style="background:white; border-color:#ddd;">
+                    <label style="color:#64748b; font-size:12px; font-weight:700; display:block; margin-bottom:8px; text-transform:uppercase;">Minutes</label>
+                    <input type="number" id="t-limit" value="30" style="background:white; margin:0 0 15px 0;">
                     
                     <button class="primary" onclick="startTest()">Start Exam</button>
                 </div>
 
                 <div id="dynamic-menus">
-                    <p style="color:#666;">Loading Question Bank...</p>
+                    <p style="color:#718096;">Loading Question Bank...</p>
                 </div>
             </div>
-
-            <div class="panel">
-                <h3>Settings</h3>
-                <button onclick="startSavedQuestions()" style="background:#fff3cd; color:#856404; border:1px solid #ffeeba; margin-bottom:10px;">⭐ Review Bookmarked Questions</button>
-                <button onclick="resetAccountData()" style="background:#fff5f5; color:#c62828; border:1px solid #ffcdd2;">⚠️ Reset All Progress</button>
-            </div>
-
         </div>
     </div>
 
@@ -91,29 +92,26 @@
                 <button id="prev-btn" onclick="prevPage()" class="secondary hidden" style="width:auto;">Previous</button>
                 <span id="q-progress"></span>
                 <button id="next-btn" onclick="nextPage()" class="primary" style="width:auto;">Next Question</button>
-                <button id="submit-btn" onclick="submitTest()" class="primary hidden" style="background:#28a745;">Submit Exam</button>
+                <button id="submit-btn" onclick="submitTest()" class="primary hidden" style="background:#10b981;">Submit Exam</button>
             </div>
-
         </div>
     </div>
 
     <div id="result-screen" class="screen">
-        <div class="joinCard" style="max-width: 700px;">
-            <h1 class="gameTitle">Exam Results</h1>
+        <div class="joinCard" style="max-width: 700px; padding:30px;">
+            <h1 class="gameTitle">Session Report</h1>
             <div class="score-display">
                 <span id="final-score">0%</span>
             </div>
-            
             <div id="review-list" style="text-align:left; max-height:400px; overflow-y:auto; margin-bottom:20px;"></div>
-            
-            <button onclick="goHome()" class="primary">Return to Dashboard</button>
+            <button onclick="goHome()" class="primary">Back to Dashboard</button>
         </div>
     </div>
+
     <div id="explanation-modal" class="modal-overlay hidden">
-        <div class="joinCard" style="max-width: 600px; border-left: 6px solid #28a745;">
-            <h2 style="color:#28a745; margin-bottom:10px;">✅ Correct!</h2>
-            <div id="modal-content" class="dynamic-explanation" style="margin-top:0; border:none; background:#f9f9f9;">
-                </div>
+        <div class="joinCard" style="max-width: 600px; border-left: 6px solid #28a745; text-align: left;">
+            <h2 style="color:#28a745; margin-bottom:10px; font-size: 24px;">✅ Correct!</h2>
+            <div id="modal-content" class="dynamic-explanation"></div>
             <div style="display:flex; gap:10px; margin-top:20px;">
                 <button class="secondary" onclick="closeModal()">Review Options</button>
                 <button class="primary" onclick="nextPageFromModal()">Next Question ➜</button>
@@ -124,5 +122,3 @@
     <script src="script.js"></script>
 </body>
 </html>
-
-
