@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FCPS Preparation 2026</title>
+    <title>FCPS Preparation by Dr Shaggy</title>
     <link rel="stylesheet" href="style.css">
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
@@ -14,10 +15,12 @@
 
     <div id="auth-screen" class="screen active">
         <div class="card auth-card">
-            <h1>FCPS Preparation</h1>
-            <p><b>Target: April 5, 2026</b></p>
+            <h1>FCPS Preparation by Dr Shaggy</h1>
+            <p>Target: April 5, 2026</p>
+            
             <input type="email" id="email" placeholder="Email Address">
             <input type="password" id="password" placeholder="Password">
+            
             <div class="auth-buttons">
                 <button onclick="login()">Log In</button>
                 <button class="secondary" onclick="signup()">Create New ID</button>
@@ -38,8 +41,9 @@
                 <p>Loading stats...</p>
             </div>
             <div class="stat-box">
-                <h3>Quick Actions</h3>
+                <h3>Settings</h3>
                 <button onclick="startSavedQuestions()">⭐ Review Bookmarks</button>
+                <button onclick="resetAccountData()" style="background:#dc3545; margin-top:10px;">⚠️ Reset My Progress</button>
             </div>
         </div>
 
@@ -51,12 +55,12 @@
             </div>
             
             <div id="dynamic-menus">
-                <p>Loading Topics from Sheet...</p>
+                <p>Loading Topics...</p>
             </div>
 
             <div id="test-settings" class="hidden">
                 <label>Number of Questions:</label>
-                <input type="number" id="q-count" value="20" min="5" max="100">
+                <input type="number" id="q-count" value="20" min="5" max="200">
                 <label>Time (Minutes):</label>
                 <input type="number" id="t-limit" value="30" min="5" max="180">
                 <button class="start-btn" onclick="startTest()">Start Test</button>
@@ -68,25 +72,15 @@
         <div class="quiz-header">
             <button onclick="goHome()">Exit</button>
             <div id="timer" class="hidden">00:00</div>
-            <button onclick="toggleBookmark()" id="bookmark-btn">☆ Save</button>
         </div>
 
-        <div class="quiz-content">
-            <div class="q-meta"><span id="q-subject">Subject</span> • <span id="q-topic">Topic</span></div>
-            <p id="q-text">Question text goes here...</p>
-            
-            <div id="options-container">
-                </div>
-
-            <div id="explanation-box" class="hidden">
-                <strong>Explanation:</strong> <span id="exp-text"></span>
+        <div id="quiz-content-area">
             </div>
-        </div>
 
         <div class="quiz-footer">
-            <button id="prev-btn" onclick="prevQuestion()" class="hidden">Previous</button>
-            <span id="q-progress">1 / 10</span>
-            <button id="next-btn" onclick="nextQuestion()">Next</button>
+            <button id="prev-btn" onclick="prevPage()" class="hidden">Previous</button>
+            <span id="q-progress"></span>
+            <button id="next-btn" onclick="nextPage()">Next</button>
             <button id="submit-btn" onclick="submitTest()" class="hidden">Submit Test</button>
         </div>
     </div>
@@ -94,15 +88,12 @@
     <div id="result-screen" class="screen">
         <div class="card">
             <h1>Test Completed</h1>
-            <div class="score-display">You scored: <span id="final-score">0%</span></div>
-            <p>Review your mistakes below:</p>
-            <div id="review-list">
-                </div>
+            <div class="score-display">Score: <span id="final-score">0%</span></div>
+            <div id="review-list"></div>
             <button onclick="goHome()">Back to Dashboard</button>
         </div>
     </div>
 
     <script src="script.js"></script>
 </body>
-
 </html>
