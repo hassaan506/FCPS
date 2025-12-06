@@ -52,3 +52,15 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
     margin-top: 10px;
     line-height: 1.6;       /* Adds space between lines for easier reading */
 }
+
+/* Make "Explanation:" Heading Prominent */
+#explanation-box strong {
+    display: block;              /* Forces it to its own line */
+    font-size: 1.4rem;           /* Makes the text much bigger */
+    color: #856404;              /* Dark Gold color to match the yellow box */
+    margin-bottom: 15px;         /* Adds space between heading and text */
+    text-transform: uppercase;   /* Makes it all CAPITALS */
+    letter-spacing: 1px;         /* Adds slight space between letters */
+    border-bottom: 2px solid #e0c385; /* Adds a line under the heading */
+    padding-bottom: 8px;         /* Space between text and the line */
+}
