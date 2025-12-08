@@ -875,41 +875,55 @@ details .category-btn div {
     margin-top: 8px;
 }
 
-
 /* =========================================
-   16. THE SAFETY FIX (Menu Grid Wrapper)
+   17. CLEAN TOPIC LIST (Screenshot Match)
    ========================================= */
 
-/* Turn off the dangerous grid on <details> itself */
+/* 1. Reset the Dropdown to be a normal box */
 details[open] {
-    display: block !important; /* Reset to normal */
+    display: block !important;
+    padding-bottom: 0 !important;
 }
 
-/* Apply Grid to our new SAFE wrapper */
-.menu-grid-wrapper {
-    display: grid;
-    grid-template-columns: 1fr 1fr; /* Two columns */
-    gap: 10px;
-    padding: 10px;
-    padding-top: 0;
+/* 2. The Container for the topics */
+.topic-list-container {
+    background: var(--card-bg); /* Matches theme */
+    padding: 10px 15px;
+    border-top: 1px solid var(--border-color);
 }
 
-/* Ensure buttons are visible and sized correctly */
-.category-btn {
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: center !important;
-    min-height: 80px !important;
-    width: 100% !important;
-    background: var(--input-bg) !important;
+/* 3. The Rows (Like in your screenshot) */
+.topic-row {
+    padding: 15px 5px;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: background 0.2s;
 }
 
-/* Make "Practice All" span full width */
-.menu-grid-wrapper .category-btn:first-child {
-    grid-column: 1 / -1;
-    background: linear-gradient(to right, var(--input-bg), #eef2ff) !important;
-    flex-direction: row !important; /* Keep icon to the right */
-    justify-content: space-between !important;
-    padding: 0 20px !important;
-    min-height: 60px !important;
+.topic-row:last-child {
+    border-bottom: none;
 }
+
+.topic-row:hover {
+    background: rgba(0, 114, 255, 0.05); /* Slight blue highlight on hover */
+}
+
+/* 4. Special Style for "Practice All" */
+.practice-all {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--primary);
+    padding-bottom: 15px;
+    margin-bottom: 5px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+/* 5. Dark Mode Adjustments */
+[data-theme="dark"] .topic-row {
+    border-color: rgba(255,255,255,0.1);
+}
+[data-theme="dark"] .topic-list-container {
+    background: rgba(0,0,0,0.2); /* Slightly darker inner box */
+}
+
