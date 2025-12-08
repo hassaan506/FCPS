@@ -114,7 +114,7 @@ async function resetAccountData() {
 }
 
 // ======================================================
-// 4. DATA LOADING (STABLE ID GENERATION)
+// 4. DATA LOADING (STABLE ID)
 // ======================================================
 
 function loadQuestions() {
@@ -124,16 +124,16 @@ function loadQuestions() {
     });
 }
 
-// Helper: Generates a unique number based on text string
+// Generate Unique Digital Fingerprint for each question
 function generateStableID(str) {
     let hash = 0;
     if (str.length === 0) return hash;
     for (let i = 0; i < str.length; i++) {
         const char = str.charCodeAt(i);
         hash = ((hash << 5) - hash) + char;
-        hash |= 0; // Convert to 32bit integer
+        hash |= 0; 
     }
-    return "id_" + Math.abs(hash); // e.g., "id_8492015"
+    return "id_" + Math.abs(hash);
 }
 
 function processData(data) {
@@ -149,7 +149,6 @@ function processData(data) {
         if (seen.has(qSignature)) return;
         seen.add(qSignature);
 
-        // --- NEW: Generate Permanent Digital ID ---
         row._uid = generateStableID(qSignature);
 
         const subj = row.Subject ? row.Subject.trim() : "General";
@@ -269,7 +268,6 @@ function startTest() {
 
 function startSavedQuestions() {
     if(userBookmarks.length === 0) return alert("No bookmarks!");
-    // Filter using the new STABLE UID
     filteredQuestions = allQuestions.filter(q => userBookmarks.includes(q._uid));
     
     if(filteredQuestions.length === 0) return alert("No matching bookmarks found. (Old bookmarks might be invalid).");
@@ -328,7 +326,6 @@ function createQuestionCard(q, index, isTest) {
     let headerHTML = "";
     if (!isTest) {
         const isSaved = userBookmarks.includes(q._uid);
-        // Use q._uid for bookmarks (Permanent ID)
         headerHTML = `<div style="font-size:0.85em; color:#999; margin-bottom:10px; text-transform:uppercase; letter-spacing:1px;">${q.Subject} • ${q.Topic} 
         <span onclick="toggleBookmark('${q._uid}', this)" class="bookmark-icon" style="color:${isSaved ? '#ffc107' : '#e2e8f0'}">${isSaved ? '★' : '☆'}</span></div>`;
     }
@@ -341,7 +338,6 @@ function createQuestionCard(q, index, isTest) {
     
     opts.forEach(opt => {
         let isSelected = false;
-        // Use STABLE ID for selection check
         if(isTest && testAnswers[q._uid] === opt) isSelected = true;
         
         html += `<button class="option-btn ${isSelected ? 'selected' : ''}" 
@@ -360,7 +356,7 @@ function createQuestionCard(q, index, isTest) {
     return card;
 }
 
-// --- INTERACTION & TRACKING ---
+// --- INTERACTION & ANALYTICS ---
 
 function handleClick(index, opt) {
     const q = filteredQuestions[index];
@@ -372,9 +368,13 @@ function handleClick(index, opt) {
         document.getElementById(`btn-${index}-${opt}`).classList.add('selected');
         renderNavigator(); 
     } else {
+        // PRACTICE MODE
         const correct = getCorrectLetter(q);
         const btn = document.getElementById(`btn-${index}-${opt}`);
-        
+        const subj = q.Subject || "General";
+        // Sanitize Subject Key for DB
+        const cleanSubj = subj.replace(/[^a-zA-Z0-9]/g, "_");
+
         if (opt === correct) {
             btn.classList.add('correct');
             const container = document.getElementById(`opts-${index}`);
@@ -388,18 +388,11 @@ function handleClick(index, opt) {
             content.innerHTML = q.Explanation || "No explanation provided.";
             modal.classList.remove('hidden');
 
-            // --- TRACKING (Practice) ---
+            // --- ANALYTICS SAVE (CORRECT) ---
             if (currentUser) {
-                // Use Stable ID for Solved List
-                if (!userSolvedIDs.includes(q._uid)) {
-                    userSolvedIDs.push(q._uid);
-                }
+                if (!userSolvedIDs.includes(q._uid)) userSolvedIDs.push(q._uid);
                 
-                const subj = q.Subject || "General";
                 let updates = { solved: userSolvedIDs };
-                // Using sanitized subject key to avoid errors with special chars
-                const cleanSubj = subj.replace(/[^a-zA-Z0-9]/g, "_");
-                
                 updates[`stats.${cleanSubj}.correct`] = firebase.firestore.FieldValue.increment(1);
                 updates[`stats.${cleanSubj}.total`] = firebase.firestore.FieldValue.increment(1);
                 
@@ -408,12 +401,11 @@ function handleClick(index, opt) {
         } else {
             btn.classList.add('wrong');
             
-            // --- TRACKING (Wrong) ---
+            // --- ANALYTICS SAVE (WRONG) ---
             if (currentUser) {
-                const subj = q.Subject || "General";
-                const cleanSubj = subj.replace(/[^a-zA-Z0-9]/g, "_");
                 let updates = {};
                 updates[`stats.${cleanSubj}.total`] = firebase.firestore.FieldValue.increment(1);
+                // Note: We do NOT increment 'correct' here
                 db.collection('users').doc(currentUser.uid).set(updates, { merge: true });
             }
         }
@@ -495,7 +487,7 @@ function toggleBookmark(uid, span) {
     db.collection('users').doc(currentUser.uid).set({ bookmarks: userBookmarks }, { merge: true });
 }
 
-// --- SUBMISSION (TRACKING ENABLED) ---
+// --- SUBMISSION ---
 function updateTimer() {
     testTimeRemaining--;
     const m = Math.floor(testTimeRemaining/60);
@@ -514,7 +506,6 @@ function submitTest() {
         const user = testAnswers[q._uid];
         const correct = getCorrectLetter(q);
         const subj = q.Subject || "General";
-        // Sanitize Subject Key
         const cleanSubj = subj.replace(/[^a-zA-Z0-9]/g, "_");
 
         if (!sessionStats[cleanSubj]) sessionStats[cleanSubj] = { correct: 0, total: 0 };
@@ -574,7 +565,6 @@ function goHome() {
     loadQuestions();
 }
 
-// DARK MODE
 document.addEventListener('DOMContentLoaded', () => {
     const savedTheme = localStorage.getItem('fcps-theme');
     if (savedTheme === 'dark') {
@@ -596,7 +586,7 @@ function toggleTheme() {
     }
 }
 
-// ANALYTICS MODAL
+// ANALYTICS MODAL (FIXED FOR 0% VISIBILITY)
 async function openAnalytics() {
     const modal = document.getElementById('analytics-modal');
     const container = document.getElementById('analytics-content');
@@ -606,26 +596,31 @@ async function openAnalytics() {
     if (!currentUser) return;
 
     try {
-        const doc = await db.collection('users').doc(currentUser.uid).get();
+        // FORCE REFRESH from server
+        const doc = await db.collection('users').doc(currentUser.uid).get({ source: 'server' });
+        
         if (!doc.exists || !doc.data().stats) {
-            container.innerHTML = "<p>No detailed data available yet. Start solving questions in Practice Mode!</p>";
+            container.innerHTML = "<p>No detailed data available yet. Solve a question!</p>";
             return;
         }
 
         const stats = doc.data().stats;
         let html = "";
         
-        // Convert Clean Keys back to Display Text (e.g. Surgery_Neck -> Surgery_Neck)
-        // If you want spaces, you can use .replace(/_/g, " ") here
+        // Convert keys back to text
         const subjects = Object.keys(stats).map(key => {
             return { name: key.replace(/_/g, " "), ...stats[key] };
         }).sort((a, b) => (a.correct / a.total) - (b.correct / b.total));
 
         subjects.forEach(subj => {
             const percent = Math.round((subj.correct / subj.total) * 100);
-            let color = "#2ecc71"; 
-            if (percent < 50) color = "#e74c3c"; 
-            else if (percent < 75) color = "#f1c40f"; 
+            
+            // LOGIC FIX: Always show at least 5% bar for 0% scores so it's visible (red)
+            const displayWidth = percent === 0 ? 5 : percent; 
+            
+            let color = "#2ecc71"; // Green
+            if (percent < 50) color = "#e74c3c"; // Red
+            else if (percent < 75) color = "#f1c40f"; // Yellow
 
             html += `
                 <div class="stat-item">
@@ -634,7 +629,7 @@ async function openAnalytics() {
                         <span>${percent}%</span>
                     </div>
                     <div class="progress-track">
-                        <div class="progress-fill" style="width: ${percent}%; background: ${color};"></div>
+                        <div class="progress-fill" style="width: ${displayWidth}%; background: ${color};"></div>
                     </div>
                     <div class="stat-meta">
                         ${subj.correct} correct out of ${subj.total} attempted
