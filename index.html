@@ -161,10 +161,21 @@
             </div>
         </div>
     </div>
+    <div id="analytics-modal" class="modal-overlay hidden">
+        <div class="joinCard" style="max-width: 600px; text-align: left; width: 95%;">
+            <h2 class="gameTitle" style="font-size:24px; margin-bottom:20px;">Performance Report</h2>
+            
+            <div id="analytics-content" style="max-height: 60vh; overflow-y: auto; padding-right: 10px;">
+                </div>
+            
+            <button class="primary" onclick="document.getElementById('analytics-modal').classList.add('hidden')">Close Report</button>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>
 </html>
+
 
 
 
