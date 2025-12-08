@@ -1,5 +1,5 @@
 /* ---------------------------------------------
-   STYLE.CSS (MEDICAL MASTERY THEME - FIXED)
+   STYLE.CSS (FCPS PREP - FINALIZED)
 --------------------------------------------- */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
@@ -32,9 +32,7 @@ body {
     min-height: 100vh; 
     background: var(--bg-color);
     color: var(--text-dark);
-    display: flex; 
-    flex-direction: column; 
-    align-items: center; 
+    /* Note: We removed 'display: flex' from body to allow dashboard to scroll naturally */
     overflow-x: hidden;
 }
 
@@ -47,18 +45,16 @@ body::before {
     box-shadow: 0 10px 30px rgba(0, 114, 255, 0.2);
 }
 
-/* SCREENS */
-.screen { 
-    display: none; 
-    width: 100%; max-width: 1100px; min-height: 90vh; padding: 20px; 
-    flex-direction: column; align-items: center; 
-}
-.screen.active { display: flex; animation: fadeIn 0.4s ease-out; }
-.hidden { display: none !important; }
-
+/* --- ANIMATIONS --- */
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
+@keyframes successPop { 50% { transform: scale(1.02); } }
+@keyframes slideInRight { from { transform: translateX(50px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes burn { from { opacity: 0.8; transform: scale(1); } to { opacity: 1; transform: scale(1.1); } }
 
-/* CARDS */
+
+/* --- CARDS & PANELS --- */
 .joinCard, .panel, .test-question-block { 
     background: var(--card-bg); 
     border-radius: 24px; 
@@ -67,8 +63,8 @@ body::before {
     backdrop-filter: blur(10px);
 }
 
-/* LOGIN */
-.joinCard { text-align: center; margin-top: 15vh; padding: 50px 40px; width: 100%; max-width: 420px; }
+/* LOGIN CARD SPECIFIC */
+.joinCard { text-align: center; padding: 50px 40px; width: 100%; max-width: 420px; margin: auto; }
 .gameTitle { font-size: 28px; font-weight: 700; color: var(--text-dark); margin-bottom: 5px; }
 .subTitle { color: #718096; margin-bottom: 30px; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
 
@@ -89,7 +85,8 @@ button {
 .secondary { background: white; color: #718096; border: 1px solid #e2e8f0; }
 .secondary:hover { background: #f8fafc; color: var(--text-dark); border-color: #cbd5e0; }
 
-/* DASHBOARD */
+
+/* --- DASHBOARD LAYOUT --- */
 .topBar { 
     width: 100%; display: flex; justify-content: space-between; align-items: center; 
     margin-bottom: 30px; padding: 20px 30px; background: white; 
@@ -98,13 +95,13 @@ button {
 .user-badge { display: flex; flex-direction: column; text-align: left; }
 .logout-btn { width: auto; padding: 10px 24px; font-size: 13px; background: #fff0f0; color: #e53e3e; margin: 0; border-radius: 12px; }
 
-/* Dashboard Grid - FIXED LAYOUT */
+/* Dashboard Grid */
 .gameContainer { 
-    width: 100%; display: grid; grid-template-columns: 1fr; gap: 25px; 
+    width: 100%; max-width: 1100px; margin: 0 auto; 
+    display: grid; grid-template-columns: 1fr; gap: 25px; padding: 0 20px;
 }
 @media(min-width: 900px) { 
     .gameContainer { 
-        /* 1fr for Main Content (Stats), 350px for Sidebar (Menu) */
         grid-template-columns: 1fr 350px; 
     } 
 }
@@ -112,17 +109,23 @@ button {
 .panel { padding: 30px; }
 .panel h3 { font-size: 18px; font-weight: 700; color: var(--text-dark); margin-bottom: 20px; }
 
-/* TABS & MENUS */
+
+/* --- TABS & MENUS --- */
 .tabs { display: flex; background: #f1f5f9; padding: 5px; border-radius: 14px; margin-bottom: 25px; }
 .tab-btn { margin: 0; background: transparent; color: #718096; border-radius: 10px; padding: 12px; flex: 1; }
 .tab-btn.active { background: white; color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
 
 details { margin-bottom: 12px; background: white; border-radius: 14px; border: 1px solid #edf2f7; overflow: hidden; }
-summary { padding: 18px; cursor: pointer; font-weight: 600; }
+summary { padding: 18px; cursor: pointer; font-weight: 600; display: block; position: relative; padding-right: 30px; }
+summary::after { content: '▼'; position: absolute; right: 10px; top: 15px; font-size: 12px; color: #94a3b8; transition: transform 0.2s; }
+details[open] summary::after { transform: rotate(180deg); }
+summary::-webkit-details-marker { display: none; }
+
 .category-btn { margin: 0; border-radius: 0; background: #fafbfc; text-align: left; padding: 14px 20px; border-top: 1px solid #f0f0f0; box-shadow: none; font-size: 14px; }
 .category-btn:hover { background: #edf2f7; color: var(--primary); padding-left: 25px; }
 
-/* QUIZ INTERFACE */
+
+/* --- QUIZ INTERFACE --- */
 #quiz-screen .gameContainer {
     display: flex; flex-direction: column; max-width: 800px; margin: 0 auto;
 }
@@ -137,14 +140,9 @@ summary { padding: 18px; cursor: pointer; font-weight: 600; }
     border-left: 6px solid var(--primary); margin-bottom: 20px;
     animation: slideUp 0.5s ease-out forwards;
 }
-
 .test-q-text { 
-    font-size: 1.35rem; 
-    font-weight: 600; 
-    line-height: 1.7; 
-    color: var(--text-dark); 
-    margin-bottom: 30px; 
-    text-align: justify; 
+    font-size: 1.35rem; font-weight: 600; line-height: 1.7; 
+    color: var(--text-dark); margin-bottom: 30px; text-align: justify; 
 }
 
 /* OPTIONS */
@@ -159,76 +157,31 @@ summary { padding: 18px; cursor: pointer; font-weight: 600; }
 .option-btn.correct { background: #d1fae5 !important; border-color: #10b981 !important; color: #065f46; animation: successPop 0.3s ease-out forwards; }
 .option-btn.wrong { background: #fee2e2 !important; border-color: #ef4444 !important; color: #991b1b; animation: shake 0.4s both; }
 
-/* POPUP MODAL */
+/* QUIZ FOOTER */
+.quiz-footer { width: 100%; display: flex; justify-content: space-between; align-items: center; margin-top: 30px; }
+
+
+/* --- MODALS & POPUPS --- */
 .modal-overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px);
     z-index: 9999; display: flex; justify-content: center; align-items: center; padding: 20px;
     animation: fadeIn 0.3s ease-out;
 }
+.modal-overlay .joinCard {
+    max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; margin: 0;
+}
 .dynamic-explanation {
     background: #f9f9f9; padding: 20px; border-radius: 12px; 
     color: #4b5563; line-height: 1.7; white-space: pre-wrap; text-align: left;
 }
-
-/* ANIMATIONS */
-@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
-@keyframes successPop { 50% { transform: scale(1.02); } }
-
-/* FOOTER */
-.quiz-footer { width: 100%; display: flex; justify-content: space-between; align-items: center; margin-top: 30px; }
-#final-score { font-size: 48px; font-weight: 800; color: var(--primary); display: block; margin: 20px 0; }
-#review-list div { text-align: left; background: white; padding: 20px; margin-bottom: 15px; border-radius: 10px; border-left: 5px solid #dc3545; }
-
-@media (max-width: 768px) {
-    .gameContainer { grid-template-columns: 1fr; }
-    .test-question-block { padding: 25px; }
-    .test-q-text { font-size: 1.1rem; }
+#modal-content {
+    overflow-y: auto; flex: 1; margin: 15px 0; padding-right: 10px; 
+    border-top: 1px solid #f0f0f0; border-bottom: 1px solid #f0f0f0;
 }
 
-/* BOOKMARK STAR STYLES */
-.bookmark-icon {
-    cursor: pointer;
-    float: right;
-    font-size: 2.2rem; 
-    line-height: 0.8; 
-    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    padding-left: 10px;
-}
-.bookmark-icon:hover { transform: scale(1.2); }
 
-/* TEST FILTER STYLES */
-.filter-container {
-    max-height: 250px;
-    overflow-y: auto;
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 15px;
-    margin: 15px 0;
-    text-align: left;
-}
-.filter-group {
-    margin-bottom: 15px;
-    border-bottom: 1px solid #f1f5f9;
-    padding-bottom: 10px;
-}
-.filter-subject-label {
-    display: flex; align-items: center; font-weight: 700;
-    color: var(--text-dark); cursor: pointer; font-size: 15px; margin-bottom: 8px;
-}
-.filter-topic-list {
-    margin-left: 25px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-}
-.filter-topic-label {
-    display: flex; align-items: center; font-size: 13px; color: var(--text-light); cursor: pointer;
-}
-.filter-checkbox {
-    width: 18px; height: 18px; margin: 0 10px 0 0; cursor: pointer; accent-color: var(--primary);
-}
-
-/* TEST NAVIGATOR SIDEBAR */
+/* --- EXAM SIDEBAR & NAV --- */
 .test-sidebar {
     position: fixed; right: 20px; top: 100px; width: 260px;
     background: white; padding: 20px; border-radius: 16px;
@@ -236,18 +189,15 @@ summary { padding: 18px; cursor: pointer; font-weight: 600; }
     max-height: 80vh; overflow-y: auto; z-index: 100; display: none; 
 }
 .test-sidebar.active { display: block; animation: slideInRight 0.4s ease-out; }
-@keyframes slideInRight { from { transform: translateX(50px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-
 .nav-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 10px; }
 .nav-btn {
     width: 100%; aspect-ratio: 1; border: 1px solid #e2e8f0;
     background: #f8fafc; color: #64748b; border-radius: 8px;
     font-size: 12px; font-weight: 600; display: flex;
     justify-content: center; align-items: center; cursor: pointer; margin: 0; padding: 0;
-    transition: all 0.2s;
 }
 .nav-btn:hover { border-color: var(--primary); color: var(--primary); }
-.nav-btn.current { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 4px 10px rgba(0, 114, 255, 0.3); }
+.nav-btn.current { background: var(--primary); color: white; border-color: var(--primary); }
 .nav-btn.answered { background: #e3f2fd; color: #0072ff; border-color: #90cdf4; }
 
 @media (max-width: 1300px) {
@@ -257,342 +207,123 @@ summary { padding: 18px; cursor: pointer; font-weight: 600; }
     }
 }
 
-/* SCROLLABLE EXPLANATION POPUP */
-.modal-overlay .joinCard {
-    max-height: 85vh; display: flex; flex-direction: column; overflow: hidden;
-}
-#modal-content {
-    overflow-y: auto; flex: 1; margin: 15px 0; padding-right: 10px; 
-    border-top: 1px solid #f0f0f0; border-bottom: 1px solid #f0f0f0; padding-top: 15px; padding-bottom: 15px;
-}
-#modal-content::-webkit-scrollbar { width: 8px; }
-#modal-content::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
-#modal-content::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
-#modal-content::-webkit-scrollbar-thumb:hover { background: #bbb; }
-.modal-overlay .joinCard > div:last-child { flex-shrink: 0; margin-top: 0; }
 
-/* DARK MODE TOGGLE */
-.theme-toggle {
-    background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-dark);
-    width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center;
-    align-items: center; cursor: pointer; font-size: 20px; transition: all 0.3s ease; margin-right: 15px; 
-}
-.theme-toggle:hover { transform: rotate(15deg) scale(1.1); border-color: var(--primary); }
+/* --- FEATURES: BOOKMARKS, FLAGS, SEARCH, DARK MODE --- */
+.bookmark-icon { cursor: pointer; float: right; font-size: 2.2rem; line-height: 0.8; padding-left: 10px; transition: 0.2s; }
+.bookmark-icon:hover { transform: scale(1.2); }
 
-/* Dark Mode Fixes */
-[data-theme="dark"] .test-q-text { color: #f1f5f9; }
-[data-theme="dark"] .option-btn { background: #1e293b; border-color: #334155; color: #e2e8f0; }
-[data-theme="dark"] .option-btn:hover:not(:disabled) { background: #334155; }
-[data-theme="dark"] summary { background: var(--card-bg); color: var(--text-dark); }
-[data-theme="dark"] details { border-color: var(--border-color); background: var(--card-bg); }
-[data-theme="dark"] .category-btn { background: #1e293b; color: #cbd5e1; border-top-color: #334155; }
-[data-theme="dark"] .category-btn:hover { background: #334155; color: white; }
-[data-theme="dark"] .test-sidebar { background: #1e293b; border-color: #334155; }
-[data-theme="dark"] .nav-btn { background: #0f172a; border-color: #334155; color: #94a3b8; }
-[data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3, [data-theme="dark"] h4, [data-theme="dark"] strong, [data-theme="dark"] b, [data-theme="dark"] label { color: #f1f5f9 !important; }
-[data-theme="dark"] input { background: #1e293b; color: white; border-color: #334155; }
-[data-theme="dark"] summary::after { color: #94a3b8; }
-
-/* ANALYTICS PROGRESS BARS */
-.stat-item { margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
-[data-theme="dark"] .stat-item { border-color: #334155; }
-.stat-header { display: flex; justify-content: space-between; font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--text-dark); }
-.progress-track { width: 100%; height: 10px; background: #e2e8f0; border-radius: 5px; overflow: hidden; position: relative; }
-[data-theme="dark"] .progress-track { background: #334155; }
-.progress-fill { height: 100%; background: var(--primary); border-radius: 5px; transition: width 1s ease-out; }
-.stat-meta { font-size: 11px; color: var(--text-light); margin-top: 5px; text-align: right; }
-
-/* FLAG FOR REVIEW STYLES */
 .flag-btn {
     background: transparent; border: 1px solid #f59e0b; color: #f59e0b;
     padding: 6px 15px; border-radius: 20px; font-size: 12px; font-weight: 600;
-    cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 5px;
+    cursor: pointer; display: flex; align-items: center; gap: 5px;
 }
-.flag-btn:hover, .flag-btn.active { background: #f59e0b; color: white; box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3); }
-.nav-btn.flagged { border-color: #f59e0b; color: #f59e0b; background: #fffbeb; font-weight: 800; position: relative; }
-.nav-btn.flagged::after { content: ''; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; background: #f59e0b; border-radius: 50%; }
-[data-theme="dark"] .flag-btn { border-color: #fbbf24; color: #fbbf24; }
-[data-theme="dark"] .flag-btn:hover, [data-theme="dark"] .flag-btn.active { background: #fbbf24; color: #1e293b; }
-[data-theme="dark"] .nav-btn.flagged { background: #451a03; border-color: #fbbf24; color: #fbbf24; }
+.flag-btn:hover, .flag-btn.active { background: #f59e0b; color: white; }
 
-/* GAMIFICATION STYLES */
-.icon-btn {
-    background: transparent; border: none; font-size: 20px; cursor: pointer;
-    margin-right: 15px; position: relative; transition: transform 0.2s;
+.search-results-list {
+    position: absolute; top: 100%; left: 0; right: 0;
+    background: white; border: 1px solid #ccc; max-height: 200px;
+    overflow-y: auto; z-index: 1000; display: none;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 0 0 8px 8px;
 }
-.icon-btn:hover { transform: scale(1.2); }
+.search-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; text-align: left; font-size: 14px; }
+.search-item:hover { background-color: #f0f8ff; }
+
+.theme-toggle {
+    background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-dark);
+    width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center;
+    align-items: center; cursor: pointer; font-size: 20px; margin-right: 15px; 
+}
+
+/* --- GAMIFICATION (Streak, Badges) --- */
+.icon-btn { background: transparent; border: none; font-size: 20px; cursor: pointer; margin-right: 15px; }
 .streak-container { display: flex; align-items: center; margin-right: 15px; font-weight: 700; color: #e74c3c; }
 .streak-icon { font-size: 20px; margin-right: 5px; animation: burn 0.5s infinite alternate; }
-@keyframes burn { from { opacity: 0.8; transform: scale(1); } to { opacity: 1; transform: scale(1.1); } }
 
-/* Badges Grid */
 .badge-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 20px; }
 .badge-item {
     background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;
-    padding: 15px; text-align: center; opacity: 0.5; filter: grayscale(100%); transition: all 0.3s;
+    padding: 15px; text-align: center; opacity: 0.5; filter: grayscale(100%);
 }
-.badge-item.unlocked {
-    opacity: 1; filter: grayscale(0%); border-color: #ffd700;
-    background: #fffbeb; box-shadow: 0 4px 10px rgba(255, 215, 0, 0.2); transform: translateY(-2px);
-}
-.badge-icon { font-size: 30px; display: block; margin-bottom: 5px; }
-.badge-name { font-size: 12px; font-weight: 700; display: block; }
-.badge-desc { font-size: 10px; color: #64748b; }
-[data-theme="dark"] .badge-item { background: #1e293b; border-color: #334155; }
-[data-theme="dark"] .badge-item.unlocked { background: #422006; border-color: #fbbf24; }
+.badge-item.unlocked { opacity: 1; filter: grayscale(0%); border-color: #ffd700; background: #fffbeb; }
+
+/* Analytics Bars */
+.stat-item { margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+.progress-track { width: 100%; height: 10px; background: #e2e8f0; border-radius: 5px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--primary); border-radius: 5px; transition: width 1s ease-out; }
 
 
-/* --- GLOBAL SEARCH STYLES --- */
-.search-results-list {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: white;
-    border: 1px solid #ccc;
-    max-height: 200px;
-    overflow-y: auto;
-    z-index: 1000;
-    display: none;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    border-radius: 0 0 8px 8px;
-}
-
-.search-item {
-    padding: 10px;
-    border-bottom: 1px solid #eee;
-    cursor: pointer;
-    text-align: left;
-    color: #333;
-    font-size: 14px;
-}
-
-.search-item:hover {
-    background-color: #f0f8ff;
-}
-
-
-/* --- MOBILE HEADER FIX (FORCED SINGLE LINE ICONS) --- */
-@media screen and (max-width: 600px) {
-    /* 1. Main Header Box */
-    .topBar {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        padding: 15px !important;
-        height: auto !important;
-    }
-
-    /* 2. User Name Section */
-    .user-badge {
-        width: 100% !important;
-        align-items: center !important;
-        margin-bottom: 5px !important;
-    }
-    .user-badge div { justify-content: center !important; }
-
-    /* 3. The Control Icons Group (Streak + Trophy + Moon) */
-    .topBar > div:last-child {
-        width: 100% !important;
-        display: flex !important;
-        flex-direction: row !important; /* Force Horizontal Row */
-        flex-wrap: nowrap !important; /* DO NOT allow breaking lines */
-        justify-content: center !important;
-        align-items: center !important;
-        gap: 8px !important; /* Small gap to fit everything */
-        margin-bottom: 5px !important;
-    }
-
-    /* 4. Shrink elements slightly to fit on one line */
-    .streak-container {
-        font-size: 13px !important;
-        white-space: nowrap !important; /* Keep "1 Day Streak" together */
-    }
-    .icon-btn, .theme-toggle {
-        font-size: 18px !important; /* Slightly smaller icons */
-        width: 35px !important;
-        height: 35px !important;
-        padding: 0 !important;
-        display: flex !important;
-        justify-content: center !important;
-        align-items: center !important;
-    }
-
-    /* 5. Logout Button (Big Bar at Bottom) */
-    .logout-btn {
-        width: 100% !important;
-        margin-top: 10px !important;
-        padding: 12px !important;
-        order: 99 !important; /* Force to bottom */
-    }
-}
-
-/* --- FIX STUDY SESSION LIST (SCROLLABLE BOX) --- */
+/* --- MENU IMPROVEMENTS (Scrollbar & Progress) --- */
 #dynamic-menus {
-    max-height: 400px;       /* Sets a limit on height */
-    overflow-y: auto;        /* Adds a scrollbar if the list is longer */
-    padding-right: 8px;      /* Space for the scrollbar */
-    margin-top: 15px;
-    border-top: 1px solid #eee; /* Adds a nice separator line */
-    padding-top: 15px;
-}
-
-/* Optional: Make the scrollbar look pretty */
-#dynamic-menus::-webkit-scrollbar {
-    width: 6px;
-}
-#dynamic-menus::-webkit-scrollbar-track {
-    background: #f1f5f9; 
-    border-radius: 4px;
-}
-#dynamic-menus::-webkit-scrollbar-thumb {
-    background: #cbd5e1; 
-    border-radius: 4px;
-}
-#dynamic-menus::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
-}
-
-
-/* --- FIX: STUDY SESSION LIST DESIGN --- */
-#dynamic-menus {
-    /* 1. Limit Height & Add Scroll */
-    max-height: 400px;       
-    overflow-y: auto;        
-    
-    /* 2. Spacing & Borders */
-    margin-top: 15px;
-    padding-top: 15px;
-    border-top: 2px solid #f1f5f9;
-    padding-right: 8px; /* Space for scrollbar */
-    
-    /* 3. Smooth scrolling behavior */
+    max-height: 400px; overflow-y: auto;
+    margin-top: 15px; padding-top: 15px; border-top: 2px solid #f1f5f9; padding-right: 8px;
     scroll-behavior: smooth;
 }
+#dynamic-menus::-webkit-scrollbar { width: 6px; }
+#dynamic-menus::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
+#dynamic-menus::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 
-/* --- CUSTOM SCROLLBAR DESIGN (Make it look Premium) --- */
-#dynamic-menus::-webkit-scrollbar {
-    width: 6px; /* Skinny scrollbar */
-}
+.menu-progress-track { width: 100%; height: 4px; background: #e2e8f0; border-radius: 2px; overflow: hidden; margin-top: 5px; }
+.menu-progress-fill { height: 100%; background: #22c55e; width: 0%; transition: width 0.5s ease-out; }
 
-#dynamic-menus::-webkit-scrollbar-track {
-    background: #f1f5f9; /* Light grey track */
-    border-radius: 10px;
-}
 
-#dynamic-menus::-webkit-scrollbar-thumb {
-    background: #cbd5e1; /* Darker grey handle */
-    border-radius: 10px;
-}
-
-#dynamic-menus::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8; /* Darkens on hover */
-}
-
-/* Fix for Dark Mode */
-[data-theme="dark"] #dynamic-menus {
-    border-top-color: #334155;
-}
-[data-theme="dark"] #dynamic-menus::-webkit-scrollbar-track {
-    background: #1e293b;
-}
-[data-theme="dark"] #dynamic-menus::-webkit-scrollbar-thumb {
-    background: #475569;
+/* --- MOBILE HEADER FIX --- */
+@media screen and (max-width: 600px) {
+    .topBar {
+        flex-direction: column !important; align-items: center !important; height: auto !important; padding: 15px !important;
+    }
+    .user-badge { width: 100% !important; align-items: center !important; margin-bottom: 5px !important; }
+    .user-badge div { justify-content: center !important; }
+    
+    .topBar > div:last-child {
+        width: 100% !important; display: flex !important; flex-wrap: nowrap !important;
+        justify-content: center !important; align-items: center !important; gap: 8px !important;
+    }
+    .streak-container { font-size: 13px !important; white-space: nowrap !important; }
+    .icon-btn, .theme-toggle { font-size: 18px !important; width: 35px !important; height: 35px !important; display: flex; justify-content: center; align-items: center; }
+    .logout-btn { width: 100% !important; margin-top: 10px !important; order: 99 !important; }
 }
 
 
-/* --- MENU PROGRESS BARS --- */
-.menu-progress-track {
-    width: 100%;
-    height: 4px;
-    background: #e2e8f0;
-    border-radius: 2px;
-    overflow: hidden;
-    margin-top: 5px;
-}
+/* ==========================================================================
+   CRITICAL SCREEN LAYOUT FIXES (Do not edit below)
+   ========================================================================== */
 
-.menu-progress-fill {
-    height: 100%;
-    background: #22c55e; /* Success Green */
-    width: 0%;
-    transition: width 0.5s ease-out;
-}
-
-/* Update the Summary to look nicer with stats */
-summary {
-    display: block; /* Allows us to style inside */
-    position: relative;
-    padding-right: 30px; /* Space for the arrow */
-}
-
-/* Custom arrow to prevent overlapping */
-summary::after {
-    content: '▼';
-    position: absolute;
-    right: 10px;
-    top: 15px;
-    font-size: 12px;
-    color: #94a3b8;
-    transition: transform 0.2s;
-}
-details[open] summary::after {
-    transform: rotate(180deg);
-}
-/* Hide default browser arrow */
-summary::-webkit-details-marker { display: none; }
-
-
-/* --- FORCE HIDE FIX --- */
-.screen.hidden {
-    display: none !important;
-    opacity: 0 !important;
-    visibility: hidden !important;
-    z-index: -1 !important;
-}
-
-.screen.active {
-    display: flex !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    z-index: 100 !important;
-}
-
-
-/* --- FORCE AUTH SCREEN TO HIDE --- */
-#auth-screen.hidden, 
-#dashboard-screen.hidden {
-    display: none !important; /* The most powerful hiding command */
-    visibility: hidden !important;
-    pointer-events: none !important; /* You can't click it */
-    z-index: -999 !important; /* Push it behind everything */
-}
-
-
-/* --- CRITICAL SCREEN FIX --- */
+/* 1. Base Screen Style (Hidden by default) */
 .screen {
-    display: none; /* Default state is hidden */
+    display: none;
     width: 100%;
-    height: 100%;
+    min-height: 100vh;
 }
 
-.screen.active {
-    display: flex !important; /* Force flex for active screens */
+/* 2. FORCE HIDE Utility */
+.screen.hidden, #auth-screen.hidden, #dashboard-screen.hidden {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    z-index: -9999 !important;
+}
+
+/* 3. DASHBOARD & QUIZ (Normal Vertical Flow) */
+#dashboard-screen.active,
+#quiz-screen.active,
+#result-screen.active {
+    display: block !important; /* Forces normal top-to-bottom layout */
+    padding-top: 20px;
+}
+
+/* 4. LOGIN SCREEN ONLY (Centered Flex) */
+#auth-screen.active {
+    display: flex !important;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-}
-
-.screen.hidden {
-    display: none !important; /* Force hide for hidden screens */
-}
-
-/* Ensure the wrapper takes full height to center the card */
-#auth-screen {
-    min-height: 100vh;
-    width: 100%;
+    
+    /* Ensure it covers everything */
     position: fixed;
     top: 0;
     left: 0;
+    width: 100%;
+    height: 100vh;
+    background: #f0f2f5; /* Light grey background for login */
     z-index: 9999;
-    background: #f0f2f5; /* Or your background color */
 }
