@@ -827,27 +827,37 @@ function submitTest() {
     });
 }
 /* --- AGGRESSIVE SCREEN SWITCHER --- */
+/* --- SPECIFIC SCREEN SWITCHER --- */
 function showScreen(screenId) {
-    console.log("Switching to screen:", screenId);
+    console.log("📺 Switching to:", screenId);
 
-    // 1. Hide ALL screens first
-    const screens = document.querySelectorAll('.screen');
-    screens.forEach(s => {
-        s.classList.remove('active'); // Turn off flex/block
-        s.classList.add('hidden');    // Force hide
-        s.style.display = 'none';     // Double safety
-    });
+    // 1. Get the two main screens specifically
+    const authScreen = document.getElementById('auth-screen');
+    const dashScreen = document.getElementById('dashboard-screen');
+    const quizScreen = document.getElementById('quiz-screen');
+    const resultScreen = document.getElementById('result-screen');
 
-    // 2. Show ONLY the target screen
+    // 2. HARD RESET: Hide EVERYTHING first
+    if(authScreen) authScreen.classList.add('hidden');
+    if(authScreen) authScreen.classList.remove('active');
+    
+    if(dashScreen) dashScreen.classList.add('hidden');
+    if(dashScreen) dashScreen.classList.remove('active');
+
+    if(quizScreen) quizScreen.classList.add('hidden');
+    if(quizScreen) quizScreen.classList.remove('active');
+    
+    if(resultScreen) resultScreen.classList.add('hidden');
+    if(resultScreen) resultScreen.classList.remove('active');
+
+    // 3. Show ONLY the target
     const target = document.getElementById(screenId);
     if (target) {
         target.classList.remove('hidden');
         target.classList.add('active');
-        target.style.display = 'flex'; // Force show
-    } else {
-        console.error("Screen not found:", screenId);
     }
-}/* --- GO HOME (AUTO-REFRESH FIX) --- */
+}
+
 function goHome() {
     // 1. Stop the timer if running
     clearInterval(testTimer);
@@ -1210,4 +1220,5 @@ window.signup = function() {
             else alert("Error: " + error.message);
         });
 };
+
 
