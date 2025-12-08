@@ -353,34 +353,138 @@ function renderMenus(subjects, map) {
     });
 }
 
+/* =========================================
+   2. EXAM MODE: DROPDOWN + SELECTABLE GRID
+   ========================================= */
+
 function renderTestFilters(subjects, map) {
     const container = document.getElementById('filter-container');
     if (!container) return; 
     container.innerHTML = "";
-    subjects.forEach(subj => {
-        const group = document.createElement('div');
-        group.className = 'filter-group';
-        const subLabel = document.createElement('label');
-        subLabel.className = 'filter-subject-label';
-        subLabel.innerHTML = `<input type="checkbox" class="filter-checkbox subj-chk" value="${subj}"> ${subj}`;
-        const topicList = document.createElement('div');
-        topicList.className = 'filter-topic-list';
-        map[subj].forEach(topic => {
-            const topLabel = document.createElement('label');
-            topLabel.className = 'filter-topic-label';
-            topLabel.innerHTML = `<input type="checkbox" class="filter-checkbox topic-chk" value="${topic}" data-subject="${subj}"> ${topic}`;
-            topicList.appendChild(topLabel);
-        });
-        const subInput = subLabel.querySelector('input');
-        subInput.onchange = (e) => {
-            const topicInputs = topicList.querySelectorAll('input');
-            topicInputs.forEach(inp => inp.checked = e.target.checked);
-        };
-        group.appendChild(subLabel);
-        group.appendChild(topicList);
-        container.appendChild(group);
+    
+    const sortedSubjects = Array.from(subjects).sort();
+
+    sortedSubjects.forEach(subj => {
+        // 1. Create Dropdown Card
+        const details = document.createElement('details');
+        details.className = "subject-dropdown-card"; // Reuse same style
+
+        // 2. Header (With "Select All" Checkbox)
+        details.innerHTML = `
+            <summary class="subject-summary">
+                <div class="summary-header">
+                    <span class="subj-name">${subj}</span>
+                    <label class="select-all-label" onclick="event.stopPropagation()">
+                        <input type="checkbox" onchange="toggleSubjectAll(this, '${subj}')"> Select All
+                    </label>
+                </div>
+            </summary>
+        `;
+
+        // 3. Content (Grid of Topics)
+        const contentDiv = document.createElement('div');
+        contentDiv.className = "dropdown-content";
+        
+        const sortedTopics = Array.from(map[subj] || []).sort();
+        
+        if (sortedTopics.length > 0) {
+            const gridContainer = document.createElement('div');
+            gridContainer.className = "topics-text-grid"; // Reuse same grid style
+            
+            sortedTopics.forEach(topic => {
+                // Create Selectable Item
+                const item = document.createElement('div');
+                item.className = "topic-text-item exam-selectable"; 
+                item.innerText = topic;
+                // Store data for retrieval
+                item.dataset.subject = subj;
+                item.dataset.topic = topic;
+                
+                item.onclick = function() {
+                    this.classList.toggle('selected');
+                    // Uncheck "Select All" if we uncheck one item
+                    if(!this.classList.contains('selected')) {
+                        details.querySelector('input[type="checkbox"]').checked = false;
+                    }
+                };
+                
+                gridContainer.appendChild(item);
+            });
+            contentDiv.appendChild(gridContainer);
+        }
+
+        details.appendChild(contentDiv);
+        container.appendChild(details);
     });
 }
+
+// Helper: Toggle ALL topics in a subject
+function toggleSubjectAll(checkbox, subjName) {
+    // Find the dropdown that contains this checkbox
+    const header = checkbox.closest('.subject-dropdown-card');
+    const items = header.querySelectorAll('.exam-selectable');
+    
+    items.forEach(item => {
+        if (checkbox.checked) {
+            item.classList.add('selected');
+        } else {
+            item.classList.remove('selected');
+        }
+    });
+}
+
+/* =========================================
+   3. START TEST (Updated to read new Grid)
+   ========================================= */
+function startTest() {
+    const count = parseInt(document.getElementById('q-count').value);
+    const mins = parseInt(document.getElementById('t-limit').value);
+    
+    // Find all selected items (Blue ones)
+    const selectedElements = document.querySelectorAll('.exam-selectable.selected');
+    
+    let pool = [];
+
+    if (selectedElements.length === 0) {
+        // If nothing selected, ask user
+        if(!confirm("No specific topics selected. Test from ALL questions?")) return;
+        pool = [...allQuestions];
+    } else {
+        // 1. Build a list of selected "Subject|Topic" strings for easy matching
+        const selectedPairs = new Set();
+        selectedElements.forEach(el => {
+            selectedPairs.add(el.dataset.subject + "|" + el.dataset.topic);
+        });
+
+        // 2. Filter the Master List
+        pool = allQuestions.filter(q => {
+            const key = q.Subject + "|" + q.Topic;
+            return selectedPairs.has(key);
+        });
+    }
+
+    if(pool.length === 0) return alert("No questions found matching your selection.");
+    
+    // Shuffle and Slice
+    filteredQuestions = pool.sort(() => Math.random() - 0.5).slice(0, count);
+    
+    // Start Mode
+    currentMode = 'test';
+    currentIndex = 0;
+    testAnswers = {};
+    testFlags = {}; 
+    testTimeRemaining = mins * 60;
+    
+    showScreen('quiz-screen');
+    document.getElementById('timer').classList.remove('hidden');
+    document.getElementById('test-sidebar').classList.add('active');
+    renderNavigator();
+
+    clearInterval(testTimer);
+    testTimer = setInterval(updateTimer, 1000);
+    renderPage();
+}
+
 
 // ======================================================
 // 5. QUIZ LOGIC
@@ -404,34 +508,6 @@ function startPractice(subject, topic) {
     renderPage();
 }
 
-function startTest() {
-    const count = parseInt(document.getElementById('q-count').value);
-    const mins = parseInt(document.getElementById('t-limit').value);
-    const selectedSubjects = Array.from(document.querySelectorAll('.subj-chk:checked')).map(cb => cb.value);
-    const selectedTopics = Array.from(document.querySelectorAll('.topic-chk:checked')).map(cb => cb.value);
-
-    let pool = [];
-    if (selectedSubjects.length === 0 && selectedTopics.length === 0) pool = [...allQuestions];
-    else pool = allQuestions.filter(q => selectedSubjects.includes(q.Subject) || selectedTopics.includes(q.Topic));
-
-    if(pool.length === 0) return alert("No questions found.");
-    filteredQuestions = pool.sort(() => Math.random() - 0.5).slice(0, count);
-    
-    currentMode = 'test';
-    currentIndex = 0;
-    testAnswers = {};
-    testFlags = {}; // RESET FLAGS
-    testTimeRemaining = mins * 60;
-    
-    showScreen('quiz-screen');
-    document.getElementById('timer').classList.remove('hidden');
-    document.getElementById('test-sidebar').classList.add('active');
-    renderNavigator();
-
-    clearInterval(testTimer);
-    testTimer = setInterval(updateTimer, 1000);
-    renderPage();
-}
 
 function startSavedQuestions() {
     if(userBookmarks.length === 0) return alert("No bookmarks!");
@@ -1248,6 +1324,7 @@ window.signup = function() {
             if(msg) msg.innerText = "❌ Error: " + error.message;
         });
 };
+
 
 
 
