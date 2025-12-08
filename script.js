@@ -99,6 +99,14 @@ function saveProfile() {
 
 async function loadUserData() {
     if (!currentUser) return;
+
+    // --- FIX START: Restore the Name on Refresh ---
+    // If the user has a name saved, put it back on the dashboard
+    if (currentUser.displayName) {
+        document.getElementById('user-display').innerText = currentUser.displayName;
+    }
+    // --- FIX END ---
+
     try {
         // 1. Show "Loading..." so you know it's updating
         const statsBox = document.getElementById('quick-stats');
@@ -132,7 +140,6 @@ async function loadUserData() {
         console.error("Load Error:", e); 
     }
 }
-
 
 
 // === NEW: STREAK CALCULATOR ===
@@ -1235,5 +1242,6 @@ window.signup = function() {
             if(msg) msg.innerText = "❌ Error: " + error.message;
         });
 };
+
 
 
