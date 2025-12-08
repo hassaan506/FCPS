@@ -354,21 +354,44 @@ function startSavedQuestions() {
     renderPage();
 }
 
+/* --- MISTAKE BUTTON LOGIC (DEBUG VERSION) --- */
 function startMistakePractice() {
-    if (userMistakes.length === 0) return alert("🎉 Good job! You have no pending mistakes to review.");
-    
-    // Filter questions that match the mistake IDs
+    console.log("Button Clicked!"); 
+    alert("Step 1: The button works!");
+
+    // 1. Check if the list exists
+    if (typeof userMistakes === 'undefined') {
+        alert("❌ Error: 'userMistakes' variable is missing. Did you add it to the top of the file?");
+        return;
+    }
+
+    // 2. Check if list is empty
+    if (userMistakes.length === 0) {
+        alert("🎉 Good job! You have 0 mistakes saved right now.\n\n(Try getting a question wrong in Practice Mode to test this.)");
+        return;
+    }
+
+    // 3. Filter questions
+    if (typeof allQuestions === 'undefined' || allQuestions.length === 0) {
+        alert("❌ Error: Questions are not loaded yet. Please wait a second.");
+        return;
+    }
+
     filteredQuestions = allQuestions.filter(q => userMistakes.includes(q._uid));
     
-    if (filteredQuestions.length === 0) return alert("Error: Could not find mistake questions in the database.");
+    if (filteredQuestions.length === 0) {
+        alert("⚠️ Error: Found mistake IDs, but couldn't find the matching questions in the database.");
+        return;
+    }
     
-    // Start Practice Mode
+    // 4. Start the Session
+    alert(`✅ Loading ${filteredQuestions.length} mistakes...`);
     currentMode = 'practice';
     currentIndex = 0;
     showScreen('quiz-screen');
     renderPage();
-    alert(`📝 Loaded ${filteredQuestions.length} questions you previously got wrong. Good luck!`);
 }
+
 // --- RENDERING ---
 
 function renderPage() {
@@ -979,4 +1002,5 @@ async function submitReport() {
         alert("❌ DATABASE ERROR: " + error.message);
     }
 }
+
 
