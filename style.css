@@ -372,57 +372,49 @@ summary { padding: 18px; cursor: pointer; font-weight: 600; }
 }
 
 
-/* --- MOBILE HEADER FIX (APP STYLE) --- */
+/* --- MOBILE HEADER FIX (APP STYLE - FINAL) --- */
 @media screen and (max-width: 600px) {
+    /* 1. Stack the main box vertically */
     .topBar {
-        display: flex;
-        flex-direction: column;
-        height: auto;
-        padding: 20px 15px;
-        gap: 15px;
-        align-items: center; /* Centers everything */
-        text-align: center;
+        display: flex !important;
+        flex-direction: column !important;
+        height: auto !important;
+        padding: 20px 15px !important;
+        gap: 15px !important;
+        align-items: center !important; /* Center Everything */
+        text-align: center !important;
     }
 
-    /* 1. The Name Section */
+    /* 2. Center the Name */
     .user-badge {
-        width: 100%;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 5px;
+        width: 100% !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
     
     .user-badge div {
-        justify-content: center; 
+        justify-content: center !important;
     }
 
-    /* 2. The Icons Section (Streak, Trophy, Theme) */
+    /* 3. Center the Icons (Fire, Cup, Moon) */
+    /* This targets the container holding the right-side buttons */
     .topBar > div:last-child {
-        width: 100%;
-        display: flex;
-        justify-content: center;
-        gap: 20px; 
-        flex-wrap: wrap;
-        margin-bottom: 5px;
+        width: 100% !important;
+        display: flex !important;
+        justify-content: center !important; /* Center the icons */
+        gap: 20px !important;
+        flex-wrap: wrap !important;
+        margin-bottom: 5px !important;
     }
 
-    /* 3. The Log Out Button - Full width bar */
+    /* 4. Make Log Out a Big Red Bar */
     .logout-btn {
-        width: 100%;
-        margin-top: 10px;
-        background-color: #fee2e2; /* Light Red */
-        color: #ef4444; /* Dark Red text */
-        border: 1px solid #fca5a5;
-        text-align: center;
-        padding: 12px;
-        font-weight: 700;
-    }
-    
-    /* Bigger touch targets for icons */
-    .theme-toggle, .icon-btn {
-        font-size: 22px; 
-        padding: 5px;
-        margin: 0;
+        width: 100% !important;
+        margin-top: 15px !important;
+        background-color: #fee2e2 !important;
+        color: #ef4444 !important;
+        border: 1px solid #fca5a5 !important;
+        padding: 12px !important;
+        display: block !important;
     }
 }
