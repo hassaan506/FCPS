@@ -831,3 +831,34 @@ if (searchInput) {
         }
     });
 }
+
+/* --- PWA INSTALL LOGIC --- */
+let deferredPrompt;
+const installBtn = document.getElementById('install-btn');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    // 1. Prevent Chrome 67 and earlier from automatically showing the prompt
+    e.preventDefault();
+    // 2. Stash the event so it can be triggered later.
+    deferredPrompt = e;
+    // 3. Show the install button
+    if(installBtn) installBtn.classList.remove('hidden');
+});
+
+if(installBtn) {
+    installBtn.addEventListener('click', async () => {
+        if (!deferredPrompt) {
+            // Fallback for iOS or if prompt isn't ready
+            alert("To install: Tap the Share button (squares with arrow) and select 'Add to Home Screen'");
+            return;
+        }
+        // Show the install prompt
+        deferredPrompt.prompt();
+        // Wait for the user to respond to the prompt
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            installBtn.classList.add('hidden');
+        }
+        deferredPrompt = null;
+    });
+}
