@@ -40,6 +40,7 @@ let testTimeRemaining = 0;
 // ======================================================
 
 /* --- AUTH LISTENER (THE TRAFFIC COP) --- */
+/* --- AUTH LISTENER (THE TRAFFIC COP) --- */
 auth.onAuthStateChanged((user) => {
     if (user) {
         // User is Logged In (or just signed up)
@@ -51,6 +52,10 @@ auth.onAuthStateChanged((user) => {
         
         // 2. Load their data
         loadUserData();
+
+        // 3. LOAD QUESTIONS (This was missing!)
+        loadQuestions(); 
+
     } else {
         // User is Logged Out
         console.log("No user signed in.");
@@ -60,6 +65,8 @@ auth.onAuthStateChanged((user) => {
         showScreen('auth-screen');
     }
 });
+
+
 function login() {
     const email = document.getElementById('email').value;
     const pass = document.getElementById('password').value;
@@ -1228,4 +1235,5 @@ window.signup = function() {
             if(msg) msg.innerText = "❌ Error: " + error.message;
         });
 };
+
 
