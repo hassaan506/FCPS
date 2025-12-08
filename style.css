@@ -1,5 +1,5 @@
 /* ---------------------------------------------
-   STYLE.CSS (FCPS PREP - FINALIZED)
+   STYLE.CSS (FCPS PREP - FINALIZED FIXED VERSION)
 --------------------------------------------- */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
@@ -32,7 +32,6 @@ body {
     min-height: 100vh; 
     background: var(--bg-color);
     color: var(--text-dark);
-    /* Note: We removed 'display: flex' from body to allow dashboard to scroll naturally */
     overflow-x: hidden;
 }
 
@@ -285,10 +284,11 @@ summary::-webkit-details-marker { display: none; }
 
 
 /* ==========================================================================
-   CRITICAL SCREEN LAYOUT FIXES (Do not edit below)
+   CRITICAL SCREEN LAYOUT FIXES (FINALIZED)
    ========================================================================== */
 
-/* 1. Base Screen Style (Hidden by default) */
+/* 1. Base Screen Style */
+/* Removed max-width limit to stop split-screen on login */
 .screen {
     display: none;
     width: 100%;
@@ -311,7 +311,7 @@ summary::-webkit-details-marker { display: none; }
     padding-top: 20px;
 }
 
-/* 4. LOGIN SCREEN ONLY (Centered Flex) */
+/* 4. LOGIN SCREEN ONLY (Centered Flex & FULL WIDTH) */
 #auth-screen.active {
     display: flex !important;
     flex-direction: column;
@@ -322,8 +322,9 @@ summary::-webkit-details-marker { display: none; }
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
+    width: 100% !important;
+    max-width: none !important; /* CRITICAL FIX: No width limit */
     height: 100vh;
-    background: #f0f2f5; /* Light grey background for login */
+    background: #f0f2f5; 
     z-index: 9999;
 }
