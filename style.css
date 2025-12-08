@@ -364,6 +364,7 @@ button {
 #dynamic-menus::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 #dynamic-menus::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
+
 /* =========================================
    8. QUIZ INTERFACE & EXAM MODE
    ========================================= */
@@ -728,106 +729,126 @@ input[type="password"] {
 }
 
 /* =========================================
-   15. TEXT GRID LAYOUT (The Final User Vision)
+   18. DROPDOWN + TEXT GRID (Final Fix)
    ========================================= */
 
-/* 1. The Subject Card */
-.subject-card-grid {
+/* 1. The Card (Dropdown Container) */
+.subject-dropdown-card {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: 16px;
-    margin-bottom: 25px;
-    padding: 20px;
+    margin-bottom: 15px;
+    overflow: hidden;
     box-shadow: var(--shadow-sm);
+    transition: all 0.3s ease;
 }
 
-/* 2. The Header Area (Centered) */
-.subject-header-grid {
-    text-align: center;
-    margin-bottom: 20px;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 15px;
+/* 2. The Header (Summary) */
+.subject-summary {
+    padding: 20px;
+    cursor: pointer;
+    list-style: none; /* Remove default triangle */
+    position: relative;
+}
+/* Hide default marker in Safari/Chrome */
+.subject-summary::-webkit-details-marker { display: none; }
+
+.subject-summary::after {
+    content: '▼';
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    color: var(--text-light);
+    font-size: 12px;
+    transition: transform 0.3s;
 }
 
-.subject-header-grid h2 {
-    font-size: 20px;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 5px;
+/* Rotate arrow when open */
+details[open] .subject-summary::after {
+    transform: rotate(180deg);
     color: var(--primary);
 }
 
-/* Thin progress bar under title */
+.summary-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.subj-name { font-weight: 700; font-size: 16px; color: var(--text-dark); }
+.subj-stats { font-size: 12px; color: var(--text-light); }
+
+/* Progress Bar in Header */
 .progress-bar-thin {
     height: 4px;
-    width: 100px; /* Small centered bar */
     background: #e2e8f0;
-    margin: 0 auto 10px auto;
     border-radius: 2px;
     overflow: hidden;
 }
 .progress-bar-thin .fill {
     height: 100%;
     background: var(--success);
+    transition: width 0.5s ease;
 }
 
-/* "Practice All" Link */
-.practice-all-link {
-    background: none;
-    border: 1px solid var(--primary);
-    color: var(--primary);
-    padding: 8px 20px;
-    font-size: 13px;
-    border-radius: 20px;
-    cursor: pointer;
-    width: auto; /* Don't stretch */
-    display: inline-block;
-    transition: all 0.2s;
-}
-.practice-all-link:hover {
-    background: var(--primary);
-    color: white;
+/* 3. The Content Box (Inside) */
+.dropdown-content {
+    background: var(--input-bg); /* Slightly different bg for inside */
+    padding: 20px;
+    border-top: 1px solid var(--border-color);
 }
 
-/* 3. The Topic Grid (Where the magic happens) */
-.topics-grid-container {
-    display: grid;
-    /* This creates columns that auto-fit (at least 3-4 per row on desktop) */
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); 
-    gap: 15px; /* Space between items */
-    text-align: left;
-}
-
-/* 4. The Individual Topic Text */
-.topic-grid-item {
-    font-size: 13px;
-    color: var(--text-dark);
-    padding: 8px;
-    cursor: pointer;
-    border-radius: 6px;
-    transition: all 0.2s;
-    border-left: 2px solid transparent; /* Invisible border for hover effect */
-    background: var(--input-bg); /* Slight background to make them readable */
-    text-align: center;
-}
-
-.topic-grid-item:hover {
-    background: #eef2ff; /* Light blue hover */
-    color: var(--primary);
-    transform: translateY(-2px);
+/* 4. "Practice All" Button (Top Row) */
+.practice-all-row {
+    display: flex;
+    justify-content: space-between;
     font-weight: 600;
+    color: var(--primary);
+    padding: 10px 15px;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 15px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.practice-all-row:hover {
+    background: #f0f9ff;
+    border-color: var(--primary);
 }
 
-.topic-grid-item.done {
+/* 5. THE TEXT GRID (Horizontal List) */
+.topics-text-grid {
+    display: flex;
+    flex-wrap: wrap; /* Allows text to wrap to next line */
+    gap: 10px 25px;  /* 10px Vertical gap, 25px Horizontal gap */
+}
+
+/* The Individual Text Items */
+.topic-text-item {
+    font-size: 14px;
+    color: var(--text-dark);
+    cursor: pointer;
+    position: relative;
+    padding: 2px 0;
+}
+
+/* Hover Effect (Underline) */
+.topic-text-item:hover {
+    color: var(--primary);
+    text-decoration: underline;
+    font-weight: 500;
+}
+
+/* Completed Items */
+.topic-text-item.done {
     text-decoration: line-through;
     opacity: 0.5;
 }
 
-/* 5. Mobile Adjustment */
-@media screen and (max-width: 600px) {
-    .topics-grid-container {
-        /* On small phones, maybe just 2 columns */
-        grid-template-columns: 1fr 1fr; 
-    }
+/* 6. EXAM MODE GRID (Apply same style to Exam filters) */
+/* We reuse the grid class so it matches practice mode */
+.filter-container .topics-text-grid {
+    padding: 10px 0;
 }
