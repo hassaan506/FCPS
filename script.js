@@ -26,6 +26,7 @@ let allQuestions = [];
 let filteredQuestions = [];
 let userBookmarks = [];
 let userSolvedIDs = [];
+let userMistakes = [];
 
 let currentMode = 'practice';
 let currentIndex = 0; 
@@ -89,10 +90,10 @@ async function loadUserData() {
 
         userBookmarks = userData.bookmarks || [];
         userSolvedIDs = userData.solved || [];
-        
-        // --- NEW: GAMIFICATION LOGIC ---
+        userMistakes = userData.mistakes || []; // <--- LOAD MISTAKES
+
+        // Gamification & Stats
         checkStreak(userData);
-        // -------------------------------
 
         const resultsSnap = await db.collection('users').doc(currentUser.uid).collection('results').get();
         let totalTests = 0, totalScore = 0;
@@ -103,7 +104,7 @@ async function loadUserData() {
         if(statsBox) {
             statsBox.innerHTML = `
                 <div class="stat-row"><span class="stat-lbl">Test Average:</span> <span class="stat-val" style="color:${avgScore>=70?'#2ecc71':'#e74c3c'}">${avgScore}%</span></div>
-                <div class="stat-row"><span class="stat-lbl">Tests Taken:</span> <span class="stat-val">${totalTests}</span></div>
+                <div class="stat-row"><span class="stat-lbl">Mistakes Pending:</span> <span class="stat-val" style="color:#e74c3c">${userMistakes.length}</span></div>
                 <div class="stat-row" style="border:none;"><span class="stat-lbl">Practice Solved:</span> <span class="stat-val">${userSolvedIDs.length}</span></div>`;
         }
     } catch (e) { console.error(e); }
@@ -353,6 +354,21 @@ function startSavedQuestions() {
     renderPage();
 }
 
+function startMistakePractice() {
+    if (userMistakes.length === 0) return alert("🎉 Good job! You have no pending mistakes to review.");
+    
+    // Filter questions that match the mistake IDs
+    filteredQuestions = allQuestions.filter(q => userMistakes.includes(q._uid));
+    
+    if (filteredQuestions.length === 0) return alert("Error: Could not find mistake questions in the database.");
+    
+    // Start Practice Mode
+    currentMode = 'practice';
+    currentIndex = 0;
+    showScreen('quiz-screen');
+    renderPage();
+    alert(`📝 Loaded ${filteredQuestions.length} questions you previously got wrong. Good luck!`);
+}
 // --- RENDERING ---
 
 function renderPage() {
@@ -511,24 +527,34 @@ async function saveProgressToDB(q, isCorrect) {
         
         if (!data.stats) data.stats = {};
         if (!data.solved) data.solved = [];
+        if (!data.mistakes) data.mistakes = []; // Ensure array exists
 
-        if (isCorrect && !data.solved.includes(q._uid)) {
-            data.solved.push(q._uid);
+        if (isCorrect) {
+            // Add to Solved
+            if (!data.solved.includes(q._uid)) data.solved.push(q._uid);
+            // Remove from Mistakes (since you fixed it!)
+            data.mistakes = data.mistakes.filter(id => id !== q._uid);
+        } else {
+            // Add to Mistakes (if not already there)
+            if (!data.mistakes.includes(q._uid)) data.mistakes.push(q._uid);
         }
 
+        // Update Subject Stats
         const cleanSubj = (q.Subject || "General").replace(/[^a-zA-Z0-9]/g, "_");
         if (!data.stats[cleanSubj]) {
             data.stats[cleanSubj] = { correct: 0, total: 0 };
         }
-
         data.stats[cleanSubj].total += 1;
         if (isCorrect) data.stats[cleanSubj].correct += 1;
 
         await userRef.set(data, { merge: true });
-        userSolvedIDs = data.solved; // Update local cache
+        
+        // Update local variables
+        userSolvedIDs = data.solved;
+        userMistakes = data.mistakes;
+
     } catch (error) { console.error("Save failed", error); }
 }
-
 // --- NAVIGATOR ---
 function renderNavigator() {
     if(currentMode !== 'test') return;
@@ -623,6 +649,7 @@ function submitTest() {
     let wrongList = [];
     let sessionStats = {}; 
 
+    // 1. Calculate Score & identify Wrong Answers
     filteredQuestions.forEach(q => {
         const user = testAnswers[q._uid];
         const correct = getCorrectLetter(q);
@@ -643,21 +670,48 @@ function submitTest() {
 
     const percent = Math.round((score/filteredQuestions.length)*100);
     
+    // 2. Save to Database (Including Mistakes)
     if(currentUser) {
+        // Save the result history
         db.collection('users').doc(currentUser.uid).collection('results').add({
             date: new Date(), score: percent, total: filteredQuestions.length
         });
 
-        let updates = { solved: userSolvedIDs };
+        // --- MISTAKE BANK LOGIC START ---
+        // A. Add WRONG answers to the mistakes list
+        wrongList.forEach(item => {
+            if(!userMistakes.includes(item.q._uid)) {
+                userMistakes.push(item.q._uid);
+            }
+        });
+
+        // B. Remove CORRECT answers from the mistakes list
+        // (If you finally got it right, you don't need to practice it anymore)
+        const correctIDsInThisTest = filteredQuestions
+            .filter(q => testAnswers[q._uid] === getCorrectLetter(q))
+            .map(q => q._uid);
+            
+        userMistakes = userMistakes.filter(id => !correctIDsInThisTest.includes(id));
+        // --- MISTAKE BANK LOGIC END ---
+
+        // Prepare the update object
+        let updates = { 
+            solved: userSolvedIDs,
+            mistakes: userMistakes // <--- SAVE THE UPDATED MISTAKES
+        };
+
+        // Add Subject Stats
         for (const [subject, data] of Object.entries(sessionStats)) {
             updates[`stats.${subject}.correct`] = firebase.firestore.FieldValue.increment(data.correct);
             updates[`stats.${subject}.total`] = firebase.firestore.FieldValue.increment(data.total);
         }
         
+        // Push everything to Firebase
         db.collection('users').doc(currentUser.uid).set(updates, { merge: true })
           .then(() => loadUserData());
     }
 
+    // 3. Show Results Screen
     showScreen('result-screen');
     document.getElementById('final-score').innerText = `${percent}% (${score}/${filteredQuestions.length})`;
     
@@ -673,7 +727,6 @@ function submitTest() {
             </div>`;
     });
 }
-
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
@@ -926,3 +979,4 @@ async function submitReport() {
         alert("❌ DATABASE ERROR: " + error.message);
     }
 }
+
