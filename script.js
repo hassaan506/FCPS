@@ -252,28 +252,77 @@ function processData(data) {
     renderTestFilters(subjects, map); 
 }
 
+/* --- RENDER MENUS WITH PROGRESS BARS --- */
 function renderMenus(subjects, map) {
     const container = document.getElementById('dynamic-menus');
     container.innerHTML = "";
-    subjects.forEach(subj => {
+    
+    // Sort subjects alphabetically
+    const sortedSubjects = Array.from(subjects).sort();
+
+    sortedSubjects.forEach(subj => {
+        // 1. Calculate Stats for the whole Subject
+        const subjQuestions = allQuestions.filter(q => q.Subject === subj);
+        const totalSubj = subjQuestions.length;
+        const solvedSubj = subjQuestions.filter(q => userSolvedIDs.includes(q._uid)).length;
+        const percentSubj = totalSubj > 0 ? Math.round((solvedSubj / totalSubj) * 100) : 0;
+
+        // 2. Create the Dropdown (Details)
         const details = document.createElement('details');
-        details.innerHTML = `<summary>${subj}</summary>`;
+        
+        // 3. Create the Header (Summary)
+        details.innerHTML = `
+            <summary>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <span style="font-weight:600;">${subj}</span>
+                    <span style="font-size:11px; color:#64748b;">${solvedSubj}/${totalSubj} (${percentSubj}%)</span>
+                </div>
+                <div class="menu-progress-track">
+                    <div class="menu-progress-fill" style="width:${percentSubj}%"></div>
+                </div>
+            </summary>
+        `;
+
+        // 4. Create "Practice All" Button
         const allBtn = document.createElement('button');
-        allBtn.textContent = `Practice All ${subj}`;
         allBtn.className = "category-btn";
+        allBtn.innerHTML = `
+            <div style="display:flex; justify-content:space-between;">
+                <span>Practice All ${subj}</span>
+                <span>⭐</span>
+            </div>`;
         allBtn.onclick = () => startPractice(subj, null);
         details.appendChild(allBtn);
-        map[subj].forEach(topic => {
+
+        // 5. Create Topic Buttons (with their own stats)
+        const sortedTopics = Array.from(map[subj] || []).sort();
+        
+        sortedTopics.forEach(topic => {
+            // Stats for this specific Topic
+            const topQuestions = subjQuestions.filter(q => q.Topic === topic);
+            const totalTop = topQuestions.length;
+            const solvedTop = topQuestions.filter(q => userSolvedIDs.includes(q._uid)).length;
+            const percentTop = totalTop > 0 ? Math.round((solvedTop / totalTop) * 100) : 0;
+            
             const btn = document.createElement('button');
-            btn.textContent = topic;
             btn.className = "category-btn";
+            // Add progress bar inside the button
+            btn.innerHTML = `
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <span>${topic}</span>
+                    <span style="font-size:11px; color:#94a3b8;">${percentTop}%</span>
+                </div>
+                <div class="menu-progress-track" style="height:3px; background:#f1f5f9;">
+                    <div class="menu-progress-fill" style="width:${percentTop}%; background:${percentTop===100 ? '#fbbf24' : '#3b82f6'};"></div>
+                </div>
+            `;
             btn.onclick = () => startPractice(subj, topic);
             details.appendChild(btn);
         });
+
         container.appendChild(details);
     });
 }
-
 function renderTestFilters(subjects, map) {
     const container = document.getElementById('filter-container');
     if (!container) return; 
@@ -1036,6 +1085,7 @@ async function submitReport() {
         alert("❌ DATABASE ERROR: " + error.message);
     }
 }
+
 
 
 
