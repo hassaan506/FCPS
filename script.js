@@ -872,3 +872,46 @@ if (installBtn) {
         }
     });
 }
+
+
+/* --- REPORT ERROR LOGIC --- */
+function toggleReportForm() {
+    const form = document.getElementById('report-form');
+    if (form) form.classList.toggle('hidden');
+}
+
+async function submitReport() {
+    // 1. Get the current question details
+    // We check both filteredQuestions (practice) or allQuestions (just in case)
+    const q = (typeof filteredQuestions !== 'undefined' && filteredQuestions[currentIndex]) 
+              ? filteredQuestions[currentIndex] 
+              : null;
+              
+    const reasonInput = document.getElementById('report-reason');
+    const reason = reasonInput.value;
+
+    // 2. Validation
+    if (!q) return alert("Error: No question selected.");
+    if (!reason) return alert("Please type a reason first.");
+    if (!currentUser) return alert("You must be logged in to report.");
+
+    // 3. Send to Firebase (Collection: 'reports')
+    try {
+        await db.collection('reports').add({
+            questionID: q._uid || "unknown",
+            questionText: q.Question || "No Text",
+            reportReason: reason,
+            reportedBy: currentUser.email,
+            timestamp: new Date()
+        });
+
+        // 4. Success Feedback
+        alert("✅ Report Sent! Thank you for helping us improve.");
+        reasonInput.value = ""; // Clear the box
+        document.getElementById('report-form').classList.add('hidden'); // Hide the form
+
+    } catch (error) {
+        console.error(error);
+        alert("Error sending report: " + error.message);
+    }
+}
