@@ -149,15 +149,29 @@
     </div>
 
     <div id="explanation-modal" class="modal-overlay hidden">
-        <div class="joinCard" style="max-width: 600px; border-left: 6px solid #28a745; text-align: left;">
-            <h2 style="color:#28a745; margin-bottom:10px; font-size: 24px;">✅ Correct!</h2>
-            <div id="modal-content" class="dynamic-explanation" style="margin-top:0; border:none; background:#f9f9f9; text-align:left;"></div>
-            <div style="display:flex; gap:10px; margin-top:20px;">
-                <button class="secondary" onclick="closeModal()">Review Options</button>
-                <button class="primary" onclick="nextPageFromModal()">Next Question ➜</button>
+    <div class="joinCard" style="max-width: 600px; border-left: 6px solid #28a745; text-align: left;">
+        <h2 style="color:#28a745; margin-bottom:10px; font-size: 24px;">✅ Correct!</h2>
+        
+        <div id="modal-content" class="dynamic-explanation" style="margin-top:0; border:none; background:#f9f9f9; text-align:left;"></div>
+        
+        <div style="display:flex; gap:10px; margin-top:20px; align-items:center;">
+            <button class="secondary" onclick="closeModal()">Review Options</button>
+            <button class="primary" onclick="nextPageFromModal()">Next Question ➜</button>
+        </div>
+
+        <div style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px;">
+            <p onclick="toggleReportForm()" style="color:#e74c3c; font-size:12px; cursor:pointer; text-decoration:underline;">
+                🚩 Report a mistake in this question
+            </p>
+
+            <div id="report-form" class="hidden" style="margin-top:10px; background:#fff5f5; padding:10px; border-radius:8px;">
+                <input type="text" id="report-reason" placeholder="Describe error (e.g. Typo in Option A)" style="width:100%; margin-bottom:5px; font-size:13px; background:white;">
+                <button onclick="submitReport()" style="background:#e74c3c; color:white; font-size:12px; padding:8px 15px; width:auto; border:none;">Submit Report</button>
             </div>
         </div>
+
     </div>
+</div>
 
     <div id="profile-modal" class="modal-overlay hidden">
         <div class="joinCard" style="max-width: 400px; text-align: center;">
@@ -193,6 +207,7 @@
     <script src="script.js"></script>
 </body>
 </html>
+
 
 
 
