@@ -39,19 +39,27 @@ let testTimeRemaining = 0;
 // 3. AUTH & DASHBOARD
 // ======================================================
 
-auth.onAuthStateChanged(user => {
+/* --- AUTH LISTENER (THE TRAFFIC COP) --- */
+auth.onAuthStateChanged((user) => {
     if (user) {
+        // User is Logged In (or just signed up)
+        console.log("User detected:", user.email);
         currentUser = user;
-        showScreen('dashboard-screen');
-        document.getElementById('user-display').innerText = user.displayName || "Doctor";
+        
+        // 1. HIDE Login Screen / SHOW Dashboard
+        showScreen('dashboard-screen'); 
+        
+        // 2. Load their data
         loadUserData();
-        loadQuestions();
     } else {
+        // User is Logged Out
+        console.log("No user signed in.");
         currentUser = null;
+        
+        // 1. SHOW Login Screen / HIDE Dashboard
         showScreen('auth-screen');
     }
 });
-
 function login() {
     const email = document.getElementById('email').value;
     const pass = document.getElementById('password').value;
@@ -818,11 +826,28 @@ function submitTest() {
             </div>`;
     });
 }
-function showScreen(id) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
-}
-/* --- GO HOME (AUTO-REFRESH FIX) --- */
+/* --- AGGRESSIVE SCREEN SWITCHER --- */
+function showScreen(screenId) {
+    console.log("Switching to screen:", screenId);
+
+    // 1. Hide ALL screens first
+    const screens = document.querySelectorAll('.screen');
+    screens.forEach(s => {
+        s.classList.remove('active'); // Turn off flex/block
+        s.classList.add('hidden');    // Force hide
+        s.style.display = 'none';     // Double safety
+    });
+
+    // 2. Show ONLY the target screen
+    const target = document.getElementById(screenId);
+    if (target) {
+        target.classList.remove('hidden');
+        target.classList.add('active');
+        target.style.display = 'flex'; // Force show
+    } else {
+        console.error("Screen not found:", screenId);
+    }
+}/* --- GO HOME (AUTO-REFRESH FIX) --- */
 function goHome() {
     // 1. Stop the timer if running
     clearInterval(testTimer);
@@ -1185,3 +1210,4 @@ window.signup = function() {
             else alert("Error: " + error.message);
         });
 };
+
