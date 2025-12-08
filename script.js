@@ -18,7 +18,7 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 
 // ======================================================
-// 2. STATE
+// 2. STATE VARIABLES
 // ======================================================
 
 let currentUser = null;
@@ -27,10 +27,11 @@ let filteredQuestions = [];
 let userBookmarks = [];
 let userSolvedIDs = [];
 
+// Quiz State
 let currentMode = 'practice';
 let currentIndex = 0; 
 let testTimer = null;
-let testAnswers = {}; // { q_uid: "A" }
+let testAnswers = {}; // Stores answers by internal unique ID
 let testTimeRemaining = 0;
 
 // ======================================================
@@ -53,13 +54,17 @@ auth.onAuthStateChanged(user => {
 function login() {
     const email = document.getElementById('email').value;
     const pass = document.getElementById('password').value;
-    auth.signInWithEmailAndPassword(email, pass).catch(e => document.getElementById('auth-msg').innerText = e.message);
+    auth.signInWithEmailAndPassword(email, pass)
+        .catch(err => document.getElementById('auth-msg').innerText = err.message);
 }
+
 function signup() {
     const email = document.getElementById('email').value;
     const pass = document.getElementById('password').value;
-    auth.createUserWithEmailAndPassword(email, pass).catch(e => document.getElementById('auth-msg').innerText = e.message);
+    auth.createUserWithEmailAndPassword(email, pass)
+        .catch(err => document.getElementById('auth-msg').innerText = err.message);
 }
+
 function logout() { auth.signOut(); }
 
 // --- PROFILE & DATA ---
@@ -67,13 +72,14 @@ function openProfileModal() {
     document.getElementById('profile-modal').classList.remove('hidden');
     if (currentUser.displayName) document.getElementById('new-display-name').value = currentUser.displayName;
 }
+
 function saveProfile() {
     const newName = document.getElementById('new-display-name').value;
-    if (!newName) return;
+    if (!newName) return alert("Please enter a name.");
     currentUser.updateProfile({ displayName: newName }).then(() => {
         document.getElementById('user-display').innerText = newName;
         document.getElementById('profile-modal').classList.add('hidden');
-    });
+    }).catch(e => alert(e.message));
 }
 
 async function loadUserData() {
@@ -83,26 +89,30 @@ async function loadUserData() {
         if (userDoc.exists) {
             userBookmarks = userDoc.data().bookmarks || [];
             userSolvedIDs = userDoc.data().solved || [];
+        } else {
+            userBookmarks = []; userSolvedIDs = [];
         }
+
         const resultsSnap = await db.collection('users').doc(currentUser.uid).collection('results').get();
         let totalTests = 0, totalScore = 0;
         resultsSnap.forEach(doc => { totalTests++; totalScore += doc.data().score; });
         const avgScore = totalTests > 0 ? Math.round(totalScore / totalTests) : 0;
-        
+
         // Target 'quick-stats' specifically to protect the Analytics Button
         const statsBox = document.getElementById('quick-stats');
-        if(statsBox) {
+        if (statsBox) {
             statsBox.innerHTML = `
                 <div class="stat-row"><span class="stat-lbl">Test Average:</span> <span class="stat-val" style="color:${avgScore>=70?'#2ecc71':'#e74c3c'}">${avgScore}%</span></div>
                 <div class="stat-row"><span class="stat-lbl">Tests Taken:</span> <span class="stat-val">${totalTests}</span></div>
-                <div class="stat-row" style="border:none;"><span class="stat-lbl">Practice Solved:</span> <span class="stat-val">${userSolvedIDs.length}</span></div>`;
+                <div class="stat-row" style="border:none;"><span class="stat-lbl">Practice Solved:</span> <span class="stat-val">${userSolvedIDs.length}</span></div>
+            `;
         }
     } catch (e) { console.error(e); }
 }
 
 async function resetAccountData() {
-    if(!currentUser) return;
-    if (!confirm("⚠️ WARNING: This will delete ALL progress. Continue?")) return;
+    if(!currentUser) return alert("Please log in.");
+    if (!confirm("⚠️ WARNING: This will delete ALL progress/bookmarks. Continue?")) return;
     try {
         const resultsRef = db.collection('users').doc(currentUser.uid).collection('results');
         const snapshot = await resultsRef.get();
@@ -110,12 +120,12 @@ async function resetAccountData() {
         snapshot.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
         await db.collection('users').doc(currentUser.uid).delete();
-        window.location.reload();
+        alert("✅ Reset Complete."); window.location.reload();
     } catch (e) { alert(e.message); }
 }
 
 // ======================================================
-// 4. DATA LOADING
+// 4. DATA LOADING & FILTER GENERATION
 // ======================================================
 
 function loadQuestions() {
@@ -161,11 +171,14 @@ function renderMenus(subjects, map) {
     subjects.forEach(subj => {
         const details = document.createElement('details');
         details.innerHTML = `<summary>${subj}</summary>`;
+        
         const allBtn = document.createElement('button');
         allBtn.textContent = `Practice All ${subj}`;
         allBtn.className = "category-btn";
+        allBtn.style.fontWeight = "bold";
         allBtn.onclick = () => startPractice(subj, null);
         details.appendChild(allBtn);
+
         map[subj].forEach(topic => {
             const btn = document.createElement('button');
             btn.textContent = topic;
@@ -181,25 +194,30 @@ function renderTestFilters(subjects, map) {
     const container = document.getElementById('filter-container');
     if (!container) return; 
     container.innerHTML = "";
+
     subjects.forEach(subj => {
         const group = document.createElement('div');
         group.className = 'filter-group';
         const subLabel = document.createElement('label');
         subLabel.className = 'filter-subject-label';
         subLabel.innerHTML = `<input type="checkbox" class="filter-checkbox subj-chk" value="${subj}"> ${subj}`;
+        
         const topicList = document.createElement('div');
         topicList.className = 'filter-topic-list';
+
         map[subj].forEach(topic => {
             const topLabel = document.createElement('label');
             topLabel.className = 'filter-topic-label';
             topLabel.innerHTML = `<input type="checkbox" class="filter-checkbox topic-chk" value="${topic}" data-subject="${subj}"> ${topic}`;
             topicList.appendChild(topLabel);
         });
+
         const subInput = subLabel.querySelector('input');
         subInput.onchange = (e) => {
             const topicInputs = topicList.querySelectorAll('input');
             topicInputs.forEach(inp => inp.checked = e.target.checked);
         };
+
         group.appendChild(subLabel);
         group.appendChild(topicList);
         container.appendChild(group);
@@ -214,13 +232,17 @@ function setMode(mode) {
     currentMode = mode;
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     if(event.target) event.target.classList.add('active');
+    
     document.getElementById('test-settings').classList.toggle('hidden', mode !== 'test');
     document.getElementById('dynamic-menus').classList.toggle('hidden', mode === 'test');
 }
 
 function startPractice(subject, topic) {
-    filteredQuestions = allQuestions.filter(q => q.Subject === subject && (!topic || q.Topic === topic));
+    filteredQuestions = allQuestions.filter(q => {
+        return q.Subject === subject && (!topic || q.Topic === topic);
+    });
     if (filteredQuestions.length === 0) return alert("No questions!");
+
     filteredQuestions.sort(() => Math.random() - 0.5);
     currentMode = 'practice';
     currentIndex = 0;
@@ -231,14 +253,21 @@ function startPractice(subject, topic) {
 function startTest() {
     const count = parseInt(document.getElementById('q-count').value);
     const mins = parseInt(document.getElementById('t-limit').value);
+    
     const selectedSubjects = Array.from(document.querySelectorAll('.subj-chk:checked')).map(cb => cb.value);
     const selectedTopics = Array.from(document.querySelectorAll('.topic-chk:checked')).map(cb => cb.value);
 
     let pool = [];
-    if (selectedSubjects.length === 0 && selectedTopics.length === 0) pool = [...allQuestions];
-    else pool = allQuestions.filter(q => selectedSubjects.includes(q.Subject) || selectedTopics.includes(q.Topic));
+    if (selectedSubjects.length === 0 && selectedTopics.length === 0) {
+        pool = [...allQuestions];
+    } else {
+        pool = allQuestions.filter(q => {
+            return selectedSubjects.includes(q.Subject) || selectedTopics.includes(q.Topic);
+        });
+    }
 
-    if(pool.length === 0) return alert("No questions found.");
+    if(pool.length === 0) return alert("No questions found for selection.");
+    
     filteredQuestions = pool.sort(() => Math.random() - 0.5).slice(0, count);
     
     currentMode = 'test';
@@ -266,7 +295,7 @@ function startSavedQuestions() {
     renderPage();
 }
 
-// --- RENDERING ---
+// --- RENDERING ENGINE ---
 
 function renderPage() {
     const container = document.getElementById('quiz-content-area');
@@ -284,9 +313,10 @@ function renderPage() {
         document.getElementById('test-sidebar').classList.remove('active'); 
         submitBtn.classList.add('hidden');
         nextBtn.classList.add('hidden'); 
+        
         container.appendChild(createQuestionCard(filteredQuestions[currentIndex], currentIndex, false));
+
     } else {
-        // Test Mode
         document.getElementById('timer').classList.remove('hidden');
         nextBtn.classList.remove('hidden');
         submitBtn.classList.add('hidden');
@@ -345,7 +375,7 @@ function createQuestionCard(q, index, isTest) {
     return card;
 }
 
-// --- INTERACTION & ANALYTICS ---
+// --- INTERACTION ---
 
 function handleClick(index, opt) {
     const q = filteredQuestions[index];
@@ -357,7 +387,7 @@ function handleClick(index, opt) {
         document.getElementById(`btn-${index}-${opt}`).classList.add('selected');
         renderNavigator(); 
     } else {
-        // PRACTICE MODE
+        // PRACTICE MODE LOGIC
         const correct = getCorrectLetter(q);
         const btn = document.getElementById(`btn-${index}-${opt}`);
         
@@ -374,32 +404,33 @@ function handleClick(index, opt) {
             content.innerHTML = q.Explanation || "No explanation provided.";
             modal.classList.remove('hidden');
 
-            // --- ANALYTICS SAVE ---
+            // --- ANALYTICS SAVE (Practice Mode) ---
             if (currentUser) {
-                // 1. Mark as Solved
+                // Update Solved List
                 if (!userSolvedIDs.includes(q.ID)) {
                     userSolvedIDs.push(q.ID);
-                    db.collection('users').doc(currentUser.uid).set({ solved: userSolvedIDs }, { merge: true });
                 }
                 
-                // 2. Update Subject Stats
                 const subj = q.Subject || "General";
-                const statsRef = db.collection('users').doc(currentUser.uid);
-                let updateData = {};
-                updateData[`stats.${subj}.correct`] = firebase.firestore.FieldValue.increment(1);
-                updateData[`stats.${subj}.total`] = firebase.firestore.FieldValue.increment(1);
-                statsRef.set(updateData, { merge: true });
+                
+                // Construct Update Object
+                let updates = {
+                    solved: userSolvedIDs
+                };
+                updates[`stats.${subj}.correct`] = firebase.firestore.FieldValue.increment(1);
+                updates[`stats.${subj}.total`] = firebase.firestore.FieldValue.increment(1);
+                
+                db.collection('users').doc(currentUser.uid).set(updates, { merge: true });
             }
         } else {
             btn.classList.add('wrong');
             
-            // --- ANALYTICS SAVE (WRONG) ---
+            // --- ANALYTICS SAVE (Wrong Answer) ---
             if (currentUser) {
                 const subj = q.Subject || "General";
-                const statsRef = db.collection('users').doc(currentUser.uid);
-                let updateData = {};
-                updateData[`stats.${subj}.total`] = firebase.firestore.FieldValue.increment(1);
-                statsRef.set(updateData, { merge: true });
+                let updates = {};
+                updates[`stats.${subj}.total`] = firebase.firestore.FieldValue.increment(1);
+                db.collection('users').doc(currentUser.uid).set(updates, { merge: true });
             }
         }
     }
@@ -481,6 +512,7 @@ function toggleBookmark(qID, span) {
     db.collection('users').doc(currentUser.uid).set({ bookmarks: userBookmarks }, { merge: true });
 }
 
+// --- TEST SUBMISSION (UPDATED TO SAVE ANALYTICS) ---
 function updateTimer() {
     testTimeRemaining--;
     const m = Math.floor(testTimeRemaining/60);
@@ -493,18 +525,48 @@ function submitTest() {
     clearInterval(testTimer);
     let score = 0;
     let wrongList = [];
+    
+    // Local tracking for this test session
+    let sessionStats = {}; 
+
     filteredQuestions.forEach(q => {
         const user = testAnswers[q._uid];
         const correct = getCorrectLetter(q);
-        if(user === correct) score++;
-        else wrongList.push({q, user, correct});
+        const subj = q.Subject || "General";
+
+        // Init stats if new subject
+        if (!sessionStats[subj]) sessionStats[subj] = { correct: 0, total: 0 };
+        sessionStats[subj].total++;
+
+        if(user === correct) {
+            score++;
+            sessionStats[subj].correct++;
+            // Update Solved locally (will save to DB below)
+            if(!userSolvedIDs.includes(q.ID)) userSolvedIDs.push(q.ID);
+        } else {
+            wrongList.push({q, user, correct});
+        }
     });
+
     const percent = Math.round((score/filteredQuestions.length)*100);
+    
     if(currentUser) {
+        // 1. Save Test Result
         db.collection('users').doc(currentUser.uid).collection('results').add({
             date: new Date(), score: percent, total: filteredQuestions.length
-        }).then(() => loadUserData());
+        });
+
+        // 2. Update Subject Analytics
+        let updates = { solved: userSolvedIDs };
+        for (const [subject, data] of Object.entries(sessionStats)) {
+            updates[`stats.${subject}.correct`] = firebase.firestore.FieldValue.increment(data.correct);
+            updates[`stats.${subject}.total`] = firebase.firestore.FieldValue.increment(data.total);
+        }
+        
+        db.collection('users').doc(currentUser.uid).set(updates, { merge: true })
+          .then(() => loadUserData());
     }
+
     showScreen('result-screen');
     document.getElementById('final-score').innerText = `${percent}% (${score}/${filteredQuestions.length})`;
     
@@ -533,7 +595,7 @@ function goHome() {
     loadQuestions();
 }
 
-// DARK MODE TOGGLE
+// DARK MODE
 document.addEventListener('DOMContentLoaded', () => {
     const savedTheme = localStorage.getItem('fcps-theme');
     if (savedTheme === 'dark') {
@@ -567,7 +629,7 @@ async function openAnalytics() {
     try {
         const doc = await db.collection('users').doc(currentUser.uid).get();
         if (!doc.exists || !doc.data().stats) {
-            container.innerHTML = "<p>No detailed data available yet. Start solving questions in Practice Mode!</p>";
+            container.innerHTML = "<p>No detailed data available yet. Start solving questions!</p>";
             return;
         }
 
