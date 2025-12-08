@@ -881,37 +881,48 @@ function toggleReportForm() {
 }
 
 async function submitReport() {
-    // 1. Get the current question details
-    // We check both filteredQuestions (practice) or allQuestions (just in case)
-    const q = (typeof filteredQuestions !== 'undefined' && filteredQuestions[currentIndex]) 
-              ? filteredQuestions[currentIndex] 
-              : null;
-              
+    alert("Step 1: Button Clicked! Function started.");
+
+    // 1. Get User
+    if (!currentUser) {
+        alert("❌ Error: You are not logged in.");
+        return;
+    }
+    
+    // 2. Get Input
     const reasonInput = document.getElementById('report-reason');
     const reason = reasonInput.value;
+    
+    if (!reason) {
+        alert("❌ Error: Reason box is empty.");
+        return;
+    }
+    
+    // 3. Get Question
+    // We try to grab the question safely
+    let q = null;
+    if (typeof filteredQuestions !== 'undefined' && filteredQuestions[currentIndex]) {
+        q = filteredQuestions[currentIndex];
+    }
+    
+    alert("Step 2: Sending to Firebase...");
 
-    // 2. Validation
-    if (!q) return alert("Error: No question selected.");
-    if (!reason) return alert("Please type a reason first.");
-    if (!currentUser) return alert("You must be logged in to report.");
-
-    // 3. Send to Firebase (Collection: 'reports')
+    // 4. Send to Firebase
     try {
         await db.collection('reports').add({
-            questionID: q._uid || "unknown",
-            questionText: q.Question || "No Text",
+            questionID: q ? q._uid : "unknown",
+            questionText: q ? q.Question : "No Text Found",
             reportReason: reason,
             reportedBy: currentUser.email,
             timestamp: new Date()
         });
 
-        // 4. Success Feedback
-        alert("✅ Report Sent! Thank you for helping us improve.");
-        reasonInput.value = ""; // Clear the box
-        document.getElementById('report-form').classList.add('hidden'); // Hide the form
+        alert("✅ Success! Report saved to database.");
+        reasonInput.value = ""; 
+        document.getElementById('report-form').classList.add('hidden'); 
 
     } catch (error) {
         console.error(error);
-        alert("Error sending report: " + error.message);
+        alert("❌ DATABASE ERROR: " + error.message);
     }
 }
