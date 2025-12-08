@@ -34,7 +34,7 @@ let testAnswers = {}; // { q_uid: "A" }
 let testTimeRemaining = 0;
 
 // ======================================================
-// 3. AUTH
+// 3. AUTH & DASHBOARD
 // ======================================================
 
 auth.onAuthStateChanged(user => {
@@ -83,27 +83,23 @@ async function loadUserData() {
         if (userDoc.exists) {
             userBookmarks = userDoc.data().bookmarks || [];
             userSolvedIDs = userDoc.data().solved || [];
-        } else {
-            userBookmarks = []; userSolvedIDs = [];
         }
-
         const resultsSnap = await db.collection('users').doc(currentUser.uid).collection('results').get();
         let totalTests = 0, totalScore = 0;
         resultsSnap.forEach(doc => { totalTests++; totalScore += doc.data().score; });
         const avgScore = totalTests > 0 ? Math.round(totalScore / totalTests) : 0;
-
-        // === THE FIX IS HERE ===
-        // We target 'quick-stats' so we don't overwrite the Analytics Button
-        const statsContainer = document.getElementById('quick-stats');
-        if (statsContainer) {
-            statsContainer.innerHTML = `
+        
+        // Target 'quick-stats' specifically to protect the Analytics Button
+        const statsBox = document.getElementById('quick-stats');
+        if(statsBox) {
+            statsBox.innerHTML = `
                 <div class="stat-row"><span class="stat-lbl">Test Average:</span> <span class="stat-val" style="color:${avgScore>=70?'#2ecc71':'#e74c3c'}">${avgScore}%</span></div>
                 <div class="stat-row"><span class="stat-lbl">Tests Taken:</span> <span class="stat-val">${totalTests}</span></div>
-                <div class="stat-row" style="border:none;"><span class="stat-lbl">Practice Solved:</span> <span class="stat-val">${userSolvedIDs.length}</span></div>
-            `;
+                <div class="stat-row" style="border:none;"><span class="stat-lbl">Practice Solved:</span> <span class="stat-val">${userSolvedIDs.length}</span></div>`;
         }
     } catch (e) { console.error(e); }
 }
+
 async function resetAccountData() {
     if(!currentUser) return;
     if (!confirm("⚠️ WARNING: This will delete ALL progress. Continue?")) return;
@@ -137,7 +133,9 @@ function processData(data) {
     let uniqueCounter = 0; 
 
     data.forEach(row => {
-        if (!row.Question) return;
+        // Skip empty or Heading rows
+        if (!row.Question || !row.CorrectAnswer) return;
+
         const sig = row.Question.trim().toLowerCase();
         if (seen.has(sig)) return;
         seen.add(sig);
@@ -251,7 +249,6 @@ function startTest() {
     showScreen('quiz-screen');
     document.getElementById('timer').classList.remove('hidden');
     
-    // Show Sidebar
     document.getElementById('test-sidebar').classList.add('active');
     renderNavigator();
 
@@ -284,7 +281,7 @@ function renderPage() {
 
     if (currentMode === 'practice') {
         document.getElementById('timer').classList.add('hidden');
-        document.getElementById('test-sidebar').classList.remove('active'); // Hide sidebar in practice
+        document.getElementById('test-sidebar').classList.remove('active'); 
         submitBtn.classList.add('hidden');
         nextBtn.classList.add('hidden'); 
         container.appendChild(createQuestionCard(filteredQuestions[currentIndex], currentIndex, false));
@@ -294,12 +291,7 @@ function renderPage() {
         nextBtn.classList.remove('hidden');
         submitBtn.classList.add('hidden');
 
-        // Logic for 5 per page
-        const start = currentIndex; // currentIndex tracks the START of the current page in Test Mode?
-        // Wait, if we jump to Q17, currentIndex should probably align to page start (15).
-        // Let's ensure currentIndex is always a multiple of 5 if we are rendering a page.
-        // Actually, let's keep currentIndex as the "First Question of the Page".
-        
+        const start = currentIndex;
         const end = Math.min(start + 5, filteredQuestions.length);
         
         for (let i = start; i < end; i++) {
@@ -311,18 +303,16 @@ function renderPage() {
             submitBtn.classList.remove('hidden');
         }
         
-        renderNavigator(); // Update highlights
+        renderNavigator(); 
     }
 }
 
 function createQuestionCard(q, index, isTest) {
     const card = document.createElement('div');
     card.className = "test-question-block"; 
-    card.id = `q-card-${index}`; // Add ID for scrolling
+    card.id = `q-card-${index}`; 
 
     let headerHTML = "";
-    
-    // CLEAN EXAM MODE: If Test, NO Subject/Topic
     if (!isTest) {
         const isSaved = userBookmarks.includes(q.ID);
         headerHTML = `<div style="font-size:0.85em; color:#999; margin-bottom:10px; text-transform:uppercase; letter-spacing:1px;">${q.Subject} • ${q.Topic} 
@@ -355,60 +345,19 @@ function createQuestionCard(q, index, isTest) {
     return card;
 }
 
-// --- NAVIGATOR SIDEBAR GENERATOR ---
-function renderNavigator() {
-    if(currentMode !== 'test') return;
-    
-    const navGrid = document.getElementById('nav-grid');
-    navGrid.innerHTML = "";
-    
-    // Determine current page range (e.g., 0-4, 5-9)
-    const pageStart = currentIndex; 
-    const pageEnd = Math.min(currentIndex + 5, filteredQuestions.length);
-
-    filteredQuestions.forEach((q, idx) => {
-        const btn = document.createElement('div');
-        btn.className = "nav-btn";
-        btn.innerText = idx + 1;
-        
-        // Is it answered?
-        if (testAnswers[q._uid]) btn.classList.add('answered');
-        
-        // Is it on the current page?
-        if (idx >= pageStart && idx < pageEnd) btn.classList.add('current');
-        
-        // Click to Jump
-        btn.onclick = () => jumpToQuestion(idx);
-        
-        navGrid.appendChild(btn);
-    });
-}
-
-function jumpToQuestion(targetIndex) {
-    // 1. Calculate which page this question belongs to
-    // e.g. Target 17 (index 16). 16 / 5 = 3.2 -> Floor 3. 3 * 5 = 15. Page starts at 15.
-    const newPageStart = Math.floor(targetIndex / 5) * 5;
-    
-    // 2. Set index and render
-    currentIndex = newPageStart;
-    renderPage();
-    
-    // 3. Scroll to specific question
-    setTimeout(() => {
-        const el = document.getElementById(`q-card-${targetIndex}`);
-        if(el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 100); // Small delay to allow DOM to build
-}
+// --- INTERACTION & ANALYTICS ---
 
 function handleClick(index, opt) {
     const q = filteredQuestions[index];
+    
     if (currentMode === 'test') {
         testAnswers[q._uid] = opt; 
         const container = document.getElementById(`opts-${index}`);
         container.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
         document.getElementById(`btn-${index}-${opt}`).classList.add('selected');
-        renderNavigator();
+        renderNavigator(); 
     } else {
+        // PRACTICE MODE
         const correct = getCorrectLetter(q);
         const btn = document.getElementById(`btn-${index}-${opt}`);
         
@@ -419,14 +368,13 @@ function handleClick(index, opt) {
 
             if (currentIndex < filteredQuestions.length - 1) document.getElementById('next-btn').classList.remove('hidden');
             document.getElementById(`reopen-exp-${index}`).classList.remove('hidden');
-            
-            // Show Popup
+
             const modal = document.getElementById('explanation-modal');
             const content = document.getElementById('modal-content');
             content.innerHTML = q.Explanation || "No explanation provided.";
             modal.classList.remove('hidden');
 
-            // --- ANALYTICS UPDATE START ---
+            // --- ANALYTICS SAVE ---
             if (currentUser) {
                 // 1. Mark as Solved
                 if (!userSolvedIDs.includes(q.ID)) {
@@ -434,35 +382,59 @@ function handleClick(index, opt) {
                     db.collection('users').doc(currentUser.uid).set({ solved: userSolvedIDs }, { merge: true });
                 }
                 
-                // 2. Update Subject Stats (Increment Correct Count)
+                // 2. Update Subject Stats
                 const subj = q.Subject || "General";
                 const statsRef = db.collection('users').doc(currentUser.uid);
-                
-                // We use a specific dot notation to update nested map fields in Firestore
                 let updateData = {};
                 updateData[`stats.${subj}.correct`] = firebase.firestore.FieldValue.increment(1);
                 updateData[`stats.${subj}.total`] = firebase.firestore.FieldValue.increment(1);
-                
                 statsRef.set(updateData, { merge: true });
             }
-            // --- ANALYTICS UPDATE END ---
-
         } else {
             btn.classList.add('wrong');
             
-            // --- ANALYTICS UPDATE (WRONG) ---
+            // --- ANALYTICS SAVE (WRONG) ---
             if (currentUser) {
                 const subj = q.Subject || "General";
                 const statsRef = db.collection('users').doc(currentUser.uid);
                 let updateData = {};
-                // Only increment total, not correct
                 updateData[`stats.${subj}.total`] = firebase.firestore.FieldValue.increment(1);
                 statsRef.set(updateData, { merge: true });
             }
-            // -------------------------------
         }
     }
 }
+
+// --- NAVIGATOR ---
+function renderNavigator() {
+    if(currentMode !== 'test') return;
+    const navGrid = document.getElementById('nav-grid');
+    navGrid.innerHTML = "";
+    
+    const pageStart = currentIndex; 
+    const pageEnd = Math.min(currentIndex + 5, filteredQuestions.length);
+
+    filteredQuestions.forEach((q, idx) => {
+        const btn = document.createElement('div');
+        btn.className = "nav-btn";
+        btn.innerText = idx + 1;
+        if (testAnswers[q._uid]) btn.classList.add('answered');
+        if (idx >= pageStart && idx < pageEnd) btn.classList.add('current');
+        btn.onclick = () => jumpToQuestion(idx);
+        navGrid.appendChild(btn);
+    });
+}
+
+function jumpToQuestion(targetIndex) {
+    const newPageStart = Math.floor(targetIndex / 5) * 5;
+    currentIndex = newPageStart;
+    renderPage();
+    setTimeout(() => {
+        const el = document.getElementById(`q-card-${targetIndex}`);
+        if(el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+}
+
 // --- UTILS ---
 function closeModal() { document.getElementById('explanation-modal').classList.add('hidden'); }
 function reOpenModal(index) {
@@ -535,6 +507,7 @@ function submitTest() {
     }
     showScreen('result-screen');
     document.getElementById('final-score').innerText = `${percent}% (${score}/${filteredQuestions.length})`;
+    
     const list = document.getElementById('review-list');
     list.innerHTML = "";
     wrongList.forEach(item => {
@@ -555,17 +528,12 @@ function showScreen(id) {
 function goHome() {
     clearInterval(testTimer);
     document.getElementById('timer').classList.add('hidden');
-    document.getElementById('test-sidebar').classList.remove('active'); // Hide sidebar
+    document.getElementById('test-sidebar').classList.remove('active');
     showScreen('dashboard-screen');
     loadQuestions();
 }
 
-
-// ==========================================
-// DARK MODE LOGIC
-// ==========================================
-
-// 1. Check for saved preference on load
+// DARK MODE TOGGLE
 document.addEventListener('DOMContentLoaded', () => {
     const savedTheme = localStorage.getItem('fcps-theme');
     if (savedTheme === 'dark') {
@@ -573,29 +541,21 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('theme-btn').innerText = '☀️';
     }
 });
-
 function toggleTheme() {
     const currentTheme = document.body.getAttribute('data-theme');
     const btn = document.getElementById('theme-btn');
-    
     if (currentTheme === 'dark') {
-        // Switch to Light
         document.body.removeAttribute('data-theme');
         localStorage.setItem('fcps-theme', 'light');
         btn.innerText = '🌙';
     } else {
-        // Switch to Dark
         document.body.setAttribute('data-theme', 'dark');
         localStorage.setItem('fcps-theme', 'dark');
         btn.innerText = '☀️';
     }
 }
 
-
-// ==========================================
-// ANALYTICS SYSTEM
-// ==========================================
-
+// ANALYTICS MODAL
 async function openAnalytics() {
     const modal = document.getElementById('analytics-modal');
     const container = document.getElementById('analytics-content');
@@ -613,17 +573,15 @@ async function openAnalytics() {
 
         const stats = doc.data().stats;
         let html = "";
-
-        // Convert object to array and sort by weak performance
         const subjects = Object.keys(stats).map(key => {
             return { name: key, ...stats[key] };
         }).sort((a, b) => (a.correct / a.total) - (b.correct / b.total));
 
         subjects.forEach(subj => {
             const percent = Math.round((subj.correct / subj.total) * 100);
-            let color = "#2ecc71"; // Green
-            if (percent < 50) color = "#e74c3c"; // Red
-            else if (percent < 75) color = "#f1c40f"; // Yellow
+            let color = "#2ecc71"; 
+            if (percent < 50) color = "#e74c3c"; 
+            else if (percent < 75) color = "#f1c40f"; 
 
             html += `
                 <div class="stat-item">
@@ -637,14 +595,8 @@ async function openAnalytics() {
                     <div class="stat-meta">
                         ${subj.correct} correct out of ${subj.total} attempted
                     </div>
-                </div>
-            `;
+                </div>`;
         });
-
         container.innerHTML = html;
-
-    } catch (e) {
-        container.innerHTML = "Error loading stats: " + e.message;
-    }
+    } catch (e) { container.innerHTML = "Error loading stats: " + e.message; }
 }
-
