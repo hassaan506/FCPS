@@ -832,33 +832,47 @@ if (searchInput) {
     });
 }
 
-/* --- PWA INSTALL LOGIC --- */
+/* --- SMART PWA INSTALL LOGIC (ANDROID + IOS + PC) --- */
 let deferredPrompt;
 const installBtn = document.getElementById('install-btn');
 
-window.addEventListener('beforeinstallprompt', (e) => {
-    // 1. Prevent Chrome 67 and earlier from automatically showing the prompt
-    e.preventDefault();
-    // 2. Stash the event so it can be triggered later.
-    deferredPrompt = e;
-    // 3. Show the install button
+// A. Check if the user is on an iPhone/iPad
+const isIos = /iphone|ipad|ipod/.test( window.navigator.userAgent.toLowerCase() );
+
+// B. Function to show the button
+function showInstallButton() {
     if(installBtn) installBtn.classList.remove('hidden');
+}
+
+// 1. ANDROID / PC: Listen for the native event
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Prevent Chrome 67 and earlier from automatically showing the prompt
+    e.preventDefault();
+    deferredPrompt = e;
+    showInstallButton();
 });
+
+// 2. IOS: Force show the button because iOS doesn't fire the event above
+if (isIos && !window.navigator.standalone) {
+    showInstallButton();
+}
 
 if(installBtn) {
     installBtn.addEventListener('click', async () => {
-        if (!deferredPrompt) {
-            // Fallback for iOS or if prompt isn't ready
-            alert("To install: Tap the Share button (squares with arrow) and select 'Add to Home Screen'");
-            return;
+        if (deferredPrompt) {
+            // Android/PC: Show the native prompt
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                installBtn.classList.add('hidden');
+            }
+            deferredPrompt = null;
+        } else if (isIos) {
+            // iOS: Show instructions
+            alert("To install on iPhone/iPad:\n\n1. Tap the 'Share' button (square with arrow up)\n2. Scroll down and tap 'Add to Home Screen' ➕");
+        } else {
+            // Other: Fallback
+             alert("To install, look for the 'Add to Home Screen' option in your browser menu.");
         }
-        // Show the install prompt
-        deferredPrompt.prompt();
-        // Wait for the user to respond to the prompt
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-            installBtn.classList.add('hidden');
-        }
-        deferredPrompt = null;
     });
 }
