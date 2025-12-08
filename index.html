@@ -107,7 +107,13 @@
             
             <div class="quiz-header">
                 <button onclick="goHome()" class="secondary" style="width:auto; padding:8px 20px;">Exit Session</button>
-                <div id="timer" class="hidden">00:00</div>
+                
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <button id="flag-btn" class="flag-btn hidden" onclick="toggleFlag()">
+                        <span>🚩</span> Flag
+                    </button>
+                    <div id="timer" class="hidden">00:00</div>
+                </div>
             </div>
 
             <div id="test-sidebar" class="test-sidebar">
@@ -175,6 +181,7 @@
     <script src="script.js"></script>
 </body>
 </html>
+
 
 
 
