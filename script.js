@@ -278,10 +278,6 @@ function processData(data) {
 function renderMenus(subjects, map) {
     const container = document.getElementById('dynamic-menus');
     container.innerHTML = "";
-    
-    // 1. Debugging: Check if we actually have topics
-    console.log("Building menus for:", subjects);
-
     const sortedSubjects = Array.from(subjects).sort();
 
     sortedSubjects.forEach(subj => {
@@ -290,74 +286,73 @@ function renderMenus(subjects, map) {
         const solvedSubj = subjQuestions.filter(q => userSolvedIDs.includes(q._uid)).length;
         const percentSubj = totalSubj > 0 ? Math.round((solvedSubj / totalSubj) * 100) : 0;
 
-        // Create the Dropdown
+        // 1. Create the Card
         const details = document.createElement('details');
         
-        // Create the Header
+        // 2. Create the Header
         details.innerHTML = `
             <summary>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                    <span style="font-weight:600;">${subj}</span>
-                    <span style="font-size:11px; color:#64748b;">${solvedSubj}/${totalSubj} (${percentSubj}%)</span>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-weight:700; font-size:15px;">${subj}</span>
+                    <span style="font-size:12px; opacity:0.8;">${solvedSubj}/${totalSubj} (${percentSubj}%)</span>
                 </div>
-                <div class="menu-progress-track">
+                <div class="menu-progress-track" style="margin-top:8px; height:6px;">
                     <div class="menu-progress-fill" style="width:${percentSubj}%"></div>
                 </div>
             </summary>
         `;
 
-        // --- THE FIX: Create a Wrapper Div for the Grid ---
-        const gridBox = document.createElement('div');
-        gridBox.className = "menu-grid-wrapper"; // We will style this class
+        // 3. Create the List Container (White box inside)
+        const listContainer = document.createElement('div');
+        listContainer.className = "topic-list-container";
 
-        // "Practice All" Button
-        const allBtn = document.createElement('button');
-        allBtn.className = "category-btn";
+        // 4. "Practice All" Button (Top of the list)
+        const allBtn = document.createElement('div');
+        allBtn.className = "topic-row practice-all";
         allBtn.innerHTML = `
-            <div>
-                <span>Practice All</span>
-                <span style="font-size:11px; opacity:0.7">Entire Subject</span>
-            </div>
+            <span style="font-weight:700;">Practice All ${subj}</span>
             <span>⭐</span>`;
         allBtn.onclick = () => startPractice(subj, null);
-        gridBox.appendChild(allBtn);
+        listContainer.appendChild(allBtn);
 
-        // Topic Buttons
+        // 5. Topic List
         const sortedTopics = Array.from(map[subj] || []).sort();
         
-        // Debugging Alert if a subject is empty (Remove this later)
-        if (sortedTopics.length === 0) {
-            console.log("Warning: No topics found for " + subj);
+        // --- DATA CHECK: If topics exist, they WILL show here ---
+        if (sortedTopics.length > 0) {
+            sortedTopics.forEach(topic => {
+                const topQuestions = subjQuestions.filter(q => q.Topic === topic);
+                const totalTop = topQuestions.length;
+                const solvedTop = topQuestions.filter(q => userSolvedIDs.includes(q._uid)).length;
+                const percentTop = totalTop > 0 ? Math.round((solvedTop / totalTop) * 100) : 0;
+
+                const row = document.createElement('div');
+                row.className = "topic-row";
+                row.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                        <span style="font-weight:600; font-size:14px;">${topic}</span>
+                        <span style="font-size:12px; font-weight:700; opacity:0.6;">${percentTop}%</span>
+                    </div>
+                    <div class="menu-progress-track" style="height:4px; background:rgba(0,0,0,0.05);">
+                        <div class="menu-progress-fill" style="width:${percentTop}%; background:${percentTop===100 ? '#fbbf24' : '#3b82f6'};"></div>
+                    </div>
+                `;
+                row.onclick = () => startPractice(subj, topic);
+                listContainer.appendChild(row);
+            });
+        } else {
+            // Fallback if no topics found
+            const emptyMsg = document.createElement('div');
+            emptyMsg.className = "topic-row";
+            emptyMsg.style.textAlign = "center";
+            emptyMsg.innerHTML = `<span style="opacity:0.5; font-size:12px;">No specific topics found</span>`;
+            listContainer.appendChild(emptyMsg);
         }
 
-        sortedTopics.forEach(topic => {
-            const topQuestions = subjQuestions.filter(q => q.Topic === topic);
-            const totalTop = topQuestions.length;
-            const solvedTop = topQuestions.filter(q => userSolvedIDs.includes(q._uid)).length;
-            const percentTop = totalTop > 0 ? Math.round((solvedTop / totalTop) * 100) : 0;
-            
-            const btn = document.createElement('button');
-            btn.className = "category-btn";
-            btn.innerHTML = `
-                <div>
-                    <span>${topic}</span>
-                    <span style="font-size:11px; color:var(--text-light);">${percentTop}%</span>
-                </div>
-                <div class="menu-progress-track" style="height:4px; width:100%; margin-top:5px; background:rgba(0,0,0,0.1);">
-                    <div class="menu-progress-fill" style="width:${percentTop}%; background:${percentTop===100 ? '#fbbf24' : '#3b82f6'};"></div>
-                </div>
-            `;
-            btn.onclick = () => startPractice(subj, topic);
-            gridBox.appendChild(btn);
-        });
-
-        // Add the grid box to the details
-        details.appendChild(gridBox);
+        details.appendChild(listContainer);
         container.appendChild(details);
     });
 }
-
-
 
 function renderTestFilters(subjects, map) {
     const container = document.getElementById('filter-container');
@@ -1254,6 +1249,7 @@ window.signup = function() {
             if(msg) msg.innerText = "❌ Error: " + error.message;
         });
 };
+
 
 
 
