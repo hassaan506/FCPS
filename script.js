@@ -1086,10 +1086,87 @@ async function submitReport() {
     }
 }
 
+/* --- AUTH SWITCHER LOGIC --- */
+let isSignupMode = false;
 
+function toggleAuthMode() {
+    isSignupMode = !isSignupMode; // Flip the switch
 
+    // Get Elements
+    const title = document.getElementById('auth-title');
+    const sub = document.getElementById('auth-subtitle');
+    const btnContainer = document.getElementById('auth-btn-container');
+    const toggleText = document.getElementById('auth-toggle-text');
+    const toggleLink = document.getElementById('auth-toggle-link');
+    const msg = document.getElementById('auth-msg');
 
+    // Clear old errors
+    msg.innerText = "";
 
+    if (isSignupMode) {
+        // --- SWITCH TO SIGNUP MODE ---
+        title.innerText = "Create Account";
+        sub.innerText = "Join Dr Shaggy's Prep";
+        
+        // Change button to Green "Sign Up"
+        btnContainer.innerHTML = `<button class="primary" onclick="signup()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">✨ Sign Up</button>`;
+        
+        // Change link text
+        toggleText.innerText = "Already have an ID?";
+        toggleLink.innerText = "Log In here";
+        
+    } else {
+        // --- SWITCH TO LOGIN MODE ---
+        title.innerText = "FCPS PREP";
+        sub.innerText = "By Dr Shaggy";
+        
+        // Change button back to Blue "Log In"
+        btnContainer.innerHTML = `<button class="primary" onclick="login()">Log In</button>`;
+        
+        // Change link text
+        toggleText.innerText = "New here?";
+        toggleLink.innerText = "Create New ID";
+    }
+}
 
+/* --- ENHANCED SIGNUP FUNCTION --- */
+function signup() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const msg = document.getElementById('auth-msg');
 
+    if (!email || !password) {
+        msg.innerText = "⚠️ Please fill in both boxes above.";
+        return;
+    }
+    
+    if (password.length < 6) {
+        msg.innerText = "⚠️ Password must be 6+ characters.";
+        return;
+    }
 
+    msg.innerText = "⏳ Creating ID...";
+
+    // Firebase Create User
+    auth.createUserWithEmailAndPassword(email, password)
+        .then((cred) => {
+            // Create Database Entry
+            return db.collection('users').doc(cred.user.uid).set({
+                email: email,
+                role: 'student',
+                joined: new Date(),
+                bookmarks: [],
+                solved: [],
+                mistakes: [],
+                stats: {}
+            });
+        })
+        .then(() => {
+            alert("🎉 ID Created Successfully! Logging you in...");
+            // The existing onAuthStateChanged listener will handle the screen switch
+        })
+        .catch((error) => {
+            console.error(error);
+            msg.innerText = "❌ Error: " + error.message;
+        });
+}=
