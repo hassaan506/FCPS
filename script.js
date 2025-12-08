@@ -766,12 +766,24 @@ function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
 }
+/* --- GO HOME (AUTO-REFRESH FIX) --- */
 function goHome() {
+    // 1. Stop the timer if running
     clearInterval(testTimer);
+    
+    // 2. Hide quiz elements
     document.getElementById('timer').classList.add('hidden');
     document.getElementById('test-sidebar').classList.remove('active');
+    
+    // 3. Switch to Dashboard
     showScreen('dashboard-screen');
-    loadQuestions();
+    
+    // 4. THE FIX: Reload Data immediately!
+    console.log("🔄 Refreshing Dashboard Data...");
+    loadUserData(); // <--- This updates your Stats, Streak, and Mistake Count
+    
+    // 5. Optional: Reset questions if you want fresh random ones next time
+    // loadQuestions(); 
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1014,6 +1026,7 @@ async function submitReport() {
         alert("❌ DATABASE ERROR: " + error.message);
     }
 }
+
 
 
 
