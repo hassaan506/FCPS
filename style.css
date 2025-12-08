@@ -857,3 +857,48 @@ details[open] .subject-summary::after {
     color: var(--primary);
     font-weight: 600;
 }
+
+
+/* =========================================
+   19. EXAM MODE SELECTION STYLES
+   ========================================= */
+
+/* The Select All Checkbox in Header */
+.select-all-label {
+    font-size: 12px;
+    background: white;
+    padding: 5px 10px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Default State of Exam Item */
+.exam-selectable {
+    border: 1px solid transparent;
+    transition: all 0.2s;
+}
+
+/* HOVER State */
+.exam-selectable:hover {
+    background: rgba(0,0,0,0.05);
+}
+
+/* SELECTED State (This is what happens when you click) */
+.exam-selectable.selected {
+    background: var(--primary) !important;
+    color: white !important;
+    font-weight: 600;
+    border-radius: 6px;
+    padding: 2px 8px; /* Add some padding so the background looks nice */
+    box-shadow: 0 2px 5px rgba(0, 114, 255, 0.3);
+}
+
+/* Dark Mode Adjustment for Select All */
+[data-theme="dark"] .select-all-label {
+    background: var(--input-bg);
+    color: var(--text-dark);
+}
