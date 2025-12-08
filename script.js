@@ -275,62 +275,77 @@ function processData(data) {
 }
 
 /* --- RENDER MENUS WITH PROGRESS BARS --- */
+/* =========================================
+   1. RENDER MENUS (DROPDOWN + TEXT GRID)
+   ========================================= */
 function renderMenus(subjects, map) {
     const container = document.getElementById('dynamic-menus');
     container.innerHTML = "";
-    
-    // Force a fresh sort
     const sortedSubjects = Array.from(subjects).sort();
 
     sortedSubjects.forEach(subj => {
-        // --- 1. PREPARE DATA ---
+        // Data Math
         const subjQuestions = allQuestions.filter(q => q.Subject === subj);
         const totalSubj = subjQuestions.length;
         const solvedSubj = subjQuestions.filter(q => userSolvedIDs.includes(q._uid)).length;
         const percentSubj = totalSubj > 0 ? Math.round((solvedSubj / totalSubj) * 100) : 0;
         
-        // --- 2. CREATE THE CARD ---
-        const card = document.createElement('div');
-        card.className = "subject-card-grid"; // New class for your specific style
+        // 1. Create the Dropdown (Details Tag)
+        const details = document.createElement('details');
+        details.className = "subject-dropdown-card";
 
-        // --- 3. HEADER (Centered Title) ---
-        let html = `
-            <div class="subject-header-grid">
-                <h2>${subj}</h2>
-                <div class="progress-bar-thin"><div class="fill" style="width:${percentSubj}%"></div></div>
-                <button onclick="startPractice('${subj}', null)" class="practice-all-link">
-                    Practice All ${subj} ➜
-                </button>
-            </div>
+        // 2. The Header (Summary) - Always Visible
+        details.innerHTML = `
+            <summary class="subject-summary">
+                <div class="summary-header">
+                    <span class="subj-name">${subj}</span>
+                    <span class="subj-stats">${solvedSubj}/${totalSubj} (${percentSubj}%)</span>
+                </div>
+                <div class="progress-bar-thin">
+                    <div class="fill" style="width:${percentSubj}%"></div>
+                </div>
+            </summary>
         `;
 
-        // --- 4. TOPICS GRID (The Horizontal Layout) ---
+        // 3. The Content (Hidden until clicked)
+        const contentDiv = document.createElement('div');
+        contentDiv.className = "dropdown-content";
+
+        // A. "Practice All" Button
+        const allBtn = document.createElement('div');
+        allBtn.className = "practice-all-row";
+        allBtn.innerHTML = `<span>Practice All ${subj}</span> <span>⭐</span>`;
+        allBtn.onclick = () => startPractice(subj, null);
+        contentDiv.appendChild(allBtn);
+
+        // B. Topics Text Grid
         const sortedTopics = Array.from(map[subj] || []).sort();
         
         if (sortedTopics.length > 0) {
-            html += `<div class="topics-grid-container">`; // The Grid Container
+            const gridContainer = document.createElement('div');
+            gridContainer.className = "topics-text-grid"; // New class for text layout
             
             sortedTopics.forEach(topic => {
                 const topQuestions = subjQuestions.filter(q => q.Topic === topic);
-                const isCompleted = topQuestions.every(q => userSolvedIDs.includes(q._uid)) && topQuestions.length > 0;
+                const isCompleted = topQuestions.length > 0 && topQuestions.every(q => userSolvedIDs.includes(q._uid));
                 
-                // Add each topic as a simple text item
-                html += `
-                    <div class="topic-grid-item ${isCompleted ? 'done' : ''}" onclick="startPractice('${subj}', '${topic}')">
-                        ${topic}
-                    </div>
-                `;
+                // Simple Text Item
+                const item = document.createElement('div');
+                item.className = `topic-text-item ${isCompleted ? 'done' : ''}`;
+                item.innerText = topic;
+                item.onclick = () => startPractice(subj, topic);
+                gridContainer.appendChild(item);
             });
-            html += `</div>`;
+            contentDiv.appendChild(gridContainer);
         } else {
-            // Fallback if google sheets hasn't updated yet
-            html += `<div style="text-align:center; padding:10px; opacity:0.5; font-size:12px;">(No topics found yet)</div>`;
+            contentDiv.innerHTML += `<div style="text-align:center; padding:10px; opacity:0.5; font-size:12px;">(No specific topics)</div>`;
         }
 
-        card.innerHTML = html;
-        container.appendChild(card);
+        details.appendChild(contentDiv);
+        container.appendChild(details);
     });
 }
+
 
 function renderTestFilters(subjects, map) {
     const container = document.getElementById('filter-container');
@@ -1227,6 +1242,7 @@ window.signup = function() {
             if(msg) msg.innerText = "❌ Error: " + error.message;
         });
 };
+
 
 
 
