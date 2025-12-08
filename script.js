@@ -832,35 +832,35 @@ if (searchInput) {
     });
 }
 
-/* --- SMART PWA INSTALL LOGIC (ANDROID + IOS + PC) --- */
-let deferredPrompt;
+/* --- FORCE INSTALL BUTTON (FIXED FOR iOS) --- */
 const installBtn = document.getElementById('install-btn');
+let deferredPrompt;
 
-// A. Check if the user is on an iPhone/iPad
-const isIos = /iphone|ipad|ipod/.test( window.navigator.userAgent.toLowerCase() );
+// 1. Detect iOS (iPhone, iPod, OR iPad pretending to be a Mac)
+const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()) || 
+              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-// B. Function to show the button
-function showInstallButton() {
-    if(installBtn) installBtn.classList.remove('hidden');
-}
+// 2. Detect if already installed (Standalone mode)
+const isInStandaloneMode = ('standalone' in window.navigator) && (window.navigator.standalone);
 
-// 1. ANDROID / PC: Listen for the native event
-window.addEventListener('beforeinstallprompt', (e) => {
-    // Prevent Chrome 67 and earlier from automatically showing the prompt
-    e.preventDefault();
-    deferredPrompt = e;
-    showInstallButton();
-});
+// 3. Logic to show the button
+if (installBtn) {
+    // If on Android/PC (Standard way)
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        installBtn.classList.remove('hidden'); // Show button
+    });
 
-// 2. IOS: Force show the button because iOS doesn't fire the event above
-if (isIos && !window.navigator.standalone) {
-    showInstallButton();
-}
+    // If on iOS and NOT already installed (Force Show)
+    if (isIos && !isInStandaloneMode) {
+        installBtn.classList.remove('hidden'); // Force show button
+    }
 
-if(installBtn) {
+    // Click Handler
     installBtn.addEventListener('click', async () => {
         if (deferredPrompt) {
-            // Android/PC: Show the native prompt
+            // Android/PC
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
             if (outcome === 'accepted') {
@@ -868,11 +868,11 @@ if(installBtn) {
             }
             deferredPrompt = null;
         } else if (isIos) {
-            // iOS: Show instructions
+            // iOS Instructions
             alert("To install on iPhone/iPad:\n\n1. Tap the 'Share' button (square with arrow up)\n2. Scroll down and tap 'Add to Home Screen' ➕");
         } else {
-            // Other: Fallback
-             alert("To install, look for the 'Add to Home Screen' option in your browser menu.");
+            // Fallback
+             alert("To install, look for 'Add to Home Screen' in your browser menu.");
         }
     });
 }
