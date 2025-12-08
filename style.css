@@ -728,8 +728,9 @@ input[type="password"] {
     border-left: none; margin-left: 0; padding-left: 0; margin-top: 8px;
 }
 
+
 /* =========================================
-   18. DROPDOWN + TEXT GRID (Final Fix)
+   18. SECTION 18: SIMPLE TEXT GRID (SCREENSHOT MATCH)
    ========================================= */
 
 /* 1. The Card (Dropdown Container) */
@@ -794,7 +795,7 @@ details[open] .subject-summary::after {
 
 /* 3. The Content Box (Inside) */
 .dropdown-content {
-    background: var(--input-bg); /* Slightly different bg for inside */
+    background: var(--input-bg); 
     padding: 20px;
     border-top: 1px solid var(--border-color);
 }
@@ -802,43 +803,47 @@ details[open] .subject-summary::after {
 /* 4. "Practice All" Button (Top Row) */
 .practice-all-row {
     display: flex;
-    justify-content: space-between;
-    font-weight: 600;
+    justify-content: center;
+    align-items: center;
+    font-weight: 700;
     color: var(--primary);
-    padding: 10px 15px;
+    padding: 12px;
     background: white;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    margin-bottom: 15px;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    margin-bottom: 20px;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: all 0.2s;
 }
 .practice-all-row:hover {
-    background: #f0f9ff;
+    background: var(--primary);
+    color: white;
     border-color: var(--primary);
 }
 
-/* 5. THE TEXT GRID (Horizontal List) */
+/* 5. THE SIMPLE TEXT GRID (Horizontal List of Words) */
 .topics-text-grid {
     display: flex;
-    flex-wrap: wrap; /* Allows text to wrap to next line */
-    gap: 10px 25px;  /* 10px Vertical gap, 25px Horizontal gap */
+    flex-wrap: wrap; /* This makes the words wrap to the next line */
+    gap: 15px 30px;  /* Vertical Gap 15px, Horizontal Gap 30px */
 }
 
-/* The Individual Text Items */
+/* The Individual Text Item */
 .topic-text-item {
-    font-size: 14px;
+    font-size: 15px;       /* Readable text size */
     color: var(--text-dark);
     cursor: pointer;
     position: relative;
-    padding: 2px 0;
+    padding: 5px 10px;     /* Breathing room */
+    border-radius: 6px;
+    transition: all 0.2s;
 }
 
-/* Hover Effect (Underline) */
+/* Hover Effect (Simple) */
 .topic-text-item:hover {
     color: var(--primary);
-    text-decoration: underline;
-    font-weight: 500;
+    background: rgba(0, 114, 255, 0.1);
+    font-weight: 600;
 }
 
 /* Completed Items */
@@ -848,7 +853,6 @@ details[open] .subject-summary::after {
 }
 
 /* 6. EXAM MODE GRID (Apply same style to Exam filters) */
-/* We reuse the grid class so it matches practice mode */
 .filter-container .topics-text-grid {
     padding: 10px 0;
 }
