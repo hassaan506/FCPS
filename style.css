@@ -364,80 +364,6 @@ button {
 #dynamic-menus::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 #dynamic-menus::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-/* DROPDOWN MENUS */
-details { 
-    margin-bottom: 15px; 
-    background: var(--card-bg); 
-    border-radius: 16px; 
-    border: 1px solid var(--border-color); 
-    overflow: hidden; 
-    transition: all 0.3s ease; 
-}
-details[open] { 
-    border-color: var(--primary); 
-    box-shadow: 0 4px 12px rgba(0, 114, 255, 0.1); 
-}
-
-summary { 
-    padding: 20px; 
-    cursor: pointer; 
-    font-weight: 600; 
-    display: block; 
-    position: relative; 
-    padding-right: 40px; 
-    list-style: none; 
-    color: var(--text-dark);
-}
-summary::after { 
-    content: '▼'; 
-    position: absolute; 
-    right: 20px; 
-    top: 22px; 
-    font-size: 12px; 
-    color: var(--text-light); 
-    transition: transform 0.3s; 
-}
-details[open] summary::after { 
-    transform: rotate(180deg); 
-    color: var(--primary); 
-}
-summary::-webkit-details-marker { display: none; }
-
-/* TOPIC BUTTONS */
-.category-btn { 
-    margin: 0; 
-    border-radius: 0; 
-    background: #f8fafc; 
-    text-align: left; 
-    padding: 16px 25px; 
-    border-top: 1px solid #f0f0f0; 
-    box-shadow: none; 
-    font-size: 14px; 
-    color: var(--text-light);
-}
-.category-btn:hover { 
-    background: #f1f5f9; 
-    color: var(--primary); 
-    padding-left: 30px; 
-}
-
-/* PROGRESS BARS IN MENU */
-.menu-progress-track { 
-    width: 100%; 
-    height: 5px; 
-    background: #e2e8f0; 
-    border-radius: 3px; 
-    overflow: hidden; 
-    margin-top: 8px; 
-}
-.menu-progress-fill { 
-    height: 100%; 
-    background: var(--success); 
-    width: 0%; 
-    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); 
-}
-
-
 /* =========================================
    8. QUIZ INTERFACE & EXAM MODE
    ========================================= */
@@ -701,56 +627,38 @@ summary::-webkit-details-marker { display: none; }
 
 
 /* =========================================
-   12. MISSING ANALYTICS STYLES (The Fix)
+   12. ANALYTICS STYLES
    ========================================= */
-
 .stat-item {
     margin-bottom: 20px;
 }
-
 .stat-header {
-    display: flex;
-    justify-content: space-between;
-    font-weight: 600;
-    margin-bottom: 5px;
-    font-size: 14px;
-    color: var(--text-dark);
+    display: flex; justify-content: space-between; font-weight: 600;
+    margin-bottom: 5px; font-size: 14px; color: var(--text-dark);
 }
-
 .progress-track {
-    width: 100%;
-    height: 8px;
-    background: #e2e8f0;
-    border-radius: 4px;
-    overflow: hidden;
-    margin-bottom: 5px;
+    width: 100%; height: 8px; background: #e2e8f0;
+    border-radius: 4px; overflow: hidden; margin-bottom: 5px;
 }
-
 .progress-fill {
-    height: 100%;
-    border-radius: 4px;
-    transition: width 1s ease-out;
+    height: 100%; border-radius: 4px; transition: width 1s ease-out;
 }
-
 .stat-meta {
-    font-size: 11px;
-    color: var(--text-light);
-    text-align: right;
+    font-size: 11px; color: var(--text-light); text-align: right;
 }
-
 
 /* =========================================
-   13. DARK MODE & LAYOUT FIXES (Final Polish)
+   13. DARK MODE & LAYOUT FIXES
    ========================================= */
 
 /* Fix 1: Force Topic Buttons to be Dark */
 .category-btn {
-    background-color: var(--input-bg) !important; /* Force it to use the theme color */
+    background-color: var(--input-bg) !important;
     color: var(--text-dark) !important;
     border-color: var(--border-color) !important;
 }
 
-/* Fix 2: Style the Exam Settings Box (Replaces the HTML style we deleted) */
+/* Fix 2: Style the Exam Settings Box */
 #test-settings {
     background: var(--card-bg);
     padding: 20px;
@@ -773,89 +681,37 @@ summary::-webkit-details-marker { display: none; }
 }
 
 /* Make the checkboxes look better in the list */
-.filter-group {
-    margin-bottom: 12px;
-}
-
+.filter-group { margin-bottom: 12px; }
 .filter-subject-label {
-    font-weight: 700;
-    color: var(--primary);
-    display: block;
-    margin-bottom: 5px;
-    cursor: pointer;
+    font-weight: 700; color: var(--primary);
+    display: block; margin-bottom: 5px; cursor: pointer;
 }
-
 .filter-topic-list {
-    margin-left: 20px;
-    border-left: 2px solid var(--border-color);
-    padding-left: 10px;
+    margin-left: 20px; border-left: 2px solid var(--border-color); padding-left: 10px;
 }
-
 .filter-topic-label {
-    display: block;
-    font-size: 13px;
-    color: var(--text-dark);
-    margin-bottom: 4px;
-    cursor: pointer;
+    display: block; font-size: 13px; color: var(--text-dark);
+    margin-bottom: 4px; cursor: pointer;
 }
-
 
 /* =========================================
-   14. FINAL LAYOUT UPGRADES (Grid & Inputs)
+   14. INPUTS & EXAM GRID
    ========================================= */
 
 /* --- A. Fix the White Input Boxes --- */
-#test-settings input[type="number"] {
-    background: var(--input-bg);    /* Use Theme Color */
-    color: var(--text-dark);        /* Text adapts to theme */
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 12px;
-    font-weight: 700;
+input[type="number"], 
+input[type="text"], 
+input[type="email"], 
+input[type="password"] {
+    background-color: var(--input-bg) !important;
+    color: var(--text-dark) !important;
+    border: 1px solid var(--border-color) !important;
 }
 
-/* --- B. Practice Mode: Grid Layout --- */
-/* This makes the Topic buttons appear side-by-side inside the Subject menu */
-details[open] {
-    display: grid;
-    grid-template-columns: 1fr 1fr; /* Two columns */
-    gap: 10px;
-    padding: 10px;
-}
-
-/* The Subject Name (Summary) should span across both columns */
-details summary {
-    grid-column: 1 / -1; 
-    margin-bottom: 0;
-}
-
-/* The buttons inside */
-details .category-btn {
-    width: 100%;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    text-align: center;
-    padding: 15px 10px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-}
-
-/* Make the text inside buttons centered and smaller */
-details .category-btn div {
-    justify-content: center !important;
-    flex-direction: column;
-    gap: 5px;
-    text-align: center;
-}
-
-/* --- C. Exam Mode: Grid Layout --- */
-/* This makes the Exam Filters look like a wall of tiles instead of a long list */
+/* --- B. Exam Mode: Grid Layout --- */
 .filter-container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); /* Responsive columns */
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     gap: 12px;
 }
 
@@ -867,63 +723,111 @@ details .category-btn div {
     height: 100%;
 }
 
-/* Remove the border from the old list style */
 .filter-topic-list {
-    border-left: none;
-    margin-left: 0;
-    padding-left: 0;
-    margin-top: 8px;
+    border-left: none; margin-left: 0; padding-left: 0; margin-top: 8px;
 }
 
 /* =========================================
-   17. CLEAN TOPIC LIST (Screenshot Match)
+   15. TEXT GRID LAYOUT (The Final User Vision)
    ========================================= */
 
-/* 1. Reset the Dropdown to be a normal box */
-details[open] {
-    display: block !important;
-    padding-bottom: 0 !important;
+/* 1. The Subject Card */
+.subject-card-grid {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    margin-bottom: 25px;
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
 }
 
-/* 2. The Container for the topics */
-.topic-list-container {
-    background: var(--card-bg); /* Matches theme */
-    padding: 10px 15px;
-    border-top: 1px solid var(--border-color);
-}
-
-/* 3. The Rows (Like in your screenshot) */
-.topic-row {
-    padding: 15px 5px;
+/* 2. The Header Area (Centered) */
+.subject-header-grid {
+    text-align: center;
+    margin-bottom: 20px;
     border-bottom: 1px solid var(--border-color);
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.topic-row:last-child {
-    border-bottom: none;
-}
-
-.topic-row:hover {
-    background: rgba(0, 114, 255, 0.05); /* Slight blue highlight on hover */
-}
-
-/* 4. Special Style for "Practice All" */
-.practice-all {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    color: var(--primary);
     padding-bottom: 15px;
+}
+
+.subject-header-grid h2 {
+    font-size: 20px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
     margin-bottom: 5px;
-    border-bottom: 2px solid var(--border-color);
+    color: var(--primary);
 }
 
-/* 5. Dark Mode Adjustments */
-[data-theme="dark"] .topic-row {
-    border-color: rgba(255,255,255,0.1);
+/* Thin progress bar under title */
+.progress-bar-thin {
+    height: 4px;
+    width: 100px; /* Small centered bar */
+    background: #e2e8f0;
+    margin: 0 auto 10px auto;
+    border-radius: 2px;
+    overflow: hidden;
 }
-[data-theme="dark"] .topic-list-container {
-    background: rgba(0,0,0,0.2); /* Slightly darker inner box */
+.progress-bar-thin .fill {
+    height: 100%;
+    background: var(--success);
 }
 
+/* "Practice All" Link */
+.practice-all-link {
+    background: none;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    padding: 8px 20px;
+    font-size: 13px;
+    border-radius: 20px;
+    cursor: pointer;
+    width: auto; /* Don't stretch */
+    display: inline-block;
+    transition: all 0.2s;
+}
+.practice-all-link:hover {
+    background: var(--primary);
+    color: white;
+}
+
+/* 3. The Topic Grid (Where the magic happens) */
+.topics-grid-container {
+    display: grid;
+    /* This creates columns that auto-fit (at least 3-4 per row on desktop) */
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); 
+    gap: 15px; /* Space between items */
+    text-align: left;
+}
+
+/* 4. The Individual Topic Text */
+.topic-grid-item {
+    font-size: 13px;
+    color: var(--text-dark);
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s;
+    border-left: 2px solid transparent; /* Invisible border for hover effect */
+    background: var(--input-bg); /* Slight background to make them readable */
+    text-align: center;
+}
+
+.topic-grid-item:hover {
+    background: #eef2ff; /* Light blue hover */
+    color: var(--primary);
+    transform: translateY(-2px);
+    font-weight: 600;
+}
+
+.topic-grid-item.done {
+    text-decoration: line-through;
+    opacity: 0.5;
+}
+
+/* 5. Mobile Adjustment */
+@media screen and (max-width: 600px) {
+    .topics-grid-container {
+        /* On small phones, maybe just 2 columns */
+        grid-template-columns: 1fr 1fr; 
+    }
+}
