@@ -31,6 +31,7 @@ let currentMode = 'practice';
 let currentIndex = 0; 
 let testTimer = null;
 let testAnswers = {}; 
+let testFlags = {}; // NEW: Stores Flagged Questions { q_uid: true }
 let testTimeRemaining = 0;
 
 // ======================================================
@@ -253,6 +254,7 @@ function startTest() {
     currentMode = 'test';
     currentIndex = 0;
     testAnswers = {};
+    testFlags = {}; // RESET FLAGS
     testTimeRemaining = mins * 60;
     
     showScreen('quiz-screen');
@@ -285,12 +287,14 @@ function renderPage() {
     const prevBtn = document.getElementById('prev-btn');
     const nextBtn = document.getElementById('next-btn');
     const submitBtn = document.getElementById('submit-btn');
+    const flagBtn = document.getElementById('flag-btn'); // NEW FLAG BUTTON
     
     prevBtn.classList.toggle('hidden', currentIndex === 0);
 
     if (currentMode === 'practice') {
         document.getElementById('timer').classList.add('hidden');
         document.getElementById('test-sidebar').classList.remove('active'); 
+        flagBtn.classList.add('hidden'); // Hide flag in practice
         submitBtn.classList.add('hidden');
         nextBtn.classList.add('hidden'); 
         container.appendChild(createQuestionCard(filteredQuestions[currentIndex], currentIndex, false));
@@ -298,6 +302,16 @@ function renderPage() {
         document.getElementById('timer').classList.remove('hidden');
         nextBtn.classList.remove('hidden');
         submitBtn.classList.add('hidden');
+        flagBtn.classList.remove('hidden'); // Show flag in Test
+
+        // Update Flag Button State for current page
+        // Note: With 5 questions per page, the "Flag" button applies to WHICH question?
+        // Ah, tricky. Usually Flag is per question. 
+        // For 5-per-page, we need a flag button ON EACH CARD, not in the header.
+        // OR, we assume header flag is disabled or we remove it from header and put it on cards.
+        // Let's put a flag icon ON EACH CARD for Test Mode.
+        // I will hide the header flag button for now to avoid confusion.
+        flagBtn.classList.add('hidden'); 
 
         const start = currentIndex;
         const end = Math.min(start + 5, filteredQuestions.length);
@@ -318,10 +332,21 @@ function createQuestionCard(q, index, isTest) {
     card.id = `q-card-${index}`; 
 
     let headerHTML = "";
+    
+    // HEADER LOGIC
     if (!isTest) {
+        // PRACTICE MODE
         const isSaved = userBookmarks.includes(q._uid);
         headerHTML = `<div style="font-size:0.85em; color:#999; margin-bottom:10px; text-transform:uppercase; letter-spacing:1px;">${q.Subject} • ${q.Topic} 
         <span onclick="toggleBookmark('${q._uid}', this)" class="bookmark-icon" style="color:${isSaved ? '#ffc107' : '#e2e8f0'}">${isSaved ? '★' : '☆'}</span></div>`;
+    } else {
+        // TEST MODE: Add Flag Icon Here
+        const isFlagged = testFlags[q._uid];
+        headerHTML = `<div style="text-align:right; margin-bottom:10px;">
+            <button onclick="toggleFlag('${q._uid}', this)" class="flag-btn ${isFlagged ? 'active' : ''}" style="display:inline-flex; width:auto; margin:0;">
+                🚩 Mark Review
+            </button>
+        </div>`;
     }
     
     let html = headerHTML + `<div class="test-q-text">${index+1}. ${q.Question}</div>`;
@@ -349,6 +374,18 @@ function createQuestionCard(q, index, isTest) {
     return card;
 }
 
+// --- NEW: FLAG LOGIC ---
+function toggleFlag(uid, btn) {
+    if (testFlags[uid]) {
+        delete testFlags[uid];
+        btn.classList.remove('active');
+    } else {
+        testFlags[uid] = true;
+        btn.classList.add('active');
+    }
+    renderNavigator(); // Update sidebar color immediately
+}
+
 // --- INTERACTION ---
 
 function handleClick(index, opt) {
@@ -364,7 +401,9 @@ function handleClick(index, opt) {
         // PRACTICE MODE
         const correct = getCorrectLetter(q);
         const btn = document.getElementById(`btn-${index}-${opt}`);
-        
+        const subj = q.Subject || "General";
+        const cleanSubj = subj.replace(/[^a-zA-Z0-9]/g, "_");
+
         if (opt === correct) {
             btn.classList.add('correct');
             const container = document.getElementById(`opts-${index}`);
@@ -378,57 +417,40 @@ function handleClick(index, opt) {
             content.innerHTML = q.Explanation || "No explanation provided.";
             modal.classList.remove('hidden');
 
-            // --- FORCE SAVE TO DB (Robust) ---
             saveProgressToDB(q, true);
-
         } else {
             btn.classList.add('wrong');
-            // --- FORCE SAVE TO DB (Robust) ---
             saveProgressToDB(q, false);
         }
     }
 }
 
-// === NEW: ROBUST SAVING FUNCTION ===
+// === ROBUST SAVING ===
 async function saveProgressToDB(q, isCorrect) {
     if (!currentUser) return;
-    
-    // Use transaction-like logic: Read -> Modify -> Write
     const userRef = db.collection('users').doc(currentUser.uid);
-    
     try {
         const doc = await userRef.get();
         let data = doc.exists ? doc.data() : {};
         
-        // 1. Initialize stats if missing
         if (!data.stats) data.stats = {};
         if (!data.solved) data.solved = [];
 
-        // 2. Update Solved list (Use stable UID)
         if (isCorrect && !data.solved.includes(q._uid)) {
             data.solved.push(q._uid);
         }
 
-        // 3. Update Subject Stats
         const cleanSubj = (q.Subject || "General").replace(/[^a-zA-Z0-9]/g, "_");
         if (!data.stats[cleanSubj]) {
             data.stats[cleanSubj] = { correct: 0, total: 0 };
         }
 
         data.stats[cleanSubj].total += 1;
-        if (isCorrect) {
-            data.stats[cleanSubj].correct += 1;
-        }
+        if (isCorrect) data.stats[cleanSubj].correct += 1;
 
-        // 4. Write back
         await userRef.set(data, { merge: true });
-        
-        // Update local cache
-        userSolvedIDs = data.solved;
-
-    } catch (error) {
-        console.error("Save failed", error);
-    }
+        userSolvedIDs = data.solved; // Update local cache
+    } catch (error) { console.error("Save failed", error); }
 }
 
 // --- NAVIGATOR ---
@@ -443,7 +465,11 @@ function renderNavigator() {
         const btn = document.createElement('div');
         btn.className = "nav-btn";
         btn.innerText = idx + 1;
-        if (testAnswers[q._uid]) btn.classList.add('answered');
+        
+        // Priority Colors: Flagged > Answered > Normal
+        if (testFlags[q._uid]) btn.classList.add('flagged');
+        else if (testAnswers[q._uid]) btn.classList.add('answered');
+        
         if (idx >= pageStart && idx < pageEnd) btn.classList.add('current');
         btn.onclick = () => jumpToQuestion(idx);
         navGrid.appendChild(btn);
@@ -519,25 +545,20 @@ function submitTest() {
     clearInterval(testTimer);
     let score = 0;
     let wrongList = [];
-    
-    // Just calculate score, saving is handled individually now or we can save Test Result separately
-    // Note: Test Mode also uses the new 'saveProgressToDB' logic? 
-    // Actually, Test Mode should save in Batch at the end to avoid 20 writes.
-    // Let's keep Test Mode simple for now: Save Result Score + Batch Update Stats
-    
-    let batchStats = {};
+    let sessionStats = {}; 
 
     filteredQuestions.forEach(q => {
         const user = testAnswers[q._uid];
         const correct = getCorrectLetter(q);
-        
-        const subj = (q.Subject || "General").replace(/[^a-zA-Z0-9]/g, "_");
-        if(!batchStats[subj]) batchStats[subj] = {c:0, t:0};
-        batchStats[subj].t++;
+        const subj = q.Subject || "General";
+        const cleanSubj = subj.replace(/[^a-zA-Z0-9]/g, "_");
+
+        if (!sessionStats[cleanSubj]) sessionStats[cleanSubj] = { correct: 0, total: 0 };
+        sessionStats[cleanSubj].total++;
 
         if(user === correct) {
             score++;
-            batchStats[subj].c++;
+            sessionStats[cleanSubj].correct++;
             if(!userSolvedIDs.includes(q._uid)) userSolvedIDs.push(q._uid);
         } else {
             wrongList.push({q, user, correct});
@@ -547,25 +568,18 @@ function submitTest() {
     const percent = Math.round((score/filteredQuestions.length)*100);
     
     if(currentUser) {
-        // Save Score
         db.collection('users').doc(currentUser.uid).collection('results').add({
             date: new Date(), score: percent, total: filteredQuestions.length
         });
 
-        // Batch Update Stats
-        const userRef = db.collection('users').doc(currentUser.uid);
-        userRef.get().then(doc => {
-            let data = doc.exists ? doc.data() : {};
-            if(!data.stats) data.stats = {};
-            
-            for(let [subj, counts] of Object.entries(batchStats)) {
-                if(!data.stats[subj]) data.stats[subj] = {correct:0, total:0};
-                data.stats[subj].correct += counts.c;
-                data.stats[subj].total += counts.t;
-            }
-            data.solved = userSolvedIDs;
-            userRef.set(data, {merge:true});
-        });
+        let updates = { solved: userSolvedIDs };
+        for (const [subject, data] of Object.entries(sessionStats)) {
+            updates[`stats.${subject}.correct`] = firebase.firestore.FieldValue.increment(data.correct);
+            updates[`stats.${subject}.total`] = firebase.firestore.FieldValue.increment(data.total);
+        }
+        
+        db.collection('users').doc(currentUser.uid).set(updates, { merge: true })
+          .then(() => loadUserData());
     }
 
     showScreen('result-screen');
@@ -617,7 +631,7 @@ function toggleTheme() {
     }
 }
 
-// ANALYTICS MODAL
+// ANALYTICS MODAL (ROBUST)
 async function openAnalytics() {
     const modal = document.getElementById('analytics-modal');
     const container = document.getElementById('analytics-content');
@@ -627,7 +641,8 @@ async function openAnalytics() {
     if (!currentUser) return;
 
     try {
-        const doc = await db.collection('users').doc(currentUser.uid).get();
+        const doc = await db.collection('users').doc(currentUser.uid).get({ source: 'server' });
+        
         if (!doc.exists || !doc.data().stats) {
             container.innerHTML = "<p>No detailed data available yet. Solve a question!</p>";
             return;
@@ -642,7 +657,7 @@ async function openAnalytics() {
 
         subjects.forEach(subj => {
             const percent = Math.round((subj.correct / subj.total) * 100);
-            const displayWidth = percent === 0 ? 5 : percent; // Force visible bar for 0%
+            const displayWidth = percent === 0 ? 5 : percent; 
             
             let color = "#2ecc71"; 
             if (percent < 50) color = "#e74c3c"; 
