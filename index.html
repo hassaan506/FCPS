@@ -13,20 +13,26 @@
 </head>
 <body>
 
-    <div id="auth-screen" class="screen active">
-        <div class="joinCard">
-            <h1 class="gameTitle">FCPS PREP</h1>
-            <p class="subTitle">By Dr Shaggy</p>
-            
-            <input type="email" id="email" placeholder="Email Address">
-            <input type="password" id="password" placeholder="Password">
-            
-            <button class="primary" onclick="login()">Log In</button>
-            <button class="secondary" onclick="signup()">Create New ID</button>
-            
-            <p id="auth-msg" style="margin-top:20px; color:#e74c3c; font-size:13px;"></p>
-        </div>
+    <div class="joinCard">
+    <h1 class="gameTitle" id="auth-title">FCPS PREP</h1>
+    <p class="subTitle" id="auth-subtitle">By Dr Shaggy</p>
+    
+    <input type="email" id="email" placeholder="Email Address">
+    <input type="password" id="password" placeholder="Password">
+    
+    <div id="auth-btn-container" style="margin-top:10px;">
+        <button class="primary" onclick="login()">Log In</button>
     </div>
+    
+    <div style="margin-top:15px; font-size:14px; color:#718096;">
+        <span id="auth-toggle-text">New here?</span>
+        <span onclick="toggleAuthMode()" id="auth-toggle-link" style="color:#0072ff; cursor:pointer; font-weight:bold; text-decoration:underline; margin-left:5px;">
+            Create New ID
+        </span>
+    </div>
+
+    <p id="auth-msg" style="margin-top:15px; color:#e74c3c; font-size:13px; min-height:18px;"></p>
+</div>
 
     <div id="dashboard-screen" class="screen">
         
@@ -208,6 +214,7 @@
     <script src="script.js"></script>
 </body>
 </html>
+
 
 
 
