@@ -85,12 +85,16 @@ function saveProfile() {
 async function loadUserData() {
     if (!currentUser) return;
     try {
+        console.log("📥 Loading User Data..."); // Debug Log
         const userDoc = await db.collection('users').doc(currentUser.uid).get();
         let userData = userDoc.exists ? userDoc.data() : {};
 
         userBookmarks = userData.bookmarks || [];
         userSolvedIDs = userData.solved || [];
-        userMistakes = userData.mistakes || []; // <--- LOAD MISTAKES
+        
+        // --- CRITICAL FIX: LOAD MISTAKES ---
+        userMistakes = userData.mistakes || []; 
+        console.log(`🧐 Found ${userMistakes.length} mistakes saved in database.`);
 
         // Gamification & Stats
         checkStreak(userData);
@@ -104,12 +108,11 @@ async function loadUserData() {
         if(statsBox) {
             statsBox.innerHTML = `
                 <div class="stat-row"><span class="stat-lbl">Test Average:</span> <span class="stat-val" style="color:${avgScore>=70?'#2ecc71':'#e74c3c'}">${avgScore}%</span></div>
-                <div class="stat-row"><span class="stat-lbl">Mistakes Pending:</span> <span class="stat-val" style="color:#e74c3c">${userMistakes.length}</span></div>
+                <div class="stat-row"><span class="stat-lbl">Mistakes Pending:</span> <span class="stat-val" style="color:#e74c3c; font-weight:bold;">${userMistakes.length}</span></div>
                 <div class="stat-row" style="border:none;"><span class="stat-lbl">Practice Solved:</span> <span class="stat-val">${userSolvedIDs.length}</span></div>`;
         }
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Load Error:", e); }
 }
-
 // === NEW: STREAK CALCULATOR ===
 function checkStreak(data) {
     const today = new Date().toDateString();
@@ -1006,6 +1009,7 @@ async function submitReport() {
         alert("❌ DATABASE ERROR: " + error.message);
     }
 }
+
 
 
 
