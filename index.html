@@ -9,7 +9,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -29,7 +29,6 @@
     </div>
 
     <div id="dashboard-screen" class="screen">
-    
         
         <div class="topBar">
             <div class="user-badge">
@@ -46,11 +45,10 @@
                 </div>
 
                 <button class="icon-btn" onclick="openBadges()" title="Achievements">🏆</button>
-
                 <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn">🌙</button>
-                
                 <button onclick="logout()" class="logout-btn">Log Out</button>
             </div>
+        </div> 
         <div class="gameContainer">
             
             <div style="display:flex; flex-direction:column; gap:25px;">
@@ -105,8 +103,7 @@
         </div>
     </div>
 
-    <<div id="quiz-screen" class="screen">
-        
+    <div id="quiz-screen" class="screen">
         <div class="gameContainer" style="position: relative;">
             
             <div class="quiz-header">
@@ -122,8 +119,7 @@
 
             <div id="test-sidebar" class="test-sidebar">
                 <h4 style="font-size:14px; color:#333; font-weight:700; border-bottom:1px solid #eee; padding-bottom:10px;">Question Navigator</h4>
-                <div id="nav-grid" class="nav-grid">
-                    </div>
+                <div id="nav-grid" class="nav-grid"></div>
             </div>
 
             <div id="quiz-content-area"></div>
@@ -136,6 +132,7 @@
             </div>
         </div>
     </div>
+
     <div id="result-screen" class="screen">
         <div class="joinCard" style="max-width: 700px; padding:30px;">
             <h1 class="gameTitle">Session Report</h1>
@@ -171,24 +168,20 @@
             </div>
         </div>
     </div>
+
     <div id="analytics-modal" class="modal-overlay hidden">
         <div class="joinCard" style="max-width: 600px; text-align: left; width: 95%;">
             <h2 class="gameTitle" style="font-size:24px; margin-bottom:20px;">Performance Report</h2>
-            
-            <div id="analytics-content" style="max-height: 60vh; overflow-y: auto; padding-right: 10px;">
-                </div>
-            
+            <div id="analytics-content" style="max-height: 60vh; overflow-y: auto; padding-right: 10px;"></div>
             <button class="primary" onclick="document.getElementById('analytics-modal').classList.add('hidden')">Close Report</button>
         </div>
     </div>
+
     <div id="badges-modal" class="modal-overlay hidden">
         <div class="joinCard" style="max-width: 500px;">
             <h2 style="margin-bottom:10px;">🏆 Your Achievements</h2>
             <p style="color:#718096; font-size:13px;">Solve questions to unlock medals!</p>
-            
-            <div id="badge-list" class="badge-grid">
-                </div>
-            
+            <div id="badge-list" class="badge-grid"></div>
             <button class="primary" onclick="document.getElementById('badges-modal').classList.add('hidden')" style="margin-top:20px;">Close</button>
         </div>
     </div>
@@ -196,11 +189,3 @@
     <script src="script.js"></script>
 </body>
 </html>
-
-
-
-
-
-
-
-
