@@ -832,47 +832,43 @@ if (searchInput) {
     });
 }
 
-/* --- FORCE INSTALL BUTTON (FIXED FOR iOS) --- */
+/* --- FINAL PWA LOGIC (SHOW BY DEFAULT) --- */
 const installBtn = document.getElementById('install-btn');
 let deferredPrompt;
 
-// 1. Detect iOS (iPhone, iPod, OR iPad pretending to be a Mac)
-const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()) || 
-              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+// 1. Check if App is ALREADY Installed
+const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
 
-// 2. Detect if already installed (Standalone mode)
-const isInStandaloneMode = ('standalone' in window.navigator) && (window.navigator.standalone);
-
-// 3. Logic to show the button
 if (installBtn) {
-    // If on Android/PC (Standard way)
+    // If already installed, HIDE the button
+    if (isStandalone) {
+        installBtn.style.display = 'none';
+    }
+
+    // Capture the Android/PC install prompt
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
-        installBtn.classList.remove('hidden'); // Show button
     });
 
-    // If on iOS and NOT already installed (Force Show)
-    if (isIos && !isInStandaloneMode) {
-        installBtn.classList.remove('hidden'); // Force show button
-    }
-
-    // Click Handler
+    // Handle Click
     installBtn.addEventListener('click', async () => {
         if (deferredPrompt) {
-            // Android/PC
+            // Android/PC: Show the automatic prompt
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
             if (outcome === 'accepted') {
-                installBtn.classList.add('hidden');
+                installBtn.style.display = 'none';
             }
             deferredPrompt = null;
-        } else if (isIos) {
-            // iOS Instructions
-            alert("To install on iPhone/iPad:\n\n1. Tap the 'Share' button (square with arrow up)\n2. Scroll down and tap 'Add to Home Screen' ➕");
         } else {
-            // Fallback
-             alert("To install, look for 'Add to Home Screen' in your browser menu.");
+            // iOS / Manual Install Instructions
+            const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+            if (isIos) {
+                alert("To install on iPhone/iPad:\n\n1. Tap the 'Share' button (square with arrow up)\n2. Scroll down and tap 'Add to Home Screen' ➕");
+            } else {
+                alert("To install:\nOpen your browser menu and select 'Add to Home Screen' or 'Install App'.");
+            }
         }
     });
 }
