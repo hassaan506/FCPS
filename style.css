@@ -1,5 +1,3 @@
-Here is my style.css
-
 /* ---------------------------------------------
    STYLE.CSS (MEDICAL MASTERY THEME - FIXED)
 --------------------------------------------- */
@@ -570,31 +568,41 @@ summary::-webkit-details-marker { display: none; }
 }
 
 
-/* --- CRITICAL SCREEN FIX --- */
+/* --- FIXED SCREEN LAYOUTS (SEPARATED) --- */
+
+/* 1. Base Screen Style */
 .screen {
-    display: none; /* Default state is hidden */
-    width: 100%;
-    height: 100%;
+    display: none;
+    width: 100%;
+    min-height: 100vh;
 }
 
-.screen.active {
-    display: flex !important; /* Force flex for active screens */
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+/* 2. DASHBOARD & QUIZ (Normal Top-to-Bottom Flow) */
+#dashboard-screen.active,
+#quiz-screen.active,
+#result-screen.active {
+    display: block !important; /* This fixes the squishing! */
+    padding-top: 20px;
 }
 
+/* 3. LOGIN SCREEN ONLY (Centered) */
+#auth-screen.active {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    
+    /* Ensure it covers everything */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: #f0f2f5;
+    z-index: 9999;
+}
+
+/* 4. Force Hide Utility */
 .screen.hidden {
-    display: none !important; /* Force hide for hidden screens */
-}
-
-/* Ensure the wrapper takes full height to center the card */
-#auth-screen {
-    min-height: 100vh;
-    width: 100%;
-    position: fixed;
-    top: 0;
-    left: 0;
-    z-index: 9999;
-    background: #f0f2f5; /* Or your background color */
+    display: none !important;
 }
