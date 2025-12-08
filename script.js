@@ -547,7 +547,6 @@ function handleClick(index, opt) {
     }
 }
 
-// === ROBUST SAVING ===
 async function saveProgressToDB(q, isCorrect) {
     if (!currentUser) return;
     const userRef = db.collection('users').doc(currentUser.uid);
@@ -555,21 +554,25 @@ async function saveProgressToDB(q, isCorrect) {
         const doc = await userRef.get();
         let data = doc.exists ? doc.data() : {};
         
+        // Ensure lists exist
         if (!data.stats) data.stats = {};
         if (!data.solved) data.solved = [];
-        if (!data.mistakes) data.mistakes = []; // Ensure array exists
+        if (!data.mistakes) data.mistakes = []; 
 
         if (isCorrect) {
-            // Add to Solved
+            // 1. If Correct: Add to Solved, Remove from Mistakes
             if (!data.solved.includes(q._uid)) data.solved.push(q._uid);
-            // Remove from Mistakes (since you fixed it!)
             data.mistakes = data.mistakes.filter(id => id !== q._uid);
+            console.log("✅ Fixed a mistake! Removed from list.");
         } else {
-            // Add to Mistakes (if not already there)
-            if (!data.mistakes.includes(q._uid)) data.mistakes.push(q._uid);
+            // 2. If Wrong: Add to Mistakes
+            if (!data.mistakes.includes(q._uid)) {
+                data.mistakes.push(q._uid);
+                console.log("❌ Mistake added to list.");
+            }
         }
 
-        // Update Subject Stats
+        // Update Stats counts
         const cleanSubj = (q.Subject || "General").replace(/[^a-zA-Z0-9]/g, "_");
         if (!data.stats[cleanSubj]) {
             data.stats[cleanSubj] = { correct: 0, total: 0 };
@@ -577,14 +580,16 @@ async function saveProgressToDB(q, isCorrect) {
         data.stats[cleanSubj].total += 1;
         if (isCorrect) data.stats[cleanSubj].correct += 1;
 
+        // Save to Database
         await userRef.set(data, { merge: true });
         
-        // Update local variables
+        // Update Local Variables (So the button works immediately)
         userSolvedIDs = data.solved;
         userMistakes = data.mistakes;
 
     } catch (error) { console.error("Save failed", error); }
 }
+
 // --- NAVIGATOR ---
 function renderNavigator() {
     if(currentMode !== 'test') return;
@@ -1009,6 +1014,7 @@ async function submitReport() {
         alert("❌ DATABASE ERROR: " + error.message);
     }
 }
+
 
 
 
