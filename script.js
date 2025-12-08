@@ -278,79 +278,57 @@ function processData(data) {
 function renderMenus(subjects, map) {
     const container = document.getElementById('dynamic-menus');
     container.innerHTML = "";
+    
+    // Force a fresh sort
     const sortedSubjects = Array.from(subjects).sort();
 
     sortedSubjects.forEach(subj => {
+        // --- 1. PREPARE DATA ---
         const subjQuestions = allQuestions.filter(q => q.Subject === subj);
         const totalSubj = subjQuestions.length;
         const solvedSubj = subjQuestions.filter(q => userSolvedIDs.includes(q._uid)).length;
         const percentSubj = totalSubj > 0 ? Math.round((solvedSubj / totalSubj) * 100) : 0;
-
-        // 1. Create the Card
-        const details = document.createElement('details');
         
-        // 2. Create the Header
-        details.innerHTML = `
-            <summary>
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-weight:700; font-size:15px;">${subj}</span>
-                    <span style="font-size:12px; opacity:0.8;">${solvedSubj}/${totalSubj} (${percentSubj}%)</span>
-                </div>
-                <div class="menu-progress-track" style="margin-top:8px; height:6px;">
-                    <div class="menu-progress-fill" style="width:${percentSubj}%"></div>
-                </div>
-            </summary>
+        // --- 2. CREATE THE CARD ---
+        const card = document.createElement('div');
+        card.className = "subject-card-grid"; // New class for your specific style
+
+        // --- 3. HEADER (Centered Title) ---
+        let html = `
+            <div class="subject-header-grid">
+                <h2>${subj}</h2>
+                <div class="progress-bar-thin"><div class="fill" style="width:${percentSubj}%"></div></div>
+                <button onclick="startPractice('${subj}', null)" class="practice-all-link">
+                    Practice All ${subj} ➜
+                </button>
+            </div>
         `;
 
-        // 3. Create the List Container (White box inside)
-        const listContainer = document.createElement('div');
-        listContainer.className = "topic-list-container";
-
-        // 4. "Practice All" Button (Top of the list)
-        const allBtn = document.createElement('div');
-        allBtn.className = "topic-row practice-all";
-        allBtn.innerHTML = `
-            <span style="font-weight:700;">Practice All ${subj}</span>
-            <span>⭐</span>`;
-        allBtn.onclick = () => startPractice(subj, null);
-        listContainer.appendChild(allBtn);
-
-        // 5. Topic List
+        // --- 4. TOPICS GRID (The Horizontal Layout) ---
         const sortedTopics = Array.from(map[subj] || []).sort();
         
-        // --- DATA CHECK: If topics exist, they WILL show here ---
         if (sortedTopics.length > 0) {
+            html += `<div class="topics-grid-container">`; // The Grid Container
+            
             sortedTopics.forEach(topic => {
                 const topQuestions = subjQuestions.filter(q => q.Topic === topic);
-                const totalTop = topQuestions.length;
-                const solvedTop = topQuestions.filter(q => userSolvedIDs.includes(q._uid)).length;
-                const percentTop = totalTop > 0 ? Math.round((solvedTop / totalTop) * 100) : 0;
-
-                const row = document.createElement('div');
-                row.className = "topic-row";
-                row.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                        <span style="font-weight:600; font-size:14px;">${topic}</span>
-                        <span style="font-size:12px; font-weight:700; opacity:0.6;">${percentTop}%</span>
-                    </div>
-                    <div class="menu-progress-track" style="height:4px; background:rgba(0,0,0,0.05);">
-                        <div class="menu-progress-fill" style="width:${percentTop}%; background:${percentTop===100 ? '#fbbf24' : '#3b82f6'};"></div>
+                const isCompleted = topQuestions.every(q => userSolvedIDs.includes(q._uid)) && topQuestions.length > 0;
+                
+                // Add each topic as a simple text item
+                html += `
+                    <div class="topic-grid-item ${isCompleted ? 'done' : ''}" onclick="startPractice('${subj}', '${topic}')">
+                        ${topic}
                     </div>
                 `;
-                row.onclick = () => startPractice(subj, topic);
-                listContainer.appendChild(row);
             });
+            html += `</div>`;
         } else {
-            // Fallback if no topics found
-            const emptyMsg = document.createElement('div');
-            emptyMsg.className = "topic-row";
-            emptyMsg.style.textAlign = "center";
-            emptyMsg.innerHTML = `<span style="opacity:0.5; font-size:12px;">No specific topics found</span>`;
-            listContainer.appendChild(emptyMsg);
+            // Fallback if google sheets hasn't updated yet
+            html += `<div style="text-align:center; padding:10px; opacity:0.5; font-size:12px;">(No topics found yet)</div>`;
         }
 
-        details.appendChild(listContainer);
-        container.appendChild(details);
+        card.innerHTML = html;
+        container.appendChild(card);
     });
 }
 
@@ -1249,6 +1227,7 @@ window.signup = function() {
             if(msg) msg.innerText = "❌ Error: " + error.message;
         });
 };
+
 
 
 
