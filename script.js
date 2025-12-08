@@ -85,34 +85,41 @@ function saveProfile() {
 async function loadUserData() {
     if (!currentUser) return;
     try {
-        console.log("📥 Loading User Data..."); // Debug Log
-        const userDoc = await db.collection('users').doc(currentUser.uid).get();
+        // 1. Show "Loading..." so you know it's updating
+        const statsBox = document.getElementById('quick-stats');
+        if(statsBox) statsBox.style.opacity = "0.5"; 
+
+        // 2. FORCE FETCH FROM SERVER (Bypass Cache)
+        const userDoc = await db.collection('users').doc(currentUser.uid).get({ source: 'server' });
         let userData = userDoc.exists ? userDoc.data() : {};
 
         userBookmarks = userData.bookmarks || [];
         userSolvedIDs = userData.solved || [];
-        
-        // --- CRITICAL FIX: LOAD MISTAKES ---
         userMistakes = userData.mistakes || []; 
-        console.log(`🧐 Found ${userMistakes.length} mistakes saved in database.`);
 
-        // Gamification & Stats
         checkStreak(userData);
 
-        const resultsSnap = await db.collection('users').doc(currentUser.uid).collection('results').get();
+        // 3. FORCE FETCH RESULTS TOO
+        const resultsSnap = await db.collection('users').doc(currentUser.uid).collection('results').get({ source: 'server' });
         let totalTests = 0, totalScore = 0;
         resultsSnap.forEach(doc => { totalTests++; totalScore += doc.data().score; });
         const avgScore = totalTests > 0 ? Math.round(totalScore / totalTests) : 0;
         
-        const statsBox = document.getElementById('quick-stats');
+        // 4. Update UI
         if(statsBox) {
+            statsBox.style.opacity = "1"; // Restore opacity
             statsBox.innerHTML = `
                 <div class="stat-row"><span class="stat-lbl">Test Average:</span> <span class="stat-val" style="color:${avgScore>=70?'#2ecc71':'#e74c3c'}">${avgScore}%</span></div>
                 <div class="stat-row"><span class="stat-lbl">Mistakes Pending:</span> <span class="stat-val" style="color:#e74c3c; font-weight:bold;">${userMistakes.length}</span></div>
                 <div class="stat-row" style="border:none;"><span class="stat-lbl">Practice Solved:</span> <span class="stat-val">${userSolvedIDs.length}</span></div>`;
         }
-    } catch (e) { console.error("Load Error:", e); }
+    } catch (e) { 
+        console.error("Load Error:", e); 
+    }
 }
+
+
+
 // === NEW: STREAK CALCULATOR ===
 function checkStreak(data) {
     const today = new Date().toDateString();
@@ -811,16 +818,18 @@ function toggleTheme() {
 async function openAnalytics() {
     const modal = document.getElementById('analytics-modal');
     const container = document.getElementById('analytics-content');
-    container.innerHTML = "<p>Crunching numbers...</p>";
-    modal.classList.remove('hidden');
+    
+    container.innerHTML = "<p style='padding:20px; text-align:center;'>🔄 Fetching latest data...</p>";
+    if(modal) modal.classList.remove('hidden');
 
     if (!currentUser) return;
 
     try {
+        // FORCE SERVER FETCH
         const doc = await db.collection('users').doc(currentUser.uid).get({ source: 'server' });
         
         if (!doc.exists || !doc.data().stats) {
-            container.innerHTML = "<p>No detailed data available yet. Solve a question!</p>";
+            container.innerHTML = "<p style='padding:20px;'>No data yet. Go solve some questions!</p>";
             return;
         }
 
@@ -856,6 +865,7 @@ async function openAnalytics() {
         container.innerHTML = html;
     } catch (e) { container.innerHTML = "Error loading stats: " + e.message; }
 }
+
 
 /* --- FIXED GLOBAL SEARCH LOGIC (MATCHES YOUR VARIABLES) --- */
 const searchInput = document.getElementById('global-search');
@@ -1026,6 +1036,7 @@ async function submitReport() {
         alert("❌ DATABASE ERROR: " + error.message);
     }
 }
+
 
 
 
