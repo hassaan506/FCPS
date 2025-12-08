@@ -1089,15 +1089,13 @@ function toggleReportForm() {
 }
 
 async function submitReport() {
-    alert("Step 1: Button Clicked! Function started.");
-
-    // 1. Get User
+    // 1. Check if logged in
     if (!currentUser) {
         alert("❌ Error: You are not logged in.");
         return;
     }
     
-    // 2. Get Input
+    // 2. Get the text you wrote
     const reasonInput = document.getElementById('report-reason');
     const reason = reasonInput.value;
     
@@ -1106,16 +1104,13 @@ async function submitReport() {
         return;
     }
     
-    // 3. Get Question
-    // We try to grab the question safely
+    // 3. Identify the current question
     let q = null;
     if (typeof filteredQuestions !== 'undefined' && filteredQuestions[currentIndex]) {
         q = filteredQuestions[currentIndex];
     }
     
-    alert("Step 2: Sending to Firebase...");
-
-    // 4. Send to Firebase
+    // 4. Send to Database
     try {
         await db.collection('reports').add({
             questionID: q ? q._uid : "unknown",
@@ -1125,13 +1120,16 @@ async function submitReport() {
             timestamp: new Date()
         });
 
-        alert("✅ Success! Report saved to database.");
+        // 5. Success Feedback
+        alert("✅ Thank you! Report sent successfully.");
+        
+        // Clear the box and hide it
         reasonInput.value = ""; 
         document.getElementById('report-form').classList.add('hidden'); 
 
     } catch (error) {
         console.error(error);
-        alert("❌ DATABASE ERROR: " + error.message);
+        alert("❌ Error sending report: " + error.message);
     }
 }
 
@@ -1242,6 +1240,7 @@ window.signup = function() {
             if(msg) msg.innerText = "❌ Error: " + error.message;
         });
 };
+
 
 
 
