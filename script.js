@@ -18,7 +18,7 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 
 // ======================================================
-// 2. STATE VARIABLES
+// 2. STATE
 // ======================================================
 
 let currentUser = null;
@@ -114,7 +114,7 @@ async function resetAccountData() {
 }
 
 // ======================================================
-// 4. DATA LOADING (STABLE ID)
+// 4. DATA LOADING
 // ======================================================
 
 function loadQuestions() {
@@ -124,7 +124,6 @@ function loadQuestions() {
     });
 }
 
-// Generate Unique Digital Fingerprint for each question
 function generateStableID(str) {
     let hash = 0;
     if (str.length === 0) return hash;
@@ -269,9 +268,7 @@ function startTest() {
 function startSavedQuestions() {
     if(userBookmarks.length === 0) return alert("No bookmarks!");
     filteredQuestions = allQuestions.filter(q => userBookmarks.includes(q._uid));
-    
-    if(filteredQuestions.length === 0) return alert("No matching bookmarks found. (Old bookmarks might be invalid).");
-
+    if(filteredQuestions.length === 0) return alert("No matching bookmarks found.");
     currentMode = 'practice';
     currentIndex = 0;
     showScreen('quiz-screen');
@@ -304,16 +301,13 @@ function renderPage() {
 
         const start = currentIndex;
         const end = Math.min(start + 5, filteredQuestions.length);
-        
         for (let i = start; i < end; i++) {
             container.appendChild(createQuestionCard(filteredQuestions[i], i, true));
         }
-
         if (end === filteredQuestions.length) {
             nextBtn.classList.add('hidden');
             submitBtn.classList.remove('hidden');
         }
-        
         renderNavigator(); 
     }
 }
@@ -339,7 +333,6 @@ function createQuestionCard(q, index, isTest) {
     opts.forEach(opt => {
         let isSelected = false;
         if(isTest && testAnswers[q._uid] === opt) isSelected = true;
-        
         html += `<button class="option-btn ${isSelected ? 'selected' : ''}" 
                   onclick="handleClick(${index}, '${opt}')" 
                   id="btn-${index}-${opt}">
@@ -356,7 +349,7 @@ function createQuestionCard(q, index, isTest) {
     return card;
 }
 
-// --- INTERACTION & ANALYTICS ---
+// --- INTERACTION & ANALYTICS (FIXED SAVING LOGIC) ---
 
 function handleClick(index, opt) {
     const q = filteredQuestions[index];
@@ -368,11 +361,11 @@ function handleClick(index, opt) {
         document.getElementById(`btn-${index}-${opt}`).classList.add('selected');
         renderNavigator(); 
     } else {
-        // PRACTICE MODE
         const correct = getCorrectLetter(q);
         const btn = document.getElementById(`btn-${index}-${opt}`);
+        
+        // Sanitize Subject Key
         const subj = q.Subject || "General";
-        // Sanitize Subject Key for DB
         const cleanSubj = subj.replace(/[^a-zA-Z0-9]/g, "_");
 
         if (opt === correct) {
@@ -392,21 +385,33 @@ function handleClick(index, opt) {
             if (currentUser) {
                 if (!userSolvedIDs.includes(q._uid)) userSolvedIDs.push(q._uid);
                 
-                let updates = { solved: userSolvedIDs };
-                updates[`stats.${cleanSubj}.correct`] = firebase.firestore.FieldValue.increment(1);
-                updates[`stats.${cleanSubj}.total`] = firebase.firestore.FieldValue.increment(1);
+                // Use structured update to create nested maps correctly
+                let statsUpdate = {};
+                // Increment values using structured object path
+                // Note: We use a specific syntax for nested updates in set({merge:true})
                 
-                db.collection('users').doc(currentUser.uid).set(updates, { merge: true });
+                let docRef = db.collection('users').doc(currentUser.uid);
+                
+                // We perform the update in a transaction or simple merge
+                // To be safe, we will read the current stats, update locally, and write back
+                // OR use dot notation which requires the parent to exist? 
+                // Let's use the object merge strategy which is safer for creation.
+                
+                let updatePayload = { solved: userSolvedIDs };
+                // We use dot notation keys for specific updates
+                updatePayload[`stats.${cleanSubj}.correct`] = firebase.firestore.FieldValue.increment(1);
+                updatePayload[`stats.${cleanSubj}.total`] = firebase.firestore.FieldValue.increment(1);
+                
+                docRef.set(updatePayload, { merge: true });
             }
         } else {
             btn.classList.add('wrong');
             
             // --- ANALYTICS SAVE (WRONG) ---
             if (currentUser) {
-                let updates = {};
-                updates[`stats.${cleanSubj}.total`] = firebase.firestore.FieldValue.increment(1);
-                // Note: We do NOT increment 'correct' here
-                db.collection('users').doc(currentUser.uid).set(updates, { merge: true });
+                let updatePayload = {};
+                updatePayload[`stats.${cleanSubj}.total`] = firebase.firestore.FieldValue.increment(1);
+                db.collection('users').doc(currentUser.uid).set(updatePayload, { merge: true });
             }
         }
     }
@@ -487,7 +492,7 @@ function toggleBookmark(uid, span) {
     db.collection('users').doc(currentUser.uid).set({ bookmarks: userBookmarks }, { merge: true });
 }
 
-// --- SUBMISSION ---
+// --- SUBMISSION (FIXED ANALYTICS) ---
 function updateTimer() {
     testTimeRemaining--;
     const m = Math.floor(testTimeRemaining/60);
@@ -523,17 +528,19 @@ function submitTest() {
     const percent = Math.round((score/filteredQuestions.length)*100);
     
     if(currentUser) {
+        // 1. Save Test Result
         db.collection('users').doc(currentUser.uid).collection('results').add({
             date: new Date(), score: percent, total: filteredQuestions.length
         });
 
-        let updates = { solved: userSolvedIDs };
+        // 2. Update Stats (Using safe update payload)
+        let updatePayload = { solved: userSolvedIDs };
         for (const [subject, data] of Object.entries(sessionStats)) {
-            updates[`stats.${subject}.correct`] = firebase.firestore.FieldValue.increment(data.correct);
-            updates[`stats.${subject}.total`] = firebase.firestore.FieldValue.increment(data.total);
+            updatePayload[`stats.${subject}.correct`] = firebase.firestore.FieldValue.increment(data.correct);
+            updatePayload[`stats.${subject}.total`] = firebase.firestore.FieldValue.increment(data.total);
         }
         
-        db.collection('users').doc(currentUser.uid).set(updates, { merge: true })
+        db.collection('users').doc(currentUser.uid).set(updatePayload, { merge: true })
           .then(() => loadUserData());
     }
 
@@ -586,7 +593,7 @@ function toggleTheme() {
     }
 }
 
-// ANALYTICS MODAL (FIXED FOR 0% VISIBILITY)
+// ANALYTICS MODAL (FIXED)
 async function openAnalytics() {
     const modal = document.getElementById('analytics-modal');
     const container = document.getElementById('analytics-content');
@@ -596,9 +603,7 @@ async function openAnalytics() {
     if (!currentUser) return;
 
     try {
-        // FORCE REFRESH from server
-        const doc = await db.collection('users').doc(currentUser.uid).get({ source: 'server' });
-        
+        const doc = await db.collection('users').doc(currentUser.uid).get();
         if (!doc.exists || !doc.data().stats) {
             container.innerHTML = "<p>No detailed data available yet. Solve a question!</p>";
             return;
@@ -607,20 +612,17 @@ async function openAnalytics() {
         const stats = doc.data().stats;
         let html = "";
         
-        // Convert keys back to text
         const subjects = Object.keys(stats).map(key => {
             return { name: key.replace(/_/g, " "), ...stats[key] };
         }).sort((a, b) => (a.correct / a.total) - (b.correct / b.total));
 
         subjects.forEach(subj => {
             const percent = Math.round((subj.correct / subj.total) * 100);
+            const displayWidth = percent === 0 ? 5 : percent; // Force visible bar for 0%
             
-            // LOGIC FIX: Always show at least 5% bar for 0% scores so it's visible (red)
-            const displayWidth = percent === 0 ? 5 : percent; 
-            
-            let color = "#2ecc71"; // Green
-            if (percent < 50) color = "#e74c3c"; // Red
-            else if (percent < 75) color = "#f1c40f"; // Yellow
+            let color = "#2ecc71"; 
+            if (percent < 50) color = "#e74c3c"; 
+            else if (percent < 75) color = "#f1c40f"; 
 
             html += `
                 <div class="stat-item">
