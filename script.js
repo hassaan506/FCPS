@@ -1188,12 +1188,9 @@ window.signup = function() {
 
     if(msg) msg.innerText = "⏳ Creating ID... Please wait.";
 
-    // 1. Create User
     auth.createUserWithEmailAndPassword(email, password)
         .then((cred) => {
-            console.log("✅ User created:", cred.user.uid);
-            
-            // 2. Save Database Profile
+            // Create Database Profile
             return db.collection('users').doc(cred.user.uid).set({
                 email: email,
                 role: 'student',
@@ -1205,22 +1202,26 @@ window.signup = function() {
             });
         })
         .then(() => {
-            console.log("✅ Database saved. FORCE SWITCHING SCREENS NOW.");
-            
-            // 3. FORCE HIDE AUTH SCREEN (Manual Override)
-            document.getElementById('auth-screen').style.display = 'none'; // Hard Hide
-            document.getElementById('auth-screen').classList.add('hidden');
-            document.getElementById('auth-screen').classList.remove('active');
+            // --- THE FIX: MANUALLY HIDE THE PARENT CONTAINER ---
+            const authScreen = document.getElementById('auth-screen');
+            const dashScreen = document.getElementById('dashboard-screen');
 
-            // 4. FORCE SHOW DASHBOARD
-            document.getElementById('dashboard-screen').style.display = 'flex'; // Hard Show
-            document.getElementById('dashboard-screen').classList.remove('hidden');
-            document.getElementById('dashboard-screen').classList.add('active');
+            // 1. Hard Hide Auth
+            if(authScreen) {
+                authScreen.style.display = 'none';
+                authScreen.classList.remove('active');
+                authScreen.classList.add('hidden');
+            }
 
-            // 5. Load Data
+            // 2. Hard Show Dashboard
+            if(dashScreen) {
+                dashScreen.style.display = 'block'; // or flex
+                dashScreen.classList.remove('hidden');
+                dashScreen.classList.add('active');
+            }
+
             loadUserData();
-            
-            alert("🎉 Account Created! Welcome.");
+            alert("🎉 Account Created!");
         })
         .catch((error) => {
             console.error("Signup Error:", error);
