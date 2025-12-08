@@ -1086,13 +1086,16 @@ async function submitReport() {
     }
 }
 
-/* --- AUTH SWITCHER LOGIC --- */
+/* --- GLOBAL AUTH VARIABLES --- */
 let isSignupMode = false;
 
-function toggleAuthMode() {
+/* --- 1. TOGGLE FUNCTION (SWITCH LOGIN <-> SIGNUP) --- */
+window.toggleAuthMode = function() {
+    console.log("Toggle clicked!"); // Debug check
+
     isSignupMode = !isSignupMode; // Flip the switch
 
-    // Get Elements
+    // Get all the elements we need to change
     const title = document.getElementById('auth-title');
     const sub = document.getElementById('auth-subtitle');
     const btnContainer = document.getElementById('auth-btn-container');
@@ -1100,57 +1103,68 @@ function toggleAuthMode() {
     const toggleLink = document.getElementById('auth-toggle-link');
     const msg = document.getElementById('auth-msg');
 
-    // Clear old errors
-    msg.innerText = "";
+    // Reset error messages
+    if(msg) msg.innerText = "";
+
+    // Safety check: Do these elements actually exist?
+    if (!title || !btnContainer || !toggleLink) {
+        alert("Error: HTML elements are missing. Please check Step 2.");
+        return;
+    }
 
     if (isSignupMode) {
-        // --- SWITCH TO SIGNUP MODE ---
+        // --- SHOW SIGNUP MODE ---
         title.innerText = "Create Account";
-        sub.innerText = "Join Dr Shaggy's Prep";
+        sub.innerText = "Join FCPS Prep";
         
-        // Change button to Green "Sign Up"
-        btnContainer.innerHTML = `<button class="primary" onclick="signup()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">✨ Sign Up</button>`;
+        // Green Button
+        btnContainer.innerHTML = `<button class="primary" onclick="window.signup()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);">✨ Sign Up</button>`;
         
-        // Change link text
+        // Link Text
         toggleText.innerText = "Already have an ID?";
         toggleLink.innerText = "Log In here";
         
     } else {
-        // --- SWITCH TO LOGIN MODE ---
+        // --- SHOW LOGIN MODE ---
         title.innerText = "FCPS PREP";
         sub.innerText = "By Dr Shaggy";
         
-        // Change button back to Blue "Log In"
+        // Blue Button
         btnContainer.innerHTML = `<button class="primary" onclick="login()">Log In</button>`;
         
-        // Change link text
+        // Link Text
         toggleText.innerText = "New here?";
         toggleLink.innerText = "Create New ID";
     }
-}
+};
 
-/* --- ENHANCED SIGNUP FUNCTION --- */
-function signup() {
+/* --- 2. SIGNUP FUNCTION (CREATE THE USER) --- */
+window.signup = function() {
+    console.log("Signup clicked!");
+    
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     const msg = document.getElementById('auth-msg');
 
+    // Validation
     if (!email || !password) {
-        msg.innerText = "⚠️ Please fill in both boxes above.";
+        if(msg) msg.innerText = "⚠️ Please enter both Email and Password.";
+        else alert("Please enter both Email and Password.");
         return;
     }
-    
+
     if (password.length < 6) {
-        msg.innerText = "⚠️ Password must be 6+ characters.";
+        if(msg) msg.innerText = "⚠️ Password must be at least 6 characters.";
+        else alert("Password must be at least 6 characters.");
         return;
     }
 
-    msg.innerText = "⏳ Creating ID...";
+    if(msg) msg.innerText = "⏳ Creating ID...";
 
-    // Firebase Create User
+    // Firebase Creation
     auth.createUserWithEmailAndPassword(email, password)
         .then((cred) => {
-            // Create Database Entry
+            // Success! Now create database entry
             return db.collection('users').doc(cred.user.uid).set({
                 email: email,
                 role: 'student',
@@ -1162,11 +1176,12 @@ function signup() {
             });
         })
         .then(() => {
-            alert("🎉 ID Created Successfully! Logging you in...");
-            // The existing onAuthStateChanged listener will handle the screen switch
+            alert("🎉 Account Created! Logging you in...");
+            // The existing auth listener will switch screen automatically
         })
         .catch((error) => {
-            console.error(error);
-            msg.innerText = "❌ Error: " + error.message;
+            console.error("Signup Error:", error);
+            if(msg) msg.innerText = "❌ Error: " + error.message;
+            else alert("Error: " + error.message);
         });
-}=
+};
