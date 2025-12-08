@@ -367,7 +367,7 @@ button {
 /* DROPDOWN MENUS */
 details { 
     margin-bottom: 15px; 
-    background: white; 
+    background: var(--card-bg); 
     border-radius: 16px; 
     border: 1px solid var(--border-color); 
     overflow: hidden; 
@@ -737,3 +737,4 @@ summary::-webkit-details-marker { display: none; }
     color: var(--text-light);
     text-align: right;
 }
+
