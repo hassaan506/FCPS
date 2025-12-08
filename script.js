@@ -757,7 +757,7 @@ async function openAnalytics() {
     } catch (e) { container.innerHTML = "Error loading stats: " + e.message; }
 }
 
-/* --- IMPROVED GLOBAL SEARCH LOGIC --- */
+/* --- SUPER SEARCH LOGIC (SEARCHES EVERYTHING) --- */
 const searchInput = document.getElementById('global-search');
 const searchResults = document.getElementById('search-results');
 
@@ -765,26 +765,25 @@ if (searchInput) {
     searchInput.addEventListener('input', (e) => {
         const text = e.target.value.toLowerCase();
         
-        // 1. Safety Check: Does the questions list exist?
-        if (typeof questions === 'undefined' || !questions) {
-            console.error("Error: The variable 'questions' was not found.");
-            return;
-        }
-
-        // 2. Clear if empty
+        // 1. Hide if empty
         if (text.length < 2) {
             searchResults.style.display = 'none';
             searchResults.innerHTML = '';
             return;
         }
 
-        // 3. Filter Questions (Smart Check for Capitalization)
-        const matches = questions.filter(q => {
-            // We check multiple possible names for the question column
-            const qText = (q.question || q.Question || q["Question Text"] || "").toLowerCase();
-            const qExp = (q.explanation || q.Explanation || q["Explanation Text"] || "").toLowerCase();
-            
-            return qText.includes(text) || qExp.includes(text);
+        // 2. Find the database (checks for 'questions' variable)
+        let db = [];
+        if (typeof questions !== 'undefined') db = questions;
+        else if (typeof window.questions !== 'undefined') db = window.questions;
+        
+        if (db.length === 0) return; // Database not ready yet
+
+        // 3. SEARCH EVERYTHING 
+        // We take the whole row (Question + Options + Explanation) and check if the word exists anywhere.
+        const matches = db.filter(row => {
+            const allText = Object.values(row).join(" ").toLowerCase();
+            return allText.includes(text);
         });
 
         // 4. Show Results
@@ -792,31 +791,38 @@ if (searchInput) {
         searchResults.innerHTML = '';
 
         if (matches.length === 0) {
-            searchResults.innerHTML = '<div class="search-item" style="color:gray; cursor:default;">No questions found.</div>';
+            searchResults.innerHTML = '<div class="search-item" style="color:gray;">No matches found</div>';
         } else {
-            matches.forEach(match => {
+            // Limit to top 20 results to keep it fast
+            matches.slice(0, 20).forEach(match => {
                 const div = document.createElement('div');
                 div.className = 'search-item';
                 
-                // Get the text again for display
-                const displayText = match.question || match.Question || match["Question Text"] || "Question";
+                // Try to find the best text to display as the title
+                let title = "Question";
+                const keys = Object.keys(match);
+                // Look for a key that contains the word "question" (e.g., "Question", "question_text")
+                const questionKey = keys.find(k => k.toLowerCase().includes('question'));
+                if (questionKey && match[questionKey]) {
+                    title = match[questionKey];
+                }
                 
-                div.innerText = displayText.substring(0, 50) + "...";
+                div.innerText = title.substring(0, 60) + "...";
                 
                 div.onclick = () => {
                     // Start mini session
-                    currentQuestions = [match];
-                    currentQuestionIndex = 0;
-                    score = 0;
+                    if(typeof currentQuestions !== 'undefined') currentQuestions = [match];
+                    if(typeof currentQuestionIndex !== 'undefined') currentQuestionIndex = 0;
+                    if(typeof score !== 'undefined') score = 0;
                     
-                    document.getElementById('dashboard-screen').classList.remove('active');
+                    // Switch to Quiz Screen (using your specific class names)
+                    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
                     document.getElementById('quiz-screen').classList.add('active');
                     
-                    // Ensure loadQuestion exists before calling
-                    if (typeof loadQuestion === 'function') {
-                        loadQuestion();
-                    }
+                    // Run the load function
+                    if (typeof loadQuestion === 'function') loadQuestion();
                     
+                    // Reset search
                     searchInput.value = '';
                     searchResults.style.display = 'none';
                 };
@@ -825,9 +831,9 @@ if (searchInput) {
         }
     });
 
-    // Close list if you click somewhere else
+    // Close on click outside
     document.addEventListener('click', (e) => {
-        if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+        if (searchInput && !searchInput.contains(e.target) && !searchResults.contains(e.target)) {
             searchResults.style.display = 'none';
         }
     });
