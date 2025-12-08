@@ -403,30 +403,62 @@ function handleClick(index, opt) {
         const container = document.getElementById(`opts-${index}`);
         container.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
         document.getElementById(`btn-${index}-${opt}`).classList.add('selected');
-        renderNavigator(); // Update sidebar color
+        renderNavigator();
     } else {
         const correct = getCorrectLetter(q);
         const btn = document.getElementById(`btn-${index}-${opt}`);
+        
         if (opt === correct) {
             btn.classList.add('correct');
             const container = document.getElementById(`opts-${index}`);
             container.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+
             if (currentIndex < filteredQuestions.length - 1) document.getElementById('next-btn').classList.remove('hidden');
             document.getElementById(`reopen-exp-${index}`).classList.remove('hidden');
+            
+            // Show Popup
             const modal = document.getElementById('explanation-modal');
             const content = document.getElementById('modal-content');
             content.innerHTML = q.Explanation || "No explanation provided.";
             modal.classList.remove('hidden');
-            if (currentUser && !userSolvedIDs.includes(q.ID)) {
-                userSolvedIDs.push(q.ID);
-                db.collection('users').doc(currentUser.uid).set({ solved: userSolvedIDs }, { merge: true });
+
+            // --- ANALYTICS UPDATE START ---
+            if (currentUser) {
+                // 1. Mark as Solved
+                if (!userSolvedIDs.includes(q.ID)) {
+                    userSolvedIDs.push(q.ID);
+                    db.collection('users').doc(currentUser.uid).set({ solved: userSolvedIDs }, { merge: true });
+                }
+                
+                // 2. Update Subject Stats (Increment Correct Count)
+                const subj = q.Subject || "General";
+                const statsRef = db.collection('users').doc(currentUser.uid);
+                
+                // We use a specific dot notation to update nested map fields in Firestore
+                let updateData = {};
+                updateData[`stats.${subj}.correct`] = firebase.firestore.FieldValue.increment(1);
+                updateData[`stats.${subj}.total`] = firebase.firestore.FieldValue.increment(1);
+                
+                statsRef.set(updateData, { merge: true });
             }
+            // --- ANALYTICS UPDATE END ---
+
         } else {
             btn.classList.add('wrong');
+            
+            // --- ANALYTICS UPDATE (WRONG) ---
+            if (currentUser) {
+                const subj = q.Subject || "General";
+                const statsRef = db.collection('users').doc(currentUser.uid);
+                let updateData = {};
+                // Only increment total, not correct
+                updateData[`stats.${subj}.total`] = firebase.firestore.FieldValue.increment(1);
+                statsRef.set(updateData, { merge: true });
+            }
+            // -------------------------------
         }
     }
 }
-
 // --- UTILS ---
 function closeModal() { document.getElementById('explanation-modal').classList.add('hidden'); }
 function reOpenModal(index) {
@@ -552,5 +584,62 @@ function toggleTheme() {
         document.body.setAttribute('data-theme', 'dark');
         localStorage.setItem('fcps-theme', 'dark');
         btn.innerText = '☀️';
+    }
+}
+
+
+// ==========================================
+// ANALYTICS SYSTEM
+// ==========================================
+
+async function openAnalytics() {
+    const modal = document.getElementById('analytics-modal');
+    const container = document.getElementById('analytics-content');
+    container.innerHTML = "<p>Crunching numbers...</p>";
+    modal.classList.remove('hidden');
+
+    if (!currentUser) return;
+
+    try {
+        const doc = await db.collection('users').doc(currentUser.uid).get();
+        if (!doc.exists || !doc.data().stats) {
+            container.innerHTML = "<p>No detailed data available yet. Start solving questions in Practice Mode!</p>";
+            return;
+        }
+
+        const stats = doc.data().stats;
+        let html = "";
+
+        // Convert object to array and sort by weak performance
+        const subjects = Object.keys(stats).map(key => {
+            return { name: key, ...stats[key] };
+        }).sort((a, b) => (a.correct / a.total) - (b.correct / b.total));
+
+        subjects.forEach(subj => {
+            const percent = Math.round((subj.correct / subj.total) * 100);
+            let color = "#2ecc71"; // Green
+            if (percent < 50) color = "#e74c3c"; // Red
+            else if (percent < 75) color = "#f1c40f"; // Yellow
+
+            html += `
+                <div class="stat-item">
+                    <div class="stat-header">
+                        <span>${subj.name}</span>
+                        <span>${percent}%</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill" style="width: ${percent}%; background: ${color};"></div>
+                    </div>
+                    <div class="stat-meta">
+                        ${subj.correct} correct out of ${subj.total} attempted
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+
+    } catch (e) {
+        container.innerHTML = "Error loading stats: " + e.message;
     }
 }
