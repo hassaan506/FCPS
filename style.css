@@ -880,8 +880,9 @@ details[open] .subject-summary::after {
 .exam-selectable {
     border: 1px solid transparent;
     transition: all 0.2s;
+    cursor: pointer !important;  /* <--- Forces the Finger Hand */
+    user-select: none;           /* <--- Prevents blue text highlighting */
 }
-
 /* HOVER State */
 .exam-selectable:hover {
     background: rgba(0,0,0,0.05);
@@ -902,3 +903,4 @@ details[open] .subject-summary::after {
     background: var(--input-bg);
     color: var(--text-dark);
 }
+
