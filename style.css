@@ -370,3 +370,31 @@ summary { padding: 18px; cursor: pointer; font-weight: 600; }
 .search-item:hover {
     background-color: #f0f8ff;
 }
+
+
+/* --- MOBILE HEADER FIX --- */
+@media screen and (max-width: 600px) {
+    .topBar {
+        display: flex;
+        flex-direction: column; /* Stacks items vertically */
+        align-items: flex-start; /* Aligns to left */
+        gap: 15px; /* Adds space between name and buttons */
+        height: auto; /* Allows the box to grow taller */
+        padding-bottom: 15px;
+    }
+
+    /* This selects the container with the buttons (streak, trophy, logout) */
+    .topBar > div:last-child {
+        width: 100%;
+        display: flex;
+        justify-content: space-between; /* Spreads buttons evenly */
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    
+    /* Make the Logout button slightly smaller on phone */
+    .logout-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+}
