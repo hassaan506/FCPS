@@ -738,3 +738,63 @@ summary::-webkit-details-marker { display: none; }
     text-align: right;
 }
 
+
+/* =========================================
+   13. DARK MODE & LAYOUT FIXES (Final Polish)
+   ========================================= */
+
+/* Fix 1: Force Topic Buttons to be Dark */
+.category-btn {
+    background-color: var(--input-bg) !important; /* Force it to use the theme color */
+    color: var(--text-dark) !important;
+    border-color: var(--border-color) !important;
+}
+
+/* Fix 2: Style the Exam Settings Box (Replaces the HTML style we deleted) */
+#test-settings {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 16px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Fix 3: Tame the Long Subject List */
+.filter-container {
+    max-height: 250px;       /* Set a maximum height */
+    overflow-y: auto;        /* Add a scrollbar if it gets too long */
+    background: var(--input-bg);
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    margin-top: 10px;
+    margin-bottom: 15px;
+}
+
+/* Make the checkboxes look better in the list */
+.filter-group {
+    margin-bottom: 12px;
+}
+
+.filter-subject-label {
+    font-weight: 700;
+    color: var(--primary);
+    display: block;
+    margin-bottom: 5px;
+    cursor: pointer;
+}
+
+.filter-topic-list {
+    margin-left: 20px;
+    border-left: 2px solid var(--border-color);
+    padding-left: 10px;
+}
+
+.filter-topic-label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-dark);
+    margin-bottom: 4px;
+    cursor: pointer;
+}
