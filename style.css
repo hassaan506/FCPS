@@ -556,3 +556,13 @@ summary::-webkit-details-marker { display: none; }
     visibility: visible !important;
     z-index: 100 !important;
 }
+
+
+/* --- FORCE AUTH SCREEN TO HIDE --- */
+#auth-screen.hidden, 
+#dashboard-screen.hidden {
+    display: none !important; /* The most powerful hiding command */
+    visibility: hidden !important;
+    pointer-events: none !important; /* You can't click it */
+    z-index: -999 !important; /* Push it behind everything */
+}
