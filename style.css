@@ -490,3 +490,56 @@ summary { padding: 18px; cursor: pointer; font-weight: 600; }
     margin-top: 5px;
     text-align: right;
 }
+
+
+/* =========================================
+   FLAG FOR REVIEW STYLES
+   ========================================= */
+
+/* The Flag Button in Header */
+.flag-btn {
+    background: transparent;
+    border: 1px solid #f59e0b;
+    color: #f59e0b;
+    padding: 6px 15px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.flag-btn:hover, .flag-btn.active {
+    background: #f59e0b;
+    color: white;
+    box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3);
+}
+
+/* Sidebar Button - Flagged State */
+.nav-btn.flagged {
+    border-color: #f59e0b;
+    color: #f59e0b;
+    background: #fffbeb; /* Light yellow background */
+    font-weight: 800;
+    position: relative;
+}
+
+/* Small dot indicator for flagged items */
+.nav-btn.flagged::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 6px;
+    height: 6px;
+    background: #f59e0b;
+    border-radius: 50%;
+}
+
+/* Dark Mode Support */
+[data-theme="dark"] .flag-btn { border-color: #fbbf24; color: #fbbf24; }
+[data-theme="dark"] .flag-btn:hover, [data-theme="dark"] .flag-btn.active { background: #fbbf24; color: #1e293b; }
+[data-theme="dark"] .nav-btn.flagged { background: #451a03; border-color: #fbbf24; color: #fbbf24; }
