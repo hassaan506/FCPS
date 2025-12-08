@@ -566,3 +566,33 @@ summary::-webkit-details-marker { display: none; }
     pointer-events: none !important; /* You can't click it */
     z-index: -999 !important; /* Push it behind everything */
 }
+
+
+/* --- CRITICAL SCREEN FIX --- */
+.screen {
+    display: none; /* Default state is hidden */
+    width: 100%;
+    height: 100%;
+}
+
+.screen.active {
+    display: flex !important; /* Force flex for active screens */
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.screen.hidden {
+    display: none !important; /* Force hide for hidden screens */
+}
+
+/* Ensure the wrapper takes full height to center the card */
+#auth-screen {
+    min-height: 100vh;
+    width: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+    background: #f0f2f5; /* Or your background color */
+}
