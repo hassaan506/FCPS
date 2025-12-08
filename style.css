@@ -798,3 +798,79 @@ summary::-webkit-details-marker { display: none; }
     margin-bottom: 4px;
     cursor: pointer;
 }
+
+
+/* =========================================
+   14. FINAL LAYOUT UPGRADES (Grid & Inputs)
+   ========================================= */
+
+/* --- A. Fix the White Input Boxes --- */
+#test-settings input[type="number"] {
+    background: var(--input-bg);    /* Use Theme Color */
+    color: var(--text-dark);        /* Text adapts to theme */
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 12px;
+    font-weight: 700;
+}
+
+/* --- B. Practice Mode: Grid Layout --- */
+/* This makes the Topic buttons appear side-by-side inside the Subject menu */
+details[open] {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Two columns */
+    gap: 10px;
+    padding: 10px;
+}
+
+/* The Subject Name (Summary) should span across both columns */
+details summary {
+    grid-column: 1 / -1; 
+    margin-bottom: 0;
+}
+
+/* The buttons inside */
+details .category-btn {
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    text-align: center;
+    padding: 15px 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}
+
+/* Make the text inside buttons centered and smaller */
+details .category-btn div {
+    justify-content: center !important;
+    flex-direction: column;
+    gap: 5px;
+    text-align: center;
+}
+
+/* --- C. Exam Mode: Grid Layout --- */
+/* This makes the Exam Filters look like a wall of tiles instead of a long list */
+.filter-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); /* Responsive columns */
+    gap: 12px;
+}
+
+.filter-group {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px;
+    height: 100%;
+}
+
+/* Remove the border from the old list style */
+.filter-topic-list {
+    border-left: none;
+    margin-left: 0;
+    padding-left: 0;
+    margin-top: 8px;
+}
