@@ -354,44 +354,48 @@ function startSavedQuestions() {
     renderPage();
 }
 
-/* --- MISTAKE BUTTON LOGIC (DEBUG VERSION) --- */
-function startMistakePractice() {
+/* --- SAFE MISTAKE BUTTON LOGIC --- */
+window.startMistakePractice = function() {
     console.log("Button Clicked!"); 
-    alert("Step 1: The button works!");
 
-    // 1. Check if the list exists
+    // 1. Check userMistakes list
     if (typeof userMistakes === 'undefined') {
-        alert("❌ Error: 'userMistakes' variable is missing. Did you add it to the top of the file?");
+        alert("❌ Error: 'userMistakes' variable is missing at top of file.");
         return;
     }
 
-    // 2. Check if list is empty
     if (userMistakes.length === 0) {
-        alert("🎉 Good job! You have 0 mistakes saved right now.\n\n(Try getting a question wrong in Practice Mode to test this.)");
+        alert("🎉 Good job! You have 0 pending mistakes to review.");
         return;
     }
 
-    // 3. Filter questions
+    // 2. Check Questions Data
     if (typeof allQuestions === 'undefined' || allQuestions.length === 0) {
-        alert("❌ Error: Questions are not loaded yet. Please wait a second.");
+        alert("Wait! Questions are still loading...");
         return;
     }
 
+    // 3. Filter the questions
     filteredQuestions = allQuestions.filter(q => userMistakes.includes(q._uid));
     
     if (filteredQuestions.length === 0) {
-        alert("⚠️ Error: Found mistake IDs, but couldn't find the matching questions in the database.");
+        alert("⚠️ Found mistake IDs, but couldn't find the questions. (Maybe the question IDs changed?)");
+        // Optional: Reset mistakes if they are invalid
+        // userMistakes = [];
         return;
     }
     
-    // 4. Start the Session
-    alert(`✅ Loading ${filteredQuestions.length} mistakes...`);
+    // 4. Start Session
+    alert(`📝 Loading ${filteredQuestions.length} mistakes. You can do this!`);
     currentMode = 'practice';
     currentIndex = 0;
-    showScreen('quiz-screen');
+    
+    // Force switch to quiz screen
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('quiz-screen').classList.add('active');
+    
     renderPage();
-}
-
+};
 // --- RENDERING ---
 
 function renderPage() {
@@ -1002,5 +1006,6 @@ async function submitReport() {
         alert("❌ DATABASE ERROR: " + error.message);
     }
 }
+
 
 
