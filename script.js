@@ -523,3 +523,34 @@ function goHome() {
     showScreen('dashboard-screen');
     loadQuestions();
 }
+
+
+// ==========================================
+// DARK MODE LOGIC
+// ==========================================
+
+// 1. Check for saved preference on load
+document.addEventListener('DOMContentLoaded', () => {
+    const savedTheme = localStorage.getItem('fcps-theme');
+    if (savedTheme === 'dark') {
+        document.body.setAttribute('data-theme', 'dark');
+        document.getElementById('theme-btn').innerText = '☀️';
+    }
+});
+
+function toggleTheme() {
+    const currentTheme = document.body.getAttribute('data-theme');
+    const btn = document.getElementById('theme-btn');
+    
+    if (currentTheme === 'dark') {
+        // Switch to Light
+        document.body.removeAttribute('data-theme');
+        localStorage.setItem('fcps-theme', 'light');
+        btn.innerText = '🌙';
+    } else {
+        // Switch to Dark
+        document.body.setAttribute('data-theme', 'dark');
+        localStorage.setItem('fcps-theme', 'dark');
+        btn.innerText = '☀️';
+    }
+}
