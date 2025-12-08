@@ -278,23 +278,26 @@ function processData(data) {
 /* =========================================
    1. RENDER MENUS (DROPDOWN + TEXT GRID)
    ========================================= */
+/* =========================================
+   1. RENDER MENUS (DROPDOWN + TEXT GRID + PROGRESS BARS)
+   ========================================= */
 function renderMenus(subjects, map) {
     const container = document.getElementById('dynamic-menus');
     container.innerHTML = "";
     const sortedSubjects = Array.from(subjects).sort();
 
     sortedSubjects.forEach(subj => {
-        // Data Math
+        // --- Subject Stats ---
         const subjQuestions = allQuestions.filter(q => q.Subject === subj);
         const totalSubj = subjQuestions.length;
         const solvedSubj = subjQuestions.filter(q => userSolvedIDs.includes(q._uid)).length;
         const percentSubj = totalSubj > 0 ? Math.round((solvedSubj / totalSubj) * 100) : 0;
         
-        // 1. Create the Dropdown (Details Tag)
+        // 1. Create Dropdown
         const details = document.createElement('details');
         details.className = "subject-dropdown-card";
 
-        // 2. The Header (Summary) - Always Visible
+        // 2. Header
         details.innerHTML = `
             <summary class="subject-summary">
                 <div class="summary-header">
@@ -307,33 +310,44 @@ function renderMenus(subjects, map) {
             </summary>
         `;
 
-        // 3. The Content (Hidden until clicked)
+        // 3. Content
         const contentDiv = document.createElement('div');
         contentDiv.className = "dropdown-content";
 
-        // A. "Practice All" Button
+        // "Practice All" Button
         const allBtn = document.createElement('div');
         allBtn.className = "practice-all-row";
         allBtn.innerHTML = `<span>Practice All ${subj}</span> <span>⭐</span>`;
         allBtn.onclick = () => startPractice(subj, null);
         contentDiv.appendChild(allBtn);
 
-        // B. Topics Text Grid
+        // --- TOPICS GRID WITH PROGRESS BARS ---
         const sortedTopics = Array.from(map[subj] || []).sort();
         
         if (sortedTopics.length > 0) {
             const gridContainer = document.createElement('div');
-            gridContainer.className = "topics-text-grid"; // New class for text layout
+            gridContainer.className = "topics-text-grid";
             
             sortedTopics.forEach(topic => {
+                // Calculate Topic Specific Stats
                 const topQuestions = subjQuestions.filter(q => q.Topic === topic);
-                const isCompleted = topQuestions.length > 0 && topQuestions.every(q => userSolvedIDs.includes(q._uid));
+                const totalTop = topQuestions.length;
+                const solvedTop = topQuestions.filter(q => userSolvedIDs.includes(q._uid)).length;
+                const percentTop = totalTop > 0 ? Math.round((solvedTop / totalTop) * 100) : 0;
                 
-                // Simple Text Item
+                // Create Item Container
                 const item = document.createElement('div');
-                item.className = `topic-text-item ${isCompleted ? 'done' : ''}`;
-                item.innerText = topic;
+                item.className = "topic-item-container";
                 item.onclick = () => startPractice(subj, topic);
+
+                // HTML: Text + Mini Bar
+                item.innerHTML = `
+                    <span class="topic-name">${topic}</span>
+                    <div class="topic-mini-track">
+                        <div class="topic-mini-fill" style="width:${percentTop}%"></div>
+                    </div>
+                `;
+                
                 gridContainer.appendChild(item);
             });
             contentDiv.appendChild(gridContainer);
@@ -345,7 +359,6 @@ function renderMenus(subjects, map) {
         container.appendChild(details);
     });
 }
-
 
 function renderTestFilters(subjects, map) {
     const container = document.getElementById('filter-container');
@@ -1242,6 +1255,7 @@ window.signup = function() {
             if(msg) msg.innerText = "❌ Error: " + error.message;
         });
 };
+
 
 
 
