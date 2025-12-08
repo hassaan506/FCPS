@@ -1,10 +1,9 @@
 /* ---------------------------------------------
-   STYLE.CSS (MEDICAL MASTERY THEME - FINAL V2)
+   STYLE.CSS (MEDICAL MASTERY THEME - FIXED)
 --------------------------------------------- */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
 :root {
-    /* LIGHT THEME (Default) */
     --primary: #0072ff;
     --primary-gradient: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%);
     --bg-color: #eef2f6;
@@ -99,11 +98,16 @@ button {
 .user-badge { display: flex; flex-direction: column; text-align: left; }
 .logout-btn { width: auto; padding: 10px 24px; font-size: 13px; background: #fff0f0; color: #e53e3e; margin: 0; border-radius: 12px; }
 
-/* Dashboard Grid */
+/* Dashboard Grid - FIXED LAYOUT */
 .gameContainer { 
     width: 100%; display: grid; grid-template-columns: 1fr; gap: 25px; 
 }
-@media(min-width: 900px) { .gameContainer { grid-template-columns: 350px 1fr; } }
+@media(min-width: 900px) { 
+    .gameContainer { 
+        /* 1fr for Main Content (Stats), 350px for Sidebar (Menu) */
+        grid-template-columns: 1fr 350px; 
+    } 
+}
 
 .panel { padding: 30px; }
 .panel h3 { font-size: 18px; font-weight: 700; color: var(--text-dark); margin-bottom: 20px; }
@@ -134,14 +138,13 @@ summary { padding: 18px; cursor: pointer; font-weight: 600; }
     animation: slideUp 0.5s ease-out forwards;
 }
 
-/* === THE JUSTIFY FIX === */
 .test-q-text { 
     font-size: 1.35rem; 
     font-weight: 600; 
     line-height: 1.7; 
     color: var(--text-dark); 
     margin-bottom: 30px; 
-    text-align: justify; /* THIS MAKES IT ALIGN PERFECTLY */
+    text-align: justify; 
 }
 
 /* OPTIONS */
@@ -184,27 +187,18 @@ summary { padding: 18px; cursor: pointer; font-weight: 600; }
     .test-q-text { font-size: 1.1rem; }
 }
 
-/* ====================
-   BOOKMARK STAR STYLES
-   ==================== */
+/* BOOKMARK STAR STYLES */
 .bookmark-icon {
     cursor: pointer;
     float: right;
-    font-size: 2.2rem; /* Much bigger size */
-    line-height: 0.8;  /* Aligns better vertically */
+    font-size: 2.2rem; 
+    line-height: 0.8; 
     transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     padding-left: 10px;
 }
+.bookmark-icon:hover { transform: scale(1.2); }
 
-/* Add a nice pop effect on hover */
-.bookmark-icon:hover {
-    transform: scale(1.2);
-}
-
-/* =========================================
-   TEST FILTER STYLES (NEW)
-   ========================================= */
-
+/* TEST FILTER STYLES */
 .filter-container {
     max-height: 250px;
     overflow-y: auto;
@@ -215,201 +209,77 @@ summary { padding: 18px; cursor: pointer; font-weight: 600; }
     margin: 15px 0;
     text-align: left;
 }
-
 .filter-group {
     margin-bottom: 15px;
     border-bottom: 1px solid #f1f5f9;
     padding-bottom: 10px;
 }
-
 .filter-subject-label {
-    display: flex;
-    align-items: center;
-    font-weight: 700;
-    color: var(--text-dark);
-    cursor: pointer;
-    font-size: 15px;
-    margin-bottom: 8px;
+    display: flex; align-items: center; font-weight: 700;
+    color: var(--text-dark); cursor: pointer; font-size: 15px; margin-bottom: 8px;
 }
-
 .filter-topic-list {
-    margin-left: 25px;
-    display: grid;
-    grid-template-columns: 1fr 1fr; /* Two columns of topics */
-    gap: 8px;
+    margin-left: 25px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
 }
-
 .filter-topic-label {
-    display: flex;
-    align-items: center;
-    font-size: 13px;
-    color: var(--text-light);
-    cursor: pointer;
+    display: flex; align-items: center; font-size: 13px; color: var(--text-light); cursor: pointer;
 }
-
-/* Custom Checkbox Look */
 .filter-checkbox {
-    width: 18px; 
-    height: 18px; 
-    margin: 0 10px 0 0; 
-    cursor: pointer;
-    accent-color: var(--primary);
+    width: 18px; height: 18px; margin: 0 10px 0 0; cursor: pointer; accent-color: var(--primary);
 }
 
-/* =========================================
-   TEST NAVIGATOR SIDEBAR
-   ========================================= */
-
-/* The Sidebar Container */
+/* TEST NAVIGATOR SIDEBAR */
 .test-sidebar {
-    position: fixed;
-    right: 20px;
-    top: 100px;
-    width: 260px;
-    background: white;
-    padding: 20px;
-    border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-    border: 1px solid #fff;
-    max-height: 80vh;
-    overflow-y: auto;
-    z-index: 100;
-    display: none; /* Hidden by default */
+    position: fixed; right: 20px; top: 100px; width: 260px;
+    background: white; padding: 20px; border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid #fff;
+    max-height: 80vh; overflow-y: auto; z-index: 100; display: none; 
 }
-
-/* Show it when active */
 .test-sidebar.active { display: block; animation: slideInRight 0.4s ease-out; }
-
 @keyframes slideInRight { from { transform: translateX(50px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
-.nav-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 8px;
-    margin-top: 10px;
-}
-
+.nav-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 10px; }
 .nav-btn {
-    width: 100%;
-    aspect-ratio: 1; /* Makes it a perfect square */
-    border: 1px solid #e2e8f0;
-    background: #f8fafc;
-    color: #64748b;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 600;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    margin: 0;
-    padding: 0;
+    width: 100%; aspect-ratio: 1; border: 1px solid #e2e8f0;
+    background: #f8fafc; color: #64748b; border-radius: 8px;
+    font-size: 12px; font-weight: 600; display: flex;
+    justify-content: center; align-items: center; cursor: pointer; margin: 0; padding: 0;
     transition: all 0.2s;
 }
-
 .nav-btn:hover { border-color: var(--primary); color: var(--primary); }
+.nav-btn.current { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 4px 10px rgba(0, 114, 255, 0.3); }
+.nav-btn.answered { background: #e3f2fd; color: #0072ff; border-color: #90cdf4; }
 
-/* Active Question (The one you are looking at) */
-.nav-btn.current {
-    background: var(--primary);
-    color: white;
-    border-color: var(--primary);
-    box-shadow: 0 4px 10px rgba(0, 114, 255, 0.3);
-}
-
-/* Answered Question (Marked Blue) */
-.nav-btn.answered {
-    background: #e3f2fd;
-    color: #0072ff;
-    border-color: #90cdf4;
-}
-
-/* Mobile: Hide Sidebar, show as bottom panel or horizontal scroll */
 @media (max-width: 1300px) {
     .test-sidebar {
-        position: relative;
-        width: 100%;
-        right: auto;
-        top: auto;
-        margin-bottom: 20px;
-        order: -1; /* Puts it above questions */
+        position: relative; width: 100%; right: auto; top: auto;
+        margin-bottom: 20px; order: -1; 
     }
 }
 
-/* =========================================
-   FIX: SCROLLABLE EXPLANATION POPUP
-   ========================================= */
-
-/* 1. Limit the Popup Height so it never exceeds screen */
+/* SCROLLABLE EXPLANATION POPUP */
 .modal-overlay .joinCard {
-    max-height: 85vh;        /* Max height = 85% of screen viewport */
-    display: flex;           /* Use Flexbox to manage layout */
-    flex-direction: column;  /* Stack items (Title, Text, Buttons) */
-    overflow: hidden;        /* Prevent the card itself from scrolling */
+    max-height: 85vh; display: flex; flex-direction: column; overflow: hidden;
 }
-
-/* 2. Make the Explanation Text Area Scrollable */
 #modal-content {
-    overflow-y: auto;        /* Scroll vertical ONLY if text is long */
-    flex: 1;                 /* Take up all remaining space in the middle */
-    margin: 15px 0;          /* Add breathing room */
-    padding-right: 10px;     /* Prevent text from touching the scrollbar */
-    
-    /* Visual separation */
-    border-top: 1px solid #f0f0f0;
-    border-bottom: 1px solid #f0f0f0;
-    padding-top: 15px;
-    padding-bottom: 15px;
+    overflow-y: auto; flex: 1; margin: 15px 0; padding-right: 10px; 
+    border-top: 1px solid #f0f0f0; border-bottom: 1px solid #f0f0f0; padding-top: 15px; padding-bottom: 15px;
 }
+#modal-content::-webkit-scrollbar { width: 8px; }
+#modal-content::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+#modal-content::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+#modal-content::-webkit-scrollbar-thumb:hover { background: #bbb; }
+.modal-overlay .joinCard > div:last-child { flex-shrink: 0; margin-top: 0; }
 
-/* 3. Customize the Scrollbar (Optional, makes it look nicer) */
-#modal-content::-webkit-scrollbar {
-    width: 8px;
-}
-#modal-content::-webkit-scrollbar-track {
-    background: #f1f1f1; 
-    border-radius: 4px;
-}
-#modal-content::-webkit-scrollbar-thumb {
-    background: #ccc; 
-    border-radius: 4px;
-}
-#modal-content::-webkit-scrollbar-thumb:hover {
-    background: #bbb; 
-}
-
-/* 4. Ensure Buttons are always visible at the bottom */
-.modal-overlay .joinCard > div:last-child {
-    flex-shrink: 0;          /* Prevent buttons from being squished */
-    margin-top: 0;
-}
-
-
-/* ====================
-   DARK MODE TOGGLE
-   ==================== */
+/* DARK MODE TOGGLE */
 .theme-toggle {
-    background: var(--input-bg);
-    border: 1px solid var(--border-color);
-    color: var(--text-dark);
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    font-size: 20px;
-    transition: all 0.3s ease;
-    margin-right: 15px; /* Space between toggle and logout */
+    background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-dark);
+    width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center;
+    align-items: center; cursor: pointer; font-size: 20px; transition: all 0.3s ease; margin-right: 15px; 
 }
+.theme-toggle:hover { transform: rotate(15deg) scale(1.1); border-color: var(--primary); }
 
-.theme-toggle:hover {
-    transform: rotate(15deg) scale(1.1);
-    border-color: var(--primary);
-}
-
-/* Fix text colors in dark mode for specific elements */
+/* Dark Mode Fixes */
 [data-theme="dark"] .test-q-text { color: #f1f5f9; }
 [data-theme="dark"] .option-btn { background: #1e293b; border-color: #334155; color: #e2e8f0; }
 [data-theme="dark"] .option-btn:hover:not(:disabled) { background: #334155; }
@@ -419,195 +289,54 @@ summary { padding: 18px; cursor: pointer; font-weight: 600; }
 [data-theme="dark"] .category-btn:hover { background: #334155; color: white; }
 [data-theme="dark"] .test-sidebar { background: #1e293b; border-color: #334155; }
 [data-theme="dark"] .nav-btn { background: #0f172a; border-color: #334155; color: #94a3b8; }
+[data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3, [data-theme="dark"] h4, [data-theme="dark"] strong, [data-theme="dark"] b, [data-theme="dark"] label { color: #f1f5f9 !important; }
+[data-theme="dark"] input { background: #1e293b; color: white; border-color: #334155; }
+[data-theme="dark"] summary::after { color: #94a3b8; }
 
-/* =========================================
-   FIX: DARK MODE VISIBILITY
-   ========================================= */
-
-/* Force all headings and bold text to be light in dark mode */
-[data-theme="dark"] h1, 
-[data-theme="dark"] h2, 
-[data-theme="dark"] h3, 
-[data-theme="dark"] h4, 
-[data-theme="dark"] strong, 
-[data-theme="dark"] b,
-[data-theme="dark"] label {
-    color: #f1f5f9 !important;
-}
-
-/* Fix for the Input fields text */
-[data-theme="dark"] input {
-    background: #1e293b;
-    color: white;
-    border-color: #334155;
-}
-
-/* Fix for the Dropdown Arrows in Sidebar */
-[data-theme="dark"] summary::after {
-    color: #94a3b8;
-}
-
-
-/* =========================================
-   ANALYTICS PROGRESS BARS
-   ========================================= */
-.stat-item {
-    margin-bottom: 20px;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 15px;
-}
+/* ANALYTICS PROGRESS BARS */
+.stat-item { margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
 [data-theme="dark"] .stat-item { border-color: #334155; }
-
-.stat-header {
-    display: flex;
-    justify-content: space-between;
-    font-size: 14px;
-    font-weight: 600;
-    margin-bottom: 8px;
-    color: var(--text-dark);
-}
-
-.progress-track {
-    width: 100%;
-    height: 10px;
-    background: #e2e8f0;
-    border-radius: 5px;
-    overflow: hidden;
-    position: relative;
-}
+.stat-header { display: flex; justify-content: space-between; font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--text-dark); }
+.progress-track { width: 100%; height: 10px; background: #e2e8f0; border-radius: 5px; overflow: hidden; position: relative; }
 [data-theme="dark"] .progress-track { background: #334155; }
+.progress-fill { height: 100%; background: var(--primary); border-radius: 5px; transition: width 1s ease-out; }
+.stat-meta { font-size: 11px; color: var(--text-light); margin-top: 5px; text-align: right; }
 
-.progress-fill {
-    height: 100%;
-    background: var(--success); /* Green */
-    border-radius: 5px;
-    transition: width 1s ease-out;
-}
-
-.stat-meta {
-    font-size: 11px;
-    color: var(--text-light);
-    margin-top: 5px;
-    text-align: right;
-}
-
-
-/* =========================================
-   FLAG FOR REVIEW STYLES
-   ========================================= */
-
-/* The Flag Button in Header */
+/* FLAG FOR REVIEW STYLES */
 .flag-btn {
-    background: transparent;
-    border: 1px solid #f59e0b;
-    color: #f59e0b;
-    padding: 6px 15px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 5px;
+    background: transparent; border: 1px solid #f59e0b; color: #f59e0b;
+    padding: 6px 15px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 5px;
 }
-
-.flag-btn:hover, .flag-btn.active {
-    background: #f59e0b;
-    color: white;
-    box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3);
-}
-
-/* Sidebar Button - Flagged State */
-.nav-btn.flagged {
-    border-color: #f59e0b;
-    color: #f59e0b;
-    background: #fffbeb; /* Light yellow background */
-    font-weight: 800;
-    position: relative;
-}
-
-/* Small dot indicator for flagged items */
-.nav-btn.flagged::after {
-    content: '';
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    width: 6px;
-    height: 6px;
-    background: #f59e0b;
-    border-radius: 50%;
-}
-
-/* Dark Mode Support */
+.flag-btn:hover, .flag-btn.active { background: #f59e0b; color: white; box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3); }
+.nav-btn.flagged { border-color: #f59e0b; color: #f59e0b; background: #fffbeb; font-weight: 800; position: relative; }
+.nav-btn.flagged::after { content: ''; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; background: #f59e0b; border-radius: 50%; }
 [data-theme="dark"] .flag-btn { border-color: #fbbf24; color: #fbbf24; }
 [data-theme="dark"] .flag-btn:hover, [data-theme="dark"] .flag-btn.active { background: #fbbf24; color: #1e293b; }
 [data-theme="dark"] .nav-btn.flagged { background: #451a03; border-color: #fbbf24; color: #fbbf24; }
 
-
-/* =========================================
-   GAMIFICATION STYLES
-   ========================================= */
-
-/* Top Bar Icons */
+/* GAMIFICATION STYLES */
 .icon-btn {
-    background: transparent;
-    border: none;
-    font-size: 20px;
-    cursor: pointer;
-    margin-right: 15px;
-    position: relative;
-    transition: transform 0.2s;
+    background: transparent; border: none; font-size: 20px; cursor: pointer;
+    margin-right: 15px; position: relative; transition: transform 0.2s;
 }
 .icon-btn:hover { transform: scale(1.2); }
-
-/* Streak Fire Animation */
-.streak-container {
-    display: flex;
-    align-items: center;
-    margin-right: 15px;
-    font-weight: 700;
-    color: #e74c3c; /* Fire Red */
-}
-.streak-icon {
-    font-size: 20px;
-    margin-right: 5px;
-    animation: burn 0.5s infinite alternate;
-}
+.streak-container { display: flex; align-items: center; margin-right: 15px; font-weight: 700; color: #e74c3c; }
+.streak-icon { font-size: 20px; margin-right: 5px; animation: burn 0.5s infinite alternate; }
 @keyframes burn { from { opacity: 0.8; transform: scale(1); } to { opacity: 1; transform: scale(1.1); } }
 
-/* Badges Grid (Inside Modal) */
-.badge-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
-    margin-top: 20px;
-}
-
+/* Badges Grid */
+.badge-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 20px; }
 .badge-item {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 15px;
-    text-align: center;
-    opacity: 0.5; /* Dimmed = Locked */
-    filter: grayscale(100%);
-    transition: all 0.3s;
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;
+    padding: 15px; text-align: center; opacity: 0.5; filter: grayscale(100%); transition: all 0.3s;
 }
-
 .badge-item.unlocked {
-    opacity: 1;
-    filter: grayscale(0%);
-    border-color: #ffd700;
-    background: #fffbeb;
-    box-shadow: 0 4px 10px rgba(255, 215, 0, 0.2);
-    transform: translateY(-2px);
+    opacity: 1; filter: grayscale(0%); border-color: #ffd700;
+    background: #fffbeb; box-shadow: 0 4px 10px rgba(255, 215, 0, 0.2); transform: translateY(-2px);
 }
-
 .badge-icon { font-size: 30px; display: block; margin-bottom: 5px; }
 .badge-name { font-size: 12px; font-weight: 700; display: block; }
 .badge-desc { font-size: 10px; color: #64748b; }
-
-/* Dark Mode Support */
 [data-theme="dark"] .badge-item { background: #1e293b; border-color: #334155; }
 [data-theme="dark"] .badge-item.unlocked { background: #422006; border-color: #fbbf24; }
