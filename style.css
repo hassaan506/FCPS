@@ -540,3 +540,19 @@ details[open] summary::after {
 }
 /* Hide default browser arrow */
 summary::-webkit-details-marker { display: none; }
+
+
+/* --- FORCE HIDE FIX --- */
+.screen.hidden {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    z-index: -1 !important;
+}
+
+.screen.active {
+    display: flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    z-index: 100 !important;
+}
