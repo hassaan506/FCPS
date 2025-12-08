@@ -18,7 +18,7 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 
 // ======================================================
-// 2. STATE
+// 2. STATE VARIABLES
 // ======================================================
 
 let currentUser = null;
@@ -114,7 +114,7 @@ async function resetAccountData() {
 }
 
 // ======================================================
-// 4. DATA LOADING
+// 4. DATA LOADING & ID GENERATION
 // ======================================================
 
 function loadQuestions() {
@@ -349,7 +349,7 @@ function createQuestionCard(q, index, isTest) {
     return card;
 }
 
-// --- INTERACTION & ANALYTICS (FIXED SAVING LOGIC) ---
+// --- INTERACTION ---
 
 function handleClick(index, opt) {
     const q = filteredQuestions[index];
@@ -361,13 +361,10 @@ function handleClick(index, opt) {
         document.getElementById(`btn-${index}-${opt}`).classList.add('selected');
         renderNavigator(); 
     } else {
+        // PRACTICE MODE
         const correct = getCorrectLetter(q);
         const btn = document.getElementById(`btn-${index}-${opt}`);
         
-        // Sanitize Subject Key
-        const subj = q.Subject || "General";
-        const cleanSubj = subj.replace(/[^a-zA-Z0-9]/g, "_");
-
         if (opt === correct) {
             btn.classList.add('correct');
             const container = document.getElementById(`opts-${index}`);
@@ -381,39 +378,56 @@ function handleClick(index, opt) {
             content.innerHTML = q.Explanation || "No explanation provided.";
             modal.classList.remove('hidden');
 
-            // --- ANALYTICS SAVE (CORRECT) ---
-            if (currentUser) {
-                if (!userSolvedIDs.includes(q._uid)) userSolvedIDs.push(q._uid);
-                
-                // Use structured update to create nested maps correctly
-                let statsUpdate = {};
-                // Increment values using structured object path
-                // Note: We use a specific syntax for nested updates in set({merge:true})
-                
-                let docRef = db.collection('users').doc(currentUser.uid);
-                
-                // We perform the update in a transaction or simple merge
-                // To be safe, we will read the current stats, update locally, and write back
-                // OR use dot notation which requires the parent to exist? 
-                // Let's use the object merge strategy which is safer for creation.
-                
-                let updatePayload = { solved: userSolvedIDs };
-                // We use dot notation keys for specific updates
-                updatePayload[`stats.${cleanSubj}.correct`] = firebase.firestore.FieldValue.increment(1);
-                updatePayload[`stats.${cleanSubj}.total`] = firebase.firestore.FieldValue.increment(1);
-                
-                docRef.set(updatePayload, { merge: true });
-            }
+            // --- FORCE SAVE TO DB (Robust) ---
+            saveProgressToDB(q, true);
+
         } else {
             btn.classList.add('wrong');
-            
-            // --- ANALYTICS SAVE (WRONG) ---
-            if (currentUser) {
-                let updatePayload = {};
-                updatePayload[`stats.${cleanSubj}.total`] = firebase.firestore.FieldValue.increment(1);
-                db.collection('users').doc(currentUser.uid).set(updatePayload, { merge: true });
-            }
+            // --- FORCE SAVE TO DB (Robust) ---
+            saveProgressToDB(q, false);
         }
+    }
+}
+
+// === NEW: ROBUST SAVING FUNCTION ===
+async function saveProgressToDB(q, isCorrect) {
+    if (!currentUser) return;
+    
+    // Use transaction-like logic: Read -> Modify -> Write
+    const userRef = db.collection('users').doc(currentUser.uid);
+    
+    try {
+        const doc = await userRef.get();
+        let data = doc.exists ? doc.data() : {};
+        
+        // 1. Initialize stats if missing
+        if (!data.stats) data.stats = {};
+        if (!data.solved) data.solved = [];
+
+        // 2. Update Solved list (Use stable UID)
+        if (isCorrect && !data.solved.includes(q._uid)) {
+            data.solved.push(q._uid);
+        }
+
+        // 3. Update Subject Stats
+        const cleanSubj = (q.Subject || "General").replace(/[^a-zA-Z0-9]/g, "_");
+        if (!data.stats[cleanSubj]) {
+            data.stats[cleanSubj] = { correct: 0, total: 0 };
+        }
+
+        data.stats[cleanSubj].total += 1;
+        if (isCorrect) {
+            data.stats[cleanSubj].correct += 1;
+        }
+
+        // 4. Write back
+        await userRef.set(data, { merge: true });
+        
+        // Update local cache
+        userSolvedIDs = data.solved;
+
+    } catch (error) {
+        console.error("Save failed", error);
     }
 }
 
@@ -492,7 +506,7 @@ function toggleBookmark(uid, span) {
     db.collection('users').doc(currentUser.uid).set({ bookmarks: userBookmarks }, { merge: true });
 }
 
-// --- SUBMISSION (FIXED ANALYTICS) ---
+// --- SUBMISSION ---
 function updateTimer() {
     testTimeRemaining--;
     const m = Math.floor(testTimeRemaining/60);
@@ -505,20 +519,25 @@ function submitTest() {
     clearInterval(testTimer);
     let score = 0;
     let wrongList = [];
-    let sessionStats = {}; 
+    
+    // Just calculate score, saving is handled individually now or we can save Test Result separately
+    // Note: Test Mode also uses the new 'saveProgressToDB' logic? 
+    // Actually, Test Mode should save in Batch at the end to avoid 20 writes.
+    // Let's keep Test Mode simple for now: Save Result Score + Batch Update Stats
+    
+    let batchStats = {};
 
     filteredQuestions.forEach(q => {
         const user = testAnswers[q._uid];
         const correct = getCorrectLetter(q);
-        const subj = q.Subject || "General";
-        const cleanSubj = subj.replace(/[^a-zA-Z0-9]/g, "_");
-
-        if (!sessionStats[cleanSubj]) sessionStats[cleanSubj] = { correct: 0, total: 0 };
-        sessionStats[cleanSubj].total++;
+        
+        const subj = (q.Subject || "General").replace(/[^a-zA-Z0-9]/g, "_");
+        if(!batchStats[subj]) batchStats[subj] = {c:0, t:0};
+        batchStats[subj].t++;
 
         if(user === correct) {
             score++;
-            sessionStats[cleanSubj].correct++;
+            batchStats[subj].c++;
             if(!userSolvedIDs.includes(q._uid)) userSolvedIDs.push(q._uid);
         } else {
             wrongList.push({q, user, correct});
@@ -528,20 +547,25 @@ function submitTest() {
     const percent = Math.round((score/filteredQuestions.length)*100);
     
     if(currentUser) {
-        // 1. Save Test Result
+        // Save Score
         db.collection('users').doc(currentUser.uid).collection('results').add({
             date: new Date(), score: percent, total: filteredQuestions.length
         });
 
-        // 2. Update Stats (Using safe update payload)
-        let updatePayload = { solved: userSolvedIDs };
-        for (const [subject, data] of Object.entries(sessionStats)) {
-            updatePayload[`stats.${subject}.correct`] = firebase.firestore.FieldValue.increment(data.correct);
-            updatePayload[`stats.${subject}.total`] = firebase.firestore.FieldValue.increment(data.total);
-        }
-        
-        db.collection('users').doc(currentUser.uid).set(updatePayload, { merge: true })
-          .then(() => loadUserData());
+        // Batch Update Stats
+        const userRef = db.collection('users').doc(currentUser.uid);
+        userRef.get().then(doc => {
+            let data = doc.exists ? doc.data() : {};
+            if(!data.stats) data.stats = {};
+            
+            for(let [subj, counts] of Object.entries(batchStats)) {
+                if(!data.stats[subj]) data.stats[subj] = {correct:0, total:0};
+                data.stats[subj].correct += counts.c;
+                data.stats[subj].total += counts.t;
+            }
+            data.solved = userSolvedIDs;
+            userRef.set(data, {merge:true});
+        });
     }
 
     showScreen('result-screen');
@@ -593,7 +617,7 @@ function toggleTheme() {
     }
 }
 
-// ANALYTICS MODAL (FIXED)
+// ANALYTICS MODAL
 async function openAnalytics() {
     const modal = document.getElementById('analytics-modal');
     const container = document.getElementById('analytics-content');
