@@ -279,20 +279,21 @@ function renderMenus(subjects, map) {
     const container = document.getElementById('dynamic-menus');
     container.innerHTML = "";
     
-    // Sort subjects alphabetically
+    // 1. Debugging: Check if we actually have topics
+    console.log("Building menus for:", subjects);
+
     const sortedSubjects = Array.from(subjects).sort();
 
     sortedSubjects.forEach(subj => {
-        // 1. Calculate Stats for the whole Subject
         const subjQuestions = allQuestions.filter(q => q.Subject === subj);
         const totalSubj = subjQuestions.length;
         const solvedSubj = subjQuestions.filter(q => userSolvedIDs.includes(q._uid)).length;
         const percentSubj = totalSubj > 0 ? Math.round((solvedSubj / totalSubj) * 100) : 0;
 
-        // 2. Create the Dropdown (Details)
+        // Create the Dropdown
         const details = document.createElement('details');
         
-        // 3. Create the Header (Summary)
+        // Create the Header
         details.innerHTML = `
             <summary>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
@@ -305,22 +306,31 @@ function renderMenus(subjects, map) {
             </summary>
         `;
 
-        // 4. Create "Practice All" Button
+        // --- THE FIX: Create a Wrapper Div for the Grid ---
+        const gridBox = document.createElement('div');
+        gridBox.className = "menu-grid-wrapper"; // We will style this class
+
+        // "Practice All" Button
         const allBtn = document.createElement('button');
         allBtn.className = "category-btn";
         allBtn.innerHTML = `
-            <div style="display:flex; justify-content:space-between;">
-                <span>Practice All ${subj}</span>
-                <span>⭐</span>
-            </div>`;
+            <div>
+                <span>Practice All</span>
+                <span style="font-size:11px; opacity:0.7">Entire Subject</span>
+            </div>
+            <span>⭐</span>`;
         allBtn.onclick = () => startPractice(subj, null);
-        details.appendChild(allBtn);
+        gridBox.appendChild(allBtn);
 
-        // 5. Create Topic Buttons (with their own stats)
+        // Topic Buttons
         const sortedTopics = Array.from(map[subj] || []).sort();
         
+        // Debugging Alert if a subject is empty (Remove this later)
+        if (sortedTopics.length === 0) {
+            console.log("Warning: No topics found for " + subj);
+        }
+
         sortedTopics.forEach(topic => {
-            // Stats for this specific Topic
             const topQuestions = subjQuestions.filter(q => q.Topic === topic);
             const totalTop = topQuestions.length;
             const solvedTop = topQuestions.filter(q => userSolvedIDs.includes(q._uid)).length;
@@ -328,23 +338,27 @@ function renderMenus(subjects, map) {
             
             const btn = document.createElement('button');
             btn.className = "category-btn";
-            // Add progress bar inside the button
             btn.innerHTML = `
-                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                <div>
                     <span>${topic}</span>
-                    <span style="font-size:11px; color:#94a3b8;">${percentTop}%</span>
+                    <span style="font-size:11px; color:var(--text-light);">${percentTop}%</span>
                 </div>
-                <div class="menu-progress-track" style="height:3px; background:#f1f5f9;">
+                <div class="menu-progress-track" style="height:4px; width:100%; margin-top:5px; background:rgba(0,0,0,0.1);">
                     <div class="menu-progress-fill" style="width:${percentTop}%; background:${percentTop===100 ? '#fbbf24' : '#3b82f6'};"></div>
                 </div>
             `;
             btn.onclick = () => startPractice(subj, topic);
-            details.appendChild(btn);
+            gridBox.appendChild(btn);
         });
 
+        // Add the grid box to the details
+        details.appendChild(gridBox);
         container.appendChild(details);
     });
 }
+
+
+
 function renderTestFilters(subjects, map) {
     const container = document.getElementById('filter-container');
     if (!container) return; 
@@ -1240,6 +1254,7 @@ window.signup = function() {
             if(msg) msg.innerText = "❌ Error: " + error.message;
         });
 };
+
 
 
 
