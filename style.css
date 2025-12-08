@@ -372,55 +372,57 @@ summary { padding: 18px; cursor: pointer; font-weight: 600; }
 }
 
 
-/* --- MOBILE HEADER FIX (FLEX ORDER METHOD) --- */
+/* --- MOBILE HEADER FIX (FORCED SINGLE LINE ICONS) --- */
 @media screen and (max-width: 600px) {
-    /* 1. Reset the Main Box */
+    /* 1. Main Header Box */
     .topBar {
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
+        padding: 15px !important;
         height: auto !important;
-        padding: 20px 15px !important;
-        gap: 15px !important;
     }
 
-    /* 2. Center the Name Section */
+    /* 2. User Name Section */
     .user-badge {
         width: 100% !important;
         align-items: center !important;
-        text-align: center !important;
+        margin-bottom: 5px !important;
     }
-    .user-badge div {
-        justify-content: center !important;
-    }
+    .user-badge div { justify-content: center !important; }
 
-    /* 3. Control the Buttons Group */
+    /* 3. The Control Icons Group (Streak + Trophy + Moon) */
     .topBar > div:last-child {
         width: 100% !important;
         display: flex !important;
-        flex-wrap: wrap !important; /* Allows items to break to next line */
-        justify-content: center !important; /* Centers the icons */
+        flex-direction: row !important; /* Force Horizontal Row */
+        flex-wrap: nowrap !important; /* DO NOT allow breaking lines */
+        justify-content: center !important;
         align-items: center !important;
-        gap: 15px !important;
+        gap: 8px !important; /* Small gap to fit everything */
+        margin-bottom: 5px !important;
     }
 
-    /* 4. Fix Icons spacing */
-    .streak-container, .icon-btn, .theme-toggle {
-        margin: 0 !important;
-        flex: 0 0 auto !important; /* Don't stretch */
+    /* 4. Shrink elements slightly to fit on one line */
+    .streak-container {
+        font-size: 13px !important;
+        white-space: nowrap !important; /* Keep "1 Day Streak" together */
     }
-
-    /* 5. FORCE LOGOUT TO BOTTOM */
-    .logout-btn {
-        flex-basis: 100% !important; /* Forces it to take full width */
-        width: 100% !important;
-        order: 99 !important; /* Pushes it to the very last spot */
-        margin-top: 10px !important;
-        background-color: #fee2e2 !important;
-        color: #ef4444 !important;
-        border: 1px solid #fca5a5 !important;
+    .icon-btn, .theme-toggle {
+        font-size: 18px !important; /* Slightly smaller icons */
+        width: 35px !important;
+        height: 35px !important;
+        padding: 0 !important;
         display: flex !important;
         justify-content: center !important;
+        align-items: center !important;
+    }
+
+    /* 5. Logout Button (Big Bar at Bottom) */
+    .logout-btn {
+        width: 100% !important;
+        margin-top: 10px !important;
         padding: 12px !important;
+        order: 99 !important; /* Force to bottom */
     }
 }
