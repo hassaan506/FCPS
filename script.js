@@ -1175,31 +1175,25 @@ window.toggleAuthMode = function() {
 
 /* --- 2. SIGNUP FUNCTION (CREATE THE USER) --- */
 window.signup = function() {
-    console.log("Signup clicked!");
+    console.log("🚀 Signup started...");
     
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     const msg = document.getElementById('auth-msg');
 
-    // Validation
     if (!email || !password) {
-        if(msg) msg.innerText = "⚠️ Please enter both Email and Password.";
-        else alert("Please enter both Email and Password.");
+        if(msg) msg.innerText = "⚠️ Please fill in all boxes.";
         return;
     }
 
-    if (password.length < 6) {
-        if(msg) msg.innerText = "⚠️ Password must be at least 6 characters.";
-        else alert("Password must be at least 6 characters.");
-        return;
-    }
+    if(msg) msg.innerText = "⏳ Creating ID... Please wait.";
 
-    if(msg) msg.innerText = "⏳ Creating ID...";
-
-    // Firebase Creation
+    // 1. Create User
     auth.createUserWithEmailAndPassword(email, password)
         .then((cred) => {
-            // Success! Now create database entry
+            console.log("✅ User created:", cred.user.uid);
+            
+            // 2. Save Database Profile
             return db.collection('users').doc(cred.user.uid).set({
                 email: email,
                 role: 'student',
@@ -1211,14 +1205,25 @@ window.signup = function() {
             });
         })
         .then(() => {
-            alert("🎉 Account Created! Logging you in...");
-            // The existing auth listener will switch screen automatically
+            console.log("✅ Database saved. FORCE SWITCHING SCREENS NOW.");
+            
+            // 3. FORCE HIDE AUTH SCREEN (Manual Override)
+            document.getElementById('auth-screen').style.display = 'none'; // Hard Hide
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('auth-screen').classList.remove('active');
+
+            // 4. FORCE SHOW DASHBOARD
+            document.getElementById('dashboard-screen').style.display = 'flex'; // Hard Show
+            document.getElementById('dashboard-screen').classList.remove('hidden');
+            document.getElementById('dashboard-screen').classList.add('active');
+
+            // 5. Load Data
+            loadUserData();
+            
+            alert("🎉 Account Created! Welcome.");
         })
         .catch((error) => {
             console.error("Signup Error:", error);
             if(msg) msg.innerText = "❌ Error: " + error.message;
-            else alert("Error: " + error.message);
         });
 };
-
-
