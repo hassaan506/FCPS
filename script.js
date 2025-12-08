@@ -101,18 +101,17 @@ async function loadUserData() {
     if (!currentUser) return;
 
     // --- FIX START: Restore the Name on Refresh ---
-    // If the user has a name saved, put it back on the dashboard
     if (currentUser.displayName) {
         document.getElementById('user-display').innerText = currentUser.displayName;
     }
     // --- FIX END ---
 
     try {
-        // 1. Show "Loading..." so you know it's updating
+        // 1. Show "Loading..."
         const statsBox = document.getElementById('quick-stats');
         if(statsBox) statsBox.style.opacity = "0.5"; 
 
-        // 2. FORCE FETCH FROM SERVER (Bypass Cache)
+        // 2. FORCE FETCH FROM SERVER
         const userDoc = await db.collection('users').doc(currentUser.uid).get({ source: 'server' });
         let userData = userDoc.exists ? userDoc.data() : {};
 
@@ -122,7 +121,7 @@ async function loadUserData() {
 
         checkStreak(userData);
 
-        // 3. FORCE FETCH RESULTS TOO
+        // 3. FORCE FETCH RESULTS
         const resultsSnap = await db.collection('users').doc(currentUser.uid).collection('results').get({ source: 'server' });
         let totalTests = 0, totalScore = 0;
         resultsSnap.forEach(doc => { totalTests++; totalScore += doc.data().score; });
@@ -130,12 +129,16 @@ async function loadUserData() {
         
         // 4. Update UI
         if(statsBox) {
-            statsBox.style.opacity = "1"; // Restore opacity
+            statsBox.style.opacity = "1"; 
             statsBox.innerHTML = `
                 <div class="stat-row"><span class="stat-lbl">Test Average:</span> <span class="stat-val" style="color:${avgScore>=70?'#2ecc71':'#e74c3c'}">${avgScore}%</span></div>
                 <div class="stat-row"><span class="stat-lbl">Mistakes Pending:</span> <span class="stat-val" style="color:#e74c3c; font-weight:bold;">${userMistakes.length}</span></div>
                 <div class="stat-row" style="border:none;"><span class="stat-lbl">Practice Solved:</span> <span class="stat-val">${userSolvedIDs.length}</span></div>`;
         }
+
+        // --- NEW LINE: Update the Badge Icon on Dashboard ---
+        updateBadgeButton(); 
+
     } catch (e) { 
         console.error("Load Error:", e); 
     }
@@ -1325,13 +1328,32 @@ window.signup = function() {
         });
 };
 
+/* =========================================
+   UPDATE DASHBOARD BADGE ICON
+   ========================================= */
+function updateBadgeButton() {
+    // 1. Define Badges (Same as in your modal)
+    const badges = [
+        { limit: 10, icon: "👶" },
+        { limit: 100, icon: "🥉" },
+        { limit: 500, icon: "🥈" },
+        { limit: 1000, icon: "🥇" },
+        { limit: 2000, icon: "💎" },
+        { limit: 5000, icon: "👑" }
+    ];
 
+    // 2. Find Highest Unlocked Badge
+    const totalSolved = userSolvedIDs.length;
+    let currentIcon = "🏆"; // Default if beginner
 
+    badges.forEach(b => {
+        if (totalSolved >= b.limit) {
+            currentIcon = b.icon;
+        }
+    });
 
-
-
-
-
-
-
-
+    // 3. Update the Button on Dashboard
+    // We need to give the button an ID first (See Step 3 below)
+    const btn = document.getElementById('main-badge-btn');
+    if (btn) btn.innerText = currentIcon;
+}
