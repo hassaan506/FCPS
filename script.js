@@ -274,13 +274,6 @@ function processData(data) {
     renderTestFilters(subjects, map); 
 }
 
-/* --- RENDER MENUS WITH PROGRESS BARS --- */
-/* =========================================
-   1. RENDER MENUS (DROPDOWN + TEXT GRID)
-   ========================================= */
-/* =========================================
-   1. RENDER MENUS (DROPDOWN + TEXT GRID + PROGRESS BARS)
-   ========================================= */
 function renderMenus(subjects, map) {
     const container = document.getElementById('dynamic-menus');
     container.innerHTML = "";
@@ -329,18 +322,18 @@ function renderMenus(subjects, map) {
             gridContainer.className = "topics-text-grid";
             
             sortedTopics.forEach(topic => {
-                // Calculate Topic Specific Stats
+                // Calculate Topic Stats
                 const topQuestions = subjQuestions.filter(q => q.Topic === topic);
                 const totalTop = topQuestions.length;
                 const solvedTop = topQuestions.filter(q => userSolvedIDs.includes(q._uid)).length;
                 const percentTop = totalTop > 0 ? Math.round((solvedTop / totalTop) * 100) : 0;
                 
-                // Create Item Container
+                // Create Item
                 const item = document.createElement('div');
                 item.className = "topic-item-container";
                 item.onclick = () => startPractice(subj, topic);
 
-                // HTML: Text + Mini Bar
+                // HTML structure: Name TOP, Bar BOTTOM
                 item.innerHTML = `
                     <span class="topic-name">${topic}</span>
                     <div class="topic-mini-track">
@@ -352,7 +345,7 @@ function renderMenus(subjects, map) {
             });
             contentDiv.appendChild(gridContainer);
         } else {
-            contentDiv.innerHTML += `<div style="text-align:center; padding:10px; opacity:0.5; font-size:12px;">(No specific topics)</div>`;
+            contentDiv.innerHTML += `<div style="text-align:center; padding:10px; opacity:0.5;">(No specific topics)</div>`;
         }
 
         details.appendChild(contentDiv);
@@ -1255,6 +1248,7 @@ window.signup = function() {
             if(msg) msg.innerText = "❌ Error: " + error.message;
         });
 };
+
 
 
 
