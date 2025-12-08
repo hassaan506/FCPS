@@ -1228,3 +1228,4 @@ window.signup = function() {
             if(msg) msg.innerText = "❌ Error: " + error.message;
         });
 };
+
