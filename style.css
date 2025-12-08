@@ -874,3 +874,42 @@ details .category-btn div {
     padding-left: 0;
     margin-top: 8px;
 }
+
+
+/* =========================================
+   16. THE SAFETY FIX (Menu Grid Wrapper)
+   ========================================= */
+
+/* Turn off the dangerous grid on <details> itself */
+details[open] {
+    display: block !important; /* Reset to normal */
+}
+
+/* Apply Grid to our new SAFE wrapper */
+.menu-grid-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Two columns */
+    gap: 10px;
+    padding: 10px;
+    padding-top: 0;
+}
+
+/* Ensure buttons are visible and sized correctly */
+.category-btn {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    min-height: 80px !important;
+    width: 100% !important;
+    background: var(--input-bg) !important;
+}
+
+/* Make "Practice All" span full width */
+.menu-grid-wrapper .category-btn:first-child {
+    grid-column: 1 / -1;
+    background: linear-gradient(to right, var(--input-bg), #eef2ff) !important;
+    flex-direction: row !important; /* Keep icon to the right */
+    justify-content: space-between !important;
+    padding: 0 20px !important;
+    min-height: 60px !important;
+}
