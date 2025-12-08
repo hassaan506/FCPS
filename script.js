@@ -757,3 +757,60 @@ async function openAnalytics() {
     } catch (e) { container.innerHTML = "Error loading stats: " + e.message; }
 }
 
+
+
+/* --- GLOBAL SEARCH LOGIC --- */
+const searchInput = document.getElementById('global-search');
+const searchResults = document.getElementById('search-results');
+
+if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+        const text = e.target.value.toLowerCase();
+        
+        if (text.length < 2) {
+            searchResults.style.display = 'none';
+            searchResults.innerHTML = '';
+            return;
+        }
+
+        // Search questions (assumes 'questions' array exists)
+        const matches = questions.filter(q => 
+            q.question.toLowerCase().includes(text) || 
+            (q.explanation && q.explanation.toLowerCase().includes(text))
+        );
+
+        searchResults.style.display = 'block';
+        searchResults.innerHTML = '';
+
+        if (matches.length === 0) {
+            searchResults.innerHTML = '<div class="search-item" style="color:gray; cursor:default;">No questions found.</div>';
+        } else {
+            matches.forEach(match => {
+                const div = document.createElement('div');
+                div.className = 'search-item';
+                div.innerText = match.question.substring(0, 50) + "...";
+                
+                div.onclick = () => {
+                    // Start mini session
+                    currentQuestions = [match];
+                    currentQuestionIndex = 0;
+                    score = 0;
+                    
+                    document.getElementById('dashboard-screen').classList.remove('active');
+                    document.getElementById('quiz-screen').classList.add('active');
+                    loadQuestion();
+                    
+                    searchInput.value = '';
+                    searchResults.style.display = 'none';
+                };
+                searchResults.appendChild(div);
+            });
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+            searchResults.style.display = 'none';
+        }
+    });
+}
