@@ -543,3 +543,71 @@ summary { padding: 18px; cursor: pointer; font-weight: 600; }
 [data-theme="dark"] .flag-btn { border-color: #fbbf24; color: #fbbf24; }
 [data-theme="dark"] .flag-btn:hover, [data-theme="dark"] .flag-btn.active { background: #fbbf24; color: #1e293b; }
 [data-theme="dark"] .nav-btn.flagged { background: #451a03; border-color: #fbbf24; color: #fbbf24; }
+
+
+/* =========================================
+   GAMIFICATION STYLES
+   ========================================= */
+
+/* Top Bar Icons */
+.icon-btn {
+    background: transparent;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    margin-right: 15px;
+    position: relative;
+    transition: transform 0.2s;
+}
+.icon-btn:hover { transform: scale(1.2); }
+
+/* Streak Fire Animation */
+.streak-container {
+    display: flex;
+    align-items: center;
+    margin-right: 15px;
+    font-weight: 700;
+    color: #e74c3c; /* Fire Red */
+}
+.streak-icon {
+    font-size: 20px;
+    margin-right: 5px;
+    animation: burn 0.5s infinite alternate;
+}
+@keyframes burn { from { opacity: 0.8; transform: scale(1); } to { opacity: 1; transform: scale(1.1); } }
+
+/* Badges Grid (Inside Modal) */
+.badge-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.badge-item {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 15px;
+    text-align: center;
+    opacity: 0.5; /* Dimmed = Locked */
+    filter: grayscale(100%);
+    transition: all 0.3s;
+}
+
+.badge-item.unlocked {
+    opacity: 1;
+    filter: grayscale(0%);
+    border-color: #ffd700;
+    background: #fffbeb;
+    box-shadow: 0 4px 10px rgba(255, 215, 0, 0.2);
+    transform: translateY(-2px);
+}
+
+.badge-icon { font-size: 30px; display: block; margin-bottom: 5px; }
+.badge-name { font-size: 12px; font-weight: 700; display: block; }
+.badge-desc { font-size: 10px; color: #64748b; }
+
+/* Dark Mode Support */
+[data-theme="dark"] .badge-item { background: #1e293b; border-color: #334155; }
+[data-theme="dark"] .badge-item.unlocked { background: #422006; border-color: #fbbf24; }
