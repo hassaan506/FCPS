@@ -83,23 +83,27 @@ async function loadUserData() {
         if (userDoc.exists) {
             userBookmarks = userDoc.data().bookmarks || [];
             userSolvedIDs = userDoc.data().solved || [];
+        } else {
+            userBookmarks = []; userSolvedIDs = [];
         }
+
         const resultsSnap = await db.collection('users').doc(currentUser.uid).collection('results').get();
         let totalTests = 0, totalScore = 0;
         resultsSnap.forEach(doc => { totalTests++; totalScore += doc.data().score; });
         const avgScore = totalTests > 0 ? Math.round(totalScore / totalTests) : 0;
-        
-        const statsBox = document.getElementById('stats-box');
-        if(statsBox) {
-            statsBox.innerHTML = `
-                <h3>Your Progress</h3>
+
+        // === THE FIX IS HERE ===
+        // We target 'quick-stats' so we don't overwrite the Analytics Button
+        const statsContainer = document.getElementById('quick-stats');
+        if (statsContainer) {
+            statsContainer.innerHTML = `
                 <div class="stat-row"><span class="stat-lbl">Test Average:</span> <span class="stat-val" style="color:${avgScore>=70?'#2ecc71':'#e74c3c'}">${avgScore}%</span></div>
                 <div class="stat-row"><span class="stat-lbl">Tests Taken:</span> <span class="stat-val">${totalTests}</span></div>
-                <div class="stat-row" style="border:none;"><span class="stat-lbl">Practice Solved:</span> <span class="stat-val">${userSolvedIDs.length}</span></div>`;
+                <div class="stat-row" style="border:none;"><span class="stat-lbl">Practice Solved:</span> <span class="stat-val">${userSolvedIDs.length}</span></div>
+            `;
         }
     } catch (e) { console.error(e); }
 }
-
 async function resetAccountData() {
     if(!currentUser) return;
     if (!confirm("⚠️ WARNING: This will delete ALL progress. Continue?")) return;
@@ -643,3 +647,4 @@ async function openAnalytics() {
         container.innerHTML = "Error loading stats: " + e.message;
     }
 }
+
