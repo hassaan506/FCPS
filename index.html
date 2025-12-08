@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
     <title>FCPS Prep Portal</title>
     <link rel="stylesheet" href="style.css">
-    
+    <link rel="manifest" href="manifest.json">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
@@ -62,6 +62,7 @@
     
                 <div class="panel">
                     <h3>⚙️ Settings</h3>
+                    <button id="install-btn" class="hidden" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; margin-bottom:10px;">📱 Install App</button>
                     <button onclick="startSavedQuestions()" style="background:#fff8e1; color:#b7791f; border:1px solid #f6e05e; margin-bottom:10px;">⭐ Review Bookmarks</button>
                     <button onclick="resetAccountData()" style="background:#fff5f5; color:#c53030; border:1px solid #fc8181;">⚠️ Reset Progress</button>
                 </div>
@@ -192,6 +193,7 @@
     <script src="script.js"></script>
 </body>
 </html>
+
 
 
 
