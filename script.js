@@ -77,15 +77,23 @@ function saveProfile() {
     });
 }
 
+// ... (Keep your existing configuration and top variables) ...
+
+// === REPLACE FROM HERE DOWN ===
+
 async function loadUserData() {
     if (!currentUser) return;
     try {
         const userDoc = await db.collection('users').doc(currentUser.uid).get();
-        if (userDoc.exists) {
-            userBookmarks = userDoc.data().bookmarks || [];
-            userSolvedIDs = userDoc.data().solved || [];
-        }
+        let userData = userDoc.exists ? userDoc.data() : {};
+
+        userBookmarks = userData.bookmarks || [];
+        userSolvedIDs = userData.solved || [];
         
+        // --- NEW: GAMIFICATION LOGIC ---
+        checkStreak(userData);
+        // -------------------------------
+
         const resultsSnap = await db.collection('users').doc(currentUser.uid).collection('results').get();
         let totalTests = 0, totalScore = 0;
         resultsSnap.forEach(doc => { totalTests++; totalScore += doc.data().score; });
@@ -101,6 +109,74 @@ async function loadUserData() {
     } catch (e) { console.error(e); }
 }
 
+// === NEW: STREAK CALCULATOR ===
+function checkStreak(data) {
+    const today = new Date().toDateString();
+    const lastLogin = data.lastLoginDate;
+    let currentStreak = data.streak || 0;
+
+    // Logic:
+    // 1. If last login was yesterday, streak + 1
+    // 2. If last login was today, streak stays same
+    // 3. If last login was older, streak resets to 1
+    
+    if (lastLogin !== today) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        if (lastLogin === yesterday.toDateString()) {
+            currentStreak++;
+        } else {
+            currentStreak = 1; // Reset or Start new
+        }
+        
+        // Save new streak
+        db.collection('users').doc(currentUser.uid).set({
+            lastLoginDate: today,
+            streak: currentStreak
+        }, { merge: true });
+    }
+
+    // Update UI
+    if(currentStreak > 0) {
+        document.getElementById('streak-display').classList.remove('hidden');
+        document.getElementById('streak-count').innerText = currentStreak + " Day Streak";
+    }
+}
+
+// === NEW: BADGE SYSTEM ===
+function openBadges() {
+    const modal = document.getElementById('badges-modal');
+    const container = document.getElementById('badge-list');
+    modal.classList.remove('hidden');
+    
+    const totalSolved = userSolvedIDs.length;
+    
+    // Define Badges
+    const badges = [
+        { limit: 10, icon: "👶", name: "Novice", desc: "Solve 10 Question" },
+        { limit: 100, icon: "🥉", name: "Bronze", desc: "Solve 100 Questions" },
+        { limit: 500, icon: "🥈", name: "Silver", desc: "Solve 500 Questions" },
+        { limit: 1000, icon: "🥇", name: "Gold", desc: "Solve 1000 Questions" },
+        { limit: 2000, icon: "💎", name: "Diamond", desc: "Solve 2000 Questions" },
+        { limit: 5000, icon: "👑", name: "Master", desc: "Solve 5000 Questions" }
+    ];
+
+    let html = "";
+    badges.forEach(b => {
+        const isUnlocked = totalSolved >= b.limit;
+        html += `
+            <div class="badge-item ${isUnlocked ? 'unlocked' : ''}">
+                <span class="badge-icon">${b.icon}</span>
+                <span class="badge-name">${b.name}</span>
+                <span class="badge-desc">${b.desc}</span>
+            </div>
+        `;
+    });
+    container.innerHTML = html;
+}
+
+// ... (Keep the rest of your functions: resetAccountData, loadQuestions, etc.) ...
 async function resetAccountData() {
     if(!currentUser) return;
     if (!confirm("⚠️ WARNING: This will delete ALL progress. Continue?")) return;
@@ -680,3 +756,4 @@ async function openAnalytics() {
         container.innerHTML = html;
     } catch (e) { container.innerHTML = "Error loading stats: " + e.message; }
 }
+
