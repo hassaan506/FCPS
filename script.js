@@ -757,7 +757,7 @@ async function openAnalytics() {
     } catch (e) { container.innerHTML = "Error loading stats: " + e.message; }
 }
 
-/* --- SUPER SEARCH LOGIC (SEARCHES EVERYTHING) --- */
+/* --- FIXED GLOBAL SEARCH LOGIC (MATCHES YOUR VARIABLES) --- */
 const searchInput = document.getElementById('global-search');
 const searchResults = document.getElementById('search-results');
 
@@ -772,16 +772,16 @@ if (searchInput) {
             return;
         }
 
-        // 2. Find the database (checks for 'questions' variable)
-        let db = [];
-        if (typeof questions !== 'undefined') db = questions;
-        else if (typeof window.questions !== 'undefined') db = window.questions;
-        
-        if (db.length === 0) return; // Database not ready yet
+        // 2. USE THE CORRECT VARIABLE (allQuestions)
+        // Check if data is loaded
+        if (typeof allQuestions === 'undefined' || allQuestions.length === 0) {
+            console.log("Data not loaded yet");
+            return; 
+        }
 
         // 3. SEARCH EVERYTHING 
-        // We take the whole row (Question + Options + Explanation) and check if the word exists anywhere.
-        const matches = db.filter(row => {
+        const matches = allQuestions.filter(row => {
+            // Join all values (Question, Options, Explanation) into one string to search
             const allText = Object.values(row).join(" ").toLowerCase();
             return allText.includes(text);
         });
@@ -793,36 +793,29 @@ if (searchInput) {
         if (matches.length === 0) {
             searchResults.innerHTML = '<div class="search-item" style="color:gray;">No matches found</div>';
         } else {
-            // Limit to top 20 results to keep it fast
+            // Limit to top 20 results
             matches.slice(0, 20).forEach(match => {
                 const div = document.createElement('div');
                 div.className = 'search-item';
                 
-                // Try to find the best text to display as the title
-                let title = "Question";
-                const keys = Object.keys(match);
-                // Look for a key that contains the word "question" (e.g., "Question", "question_text")
-                const questionKey = keys.find(k => k.toLowerCase().includes('question'));
-                if (questionKey && match[questionKey]) {
-                    title = match[questionKey];
-                }
-                
-                div.innerText = title.substring(0, 60) + "...";
+                // Display Question Text
+                div.innerText = (match.Question || "Question").substring(0, 60) + "...";
                 
                 div.onclick = () => {
-                    // Start mini session
-                    if(typeof currentQuestions !== 'undefined') currentQuestions = [match];
-                    if(typeof currentQuestionIndex !== 'undefined') currentQuestionIndex = 0;
-                    if(typeof score !== 'undefined') score = 0;
+                    // --- THE FIX: USE YOUR SPECIFIC VARIABLES ---
                     
-                    // Switch to Quiz Screen (using your specific class names)
-                    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-                    document.getElementById('quiz-screen').classList.add('active');
+                    // 1. Set the filtered list to ONLY this question
+                    filteredQuestions = [match];
                     
-                    // Run the load function
-                    if (typeof loadQuestion === 'function') loadQuestion();
+                    // 2. Set mode to practice so it shows the answer instantly
+                    currentMode = 'practice';
+                    currentIndex = 0;
                     
-                    // Reset search
+                    // 3. Switch Screen and Render
+                    showScreen('quiz-screen');
+                    renderPage(); // <--- This is the function your code uses!
+                    
+                    // 4. Reset search bar
                     searchInput.value = '';
                     searchResults.style.display = 'none';
                 };
