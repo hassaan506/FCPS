@@ -290,8 +290,8 @@ button {
 }
 .logout-btn:hover { background: #fecaca; transform: translateY(-1px); }
 
-/* DASHBOARD LAYOUT (CSS Grid) */
-.gameContainer { 
+/* DASHBOARD LAYOUT (CSS Grid) - APPLIES ONLY TO DASHBOARD */
+#dashboard-screen .gameContainer { 
     width: 100%; 
     display: grid; 
     /* Col 1 is fixed 450px. Col 2 is 1fr (Takes all remaining space) */
@@ -303,9 +303,7 @@ button {
 
 /* --- LEFT COLUMN (Progress & Settings) --- */
 .panel { 
-    /* Force into First Column */
-    grid-column: 1;
-    
+    grid-column: 1; /* Force into First Column */
     padding: 25px; 
     text-align: center;
     background: var(--card-bg); 
@@ -313,58 +311,36 @@ button {
     border-radius: 16px; 
     box-shadow: var(--shadow-sm); 
     transition: transform 0.3s ease;
-    
     width: 100%; 
     margin-bottom: 30px;
 }
 
-.panel h3 {
-   font-size: 19px; 
-   font-weight: 700; 
-   color: var(--text-dark); 
-   margin-bottom: 25px; 
-   display: flex; 
-   align-items: center; 
-   gap: 10px;
-   justify-content: center; 
-   border-bottom: 2px solid #e2e8f0;
-   padding-bottom: 15px;
-   margin-bottom: 20px;
-}
+/* ... (Keep panel h3 styles) ... */
 
-/* --- RIGHT COLUMN (Study Session - Fills Remaining Width) --- */
+/* --- RIGHT COLUMN (Study Session) --- */
 #study-panel {
-    /* Force into Second Column */
-    grid-column: 2;
-    /* Span 10 rows so it sits next to both Progress AND Settings */
+    grid-column: 2; /* Force into Second Column */
     grid-row: 1 / span 10; 
-    
-    /* Fill the remaining space */
     width: 100% !important;
     max-width: none !important;
-    
-    /* Keep your preferred height */
-    height: 20cm !important;
-    
+    height: 17cm !important;
     overflow-y: auto !important;
     margin: 0 !important;
 }
 
-/* --- MOBILE RESPONSIVENESS --- */
-/* If screen is smaller than 950px, switch back to single column stack */
+/* --- MOBILE FIX --- */
 @media screen and (max-width: 950px) {
-    .gameContainer {
-        grid-template-columns: 1fr; /* One column */
+    #dashboard-screen .gameContainer {
+        grid-template-columns: 1fr; /* Single column on mobile */
     }
     .panel, #study-panel {
-        grid-column: 1; /* Everything in col 1 */
-        grid-row: auto;
-        max-width: 450px !important; /* Limit width on mobile */
+        grid-column: 1; 
+        max-width: 450px !important;
         margin-left: auto !important;
         margin-right: auto !important;
     }
     #study-panel {
-        width: 100% !important; /* Allow study to fit screen width */
+        width: 100% !important;
     }
 }
 
@@ -1023,5 +999,6 @@ details[open] .subject-summary::after {
     background: var(--primary);
     color: white;
 }
+
 
 
