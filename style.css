@@ -328,14 +328,23 @@ button {
 
 /* 2. SPECIFIC STYLE FOR STUDY SESSION (Fixed Dimensions) */
 #study-panel {
-    /* Override dimensions specifically for this box */
-    width: 720px;
-    height: 765px;
-    max-width: 100%; /* Safety for mobile screens */
+    /* FORCE exact dimensions */
+    width: 720px !important;
+    height: 765px !important;
     
+    /* CRITICAL: This command breaks the 450px limit */
+    max-width: none !important; 
+    
+    /* Mobile Safety: On small phones, fit the screen instead of overflowing */
+    @media screen and (max-width: 600px) {
+        width: 95% !important;
+        max-width: 100% !important;
+    }
+
     /* Allow scrolling inside if list is long */
     overflow-y: auto; 
 }
+
 .panel h3 {
    font-size: 19px; 
    font-weight: 700; 
@@ -1028,6 +1037,7 @@ details[open] .subject-summary::after {
     background: var(--primary);
     color: white;
 }
+
 
 
 
