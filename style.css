@@ -299,14 +299,6 @@ button {
     padding: 0 20px;
 }
 
-/* Desktop Sidebar Layout */
-@media(min-width: 1000px) { 
-    .gameContainer { 
-        grid-template-columns: 1fr 380px; 
-    } 
-}
-
-/* --- FIXED PANEL: Left Aligned Card, Centered Text --- */
 /* 1. General Cards (Progress & Settings) - Compact & Auto Height */
 .panel { 
     padding: 25px; 
@@ -1035,6 +1027,7 @@ details[open] .subject-summary::after {
     background: var(--primary);
     color: white;
 }
+
 
 
 
