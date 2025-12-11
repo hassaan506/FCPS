@@ -306,14 +306,16 @@ button {
     } 
 }
 
-/* --- FIXED PANEL DIMENSIONS (450px) --- */
+/* --- FIXED PANEL: Left Aligned Card, Centered Text --- */
 .panel { 
     padding: 25px; 
-    text-align: center;
-    max-width: 450px;   /* Forces the 450px width */
-    width: 100%;        /* Allows shrinking on mobile */
-    margin-left: 0px;  /* Centers horizontally */
-    margin-right: 0px; /* Centers horizontally */
+    text-align: center; /* <--- Text is Centered (Pretty) */
+    
+    /* Box Dimensions & Position */
+    max-width: 450px;   /* Fixed small width */
+    width: 100%;        
+    margin-left: 0;     /* <--- Card is Left Aligned */
+    margin-right: auto; /* Ensures it stays left */
 }
 
 .panel h3 {
@@ -324,12 +326,11 @@ button {
    display: flex; 
    align-items: center; 
    gap: 10px;
-   justify-content: center; 
+   justify-content: center; /* <--- Header Title Centered */
    border-bottom: 2px solid #e2e8f0;
    padding-bottom: 15px;
    margin-bottom: 20px;
 }
-
 
 /* =========================================
    7. STUDY MENU & INTERACTION
@@ -1009,4 +1010,5 @@ details[open] .subject-summary::after {
     background: var(--primary);
     color: white;
 }
+
 
