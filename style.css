@@ -307,7 +307,8 @@ button {
 }
 
 .panel { padding: 25px; text-align: center; }
-.panel h3 { 
+.panel h3 {
+   width: 450px;
    font-size: 19px; 
    font-weight: 700; 
    color: var(--text-dark); 
@@ -1000,5 +1001,6 @@ details[open] .subject-summary::after {
     background: var(--primary);
     color: white;
 }
+
 
 
