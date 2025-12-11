@@ -446,7 +446,7 @@ button {
     
     /* --- BORDER CHANGE --- */
     border-left: none;              /* Remove the thick left bar */
-    border: 3px solid var(--primary); /* Add a full border around the box */
+    border: 8px solid var(--primary); /* Add a full border around the box */
     /* --------------------- */
 
     margin-bottom: 25px;
@@ -1103,5 +1103,6 @@ details[open] .subject-summary::after {
     width: 100% !important;
     margin: 0 !important;
 }
+
 
 
