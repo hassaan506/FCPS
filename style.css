@@ -437,13 +437,22 @@ button {
 }
 
 /* Question Box */
-.test-question-block { 
-    padding: 50px; 
-    text-align: left; 
-    position: relative; 
-    overflow: hidden; 
-    border-left: 8px solid var(--primary); 
+/* Question Box (Full Border Style) */
+.test-question-block {
+    padding: 30px;
+    text-align: left;
+    position: relative;
+    overflow: visible; /* Keeps options visible */
+    
+    /* --- BORDER CHANGE --- */
+    border-left: none;              /* Remove the thick left bar */
+    border: 3px solid var(--primary); /* Add a full border around the box */
+    /* --------------------- */
+
     margin-bottom: 25px;
+    background: var(--card-bg);
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
     animation: slideUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
@@ -1094,3 +1103,4 @@ details[open] .subject-summary::after {
     width: 100% !important;
     margin: 0 !important;
 }
+
