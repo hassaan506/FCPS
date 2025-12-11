@@ -329,8 +329,8 @@ button {
 /* 2. SPECIFIC STYLE FOR STUDY SESSION (Fixed Dimensions) */
 #study-panel {
     /* Override dimensions specifically for this box */
-    width: 16cm !important;
-    height: 17cm !important;
+    width: 720px;
+    height: 765px;
     max-width: 100%; /* Safety for mobile screens */
     
     /* Allow scrolling inside if list is long */
@@ -1028,6 +1028,7 @@ details[open] .subject-summary::after {
     background: var(--primary);
     color: white;
 }
+
 
 
 
