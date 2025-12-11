@@ -760,6 +760,34 @@ function createQuestionCard(q, index, showNumber = true) {
     return block;
 }
 
+/* =========================================
+   CHECK ANSWER FUNCTION (Restored)
+   ========================================= */
+function checkAnswer(selectedOption, btnElement, questionData) {
+    // 1. Visual Selection
+    // Remove 'selected' from all other buttons in this card
+    const allBtns = btnElement.parentElement.querySelectorAll('.option-btn');
+    allBtns.forEach(b => b.classList.remove('selected'));
+    
+    // Add 'selected' to the clicked button
+    btnElement.classList.add('selected');
+
+    // 2. Save the Answer
+    // Assuming 'testAnswers' is your global object for saving selections
+    if (typeof testAnswers !== 'undefined') {
+        testAnswers[questionData._uid] = selectedOption;
+    }
+    
+    // 3. Update Sidebar Navigator (if it exists)
+    // Marks the circle as "Answered" (Blue)
+    if (typeof updateNavStatus === "function") {
+        updateNavStatus(questionData._uid, true);
+    } else {
+        // Fallback if you don't have a helper function
+        const navBtn = document.getElementById(`nav-${questionData._uid}`);
+        if (navBtn) navBtn.classList.add('answered');
+    }
+}
 
 // --- NEW: FLAG LOGIC ---
 function toggleFlag(uid, btn) {
@@ -1513,6 +1541,7 @@ function renderPracticeNavigator() {
         }
     }, 100);
 }
+
 
 
 
