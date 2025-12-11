@@ -785,10 +785,10 @@ function closeExplanation() {
 }
 
 /* =========================================
-   CHECK ANSWER (No Spoilers Version)
+   CHECK ANSWER (Fixes: Explanation + Mistakes Save)
    ========================================= */
 function checkAnswer(selectedOption, btnElement, q) {
-    // 1. Save Answer
+    // 1. Save Last Answer
     if (typeof testAnswers !== 'undefined') {
         testAnswers[q._uid] = selectedOption;
     }
@@ -801,7 +801,6 @@ function checkAnswer(selectedOption, btnElement, q) {
         let correctData = (q.CorrectAnswer || "").trim(); 
         let userText = String(selectedOption).trim();     
 
-        // Check Logic
         let isCorrect = false;
         if (userText.toLowerCase() === correctData.toLowerCase()) isCorrect = true;
         else if (correctData === "A" && userText === q.OptionA) isCorrect = true;
@@ -811,41 +810,43 @@ function checkAnswer(selectedOption, btnElement, q) {
         else if (correctData === "E" && userText === q.OptionE) isCorrect = true;
 
         if (isCorrect) {
-            // ✅ CORRECT CASE
-            // 1. Remove 'wrong' class if they tried before
+            // ✅ CORRECT
             btnElement.classList.remove('wrong');
-            // 2. Add 'correct' class (Green)
             btnElement.classList.add('correct');
             
-            // 3. Mark in database/array
+            // Mark as Solved
             if (typeof userSolvedIDs !== 'undefined' && !userSolvedIDs.includes(q._uid)) {
                 userSolvedIDs.push(q._uid);
+                localStorage.setItem('medical_solved', JSON.stringify(userSolvedIDs)); // FORCE SAVE
             }
 
-            // 4. SHOW EXPLANATION
+            // --- SHOW EXPLANATION (Fix 1) ---
             setTimeout(() => {
                 showExplanation(q);
             }, 300);
 
         } else {
-            // ❌ WRONG CASE
-            // 1. Turn THIS button Red
+            // ❌ WRONG
             btnElement.classList.add('wrong');
             
-            // 2. DO NOT REVEAL THE ANSWER!
-            // I removed the code that searched for the correct button.
-            // Now the user must try again.
+            // --- SAVE TO MISTAKES (Fix 2) ---
+            // If userMistakes list exists, add this question ID
+            if (typeof userMistakes !== 'undefined') {
+                if (!userMistakes.includes(q._uid)) {
+                    userMistakes.push(q._uid);
+                    // FORCE SAVE immediately so it doesn't get lost
+                    localStorage.setItem('medical_mistakes', JSON.stringify(userMistakes));
+                    console.log("Mistake Saved:", q._uid);
+                }
+            }
         }
         
-        // Update Bottom Bar
         if (typeof renderPracticeNavigator === "function") renderPracticeNavigator();
 
     } else {
         // --- EXAM MODE ---
-        // Deselect others first
         const allBtns = btnElement.parentElement.querySelectorAll('.option-btn');
         allBtns.forEach(b => b.classList.remove('selected'));
-        // Select this one
         btnElement.classList.add('selected');
         
         if (typeof renderNavigator === "function") renderNavigator();
@@ -1604,6 +1605,7 @@ function renderPracticeNavigator() {
         }
     }, 100);
 }
+
 
 
 
