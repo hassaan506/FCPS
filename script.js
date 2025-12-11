@@ -759,24 +759,6 @@ function createQuestionCard(q, index, showNumber = true) {
     return block;
 }
 
-/* =========================================
-   EXPLANATION MODAL FUNCTIONS
-   ========================================= */
-function showExplanation(q) {
-    const modal = document.getElementById('explanation-modal');
-    const text = document.getElementById('explanation-text');
-    
-    const explContent = q.Explanation || "Good job! No detailed explanation is available.";
-
-    // SAFETY: If HTML is missing, use Alert instead of crashing
-    if (!modal || !text) {
-        alert("✅ Correct!\n\n" + explContent);
-        return;
-    }
-    
-    text.innerHTML = explContent;
-    modal.classList.remove('hidden');
-}
 
 function closeExplanation() {
     const modal = document.getElementById('explanation-modal');
@@ -784,10 +766,33 @@ function closeExplanation() {
 }
 
 /* =========================================
-   CHECK ANSWER (Fixes: Explanation + Mistakes Save)
+   EXPLANATION MODAL LOGIC (Matches New HTML)
+   ========================================= */
+function showExplanation(q) {
+    const modal = document.getElementById('explanation-modal');
+    const text = document.getElementById('explanation-text');
+    
+    const explContent = q.Explanation || "Good job! No detailed explanation is available.";
+
+    if (modal && text) {
+        text.innerHTML = explContent;
+        modal.classList.remove('hidden');
+    } else {
+        // Fallback: If HTML is still broken, use alert
+        alert("✅ Correct!\n\n" + explContent);
+    }
+}
+
+function closeModal() {
+    const modal = document.getElementById('explanation-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+/* =========================================
+   CHECK ANSWER (Connected to Database)
    ========================================= */
 function checkAnswer(selectedOption, btnElement, q) {
-    // 1. Save Last Answer
+    // 1. Save Session Answer
     if (typeof testAnswers !== 'undefined') {
         testAnswers[q._uid] = selectedOption;
     }
@@ -796,12 +801,11 @@ function checkAnswer(selectedOption, btnElement, q) {
 
     if (mode === 'practice') {
         // --- PRACTICE MODE ---
-        
-        let correctData = (q.CorrectAnswer || "").trim(); 
-        let userText = String(selectedOption).trim();     
-
+        let correctData = (q.CorrectAnswer || "").trim();
+        let userText = String(selectedOption).trim();
         let isCorrect = false;
-        // Check Logic: Direct Match vs Letter Match
+
+        // Check Logic
         if (userText.toLowerCase() === correctData.toLowerCase()) isCorrect = true;
         else if (correctData === "A" && userText === q.OptionA) isCorrect = true;
         else if (correctData === "B" && userText === q.OptionB) isCorrect = true;
@@ -813,14 +817,13 @@ function checkAnswer(selectedOption, btnElement, q) {
             // ✅ CORRECT
             btnElement.classList.remove('wrong');
             btnElement.classList.add('correct');
-            
-            // Mark as Solved
-            if (typeof userSolvedIDs !== 'undefined' && !userSolvedIDs.includes(q._uid)) {
-                userSolvedIDs.push(q._uid);
-                localStorage.setItem('medical_solved', JSON.stringify(userSolvedIDs)); // FORCE SAVE
+
+            // --- DATABASE SAVE (Connects to Firebase) ---
+            if (typeof saveProgressToDB === "function") {
+                saveProgressToDB(q, true); // True = Correct
             }
 
-            // --- SHOW EXPLANATION ---
+            // SHOW EXPLANATION
             setTimeout(() => {
                 showExplanation(q);
             }, 300);
@@ -828,14 +831,10 @@ function checkAnswer(selectedOption, btnElement, q) {
         } else {
             // ❌ WRONG
             btnElement.classList.add('wrong');
-            
-            // --- SAVE TO MISTAKES ---
-            if (typeof userMistakes !== 'undefined') {
-                if (!userMistakes.includes(q._uid)) {
-                    userMistakes.push(q._uid);
-                    localStorage.setItem('medical_mistakes', JSON.stringify(userMistakes));
-                    console.log("Mistake Saved:", q._uid);
-                }
+
+            // --- DATABASE SAVE (Connects to Firebase) ---
+            if (typeof saveProgressToDB === "function") {
+                saveProgressToDB(q, false); // False = Wrong (Save to Mistakes)
             }
         }
         
@@ -846,7 +845,6 @@ function checkAnswer(selectedOption, btnElement, q) {
         const allBtns = btnElement.parentElement.querySelectorAll('.option-btn');
         allBtns.forEach(b => b.classList.remove('selected'));
         btnElement.classList.add('selected');
-        
         if (typeof renderNavigator === "function") renderNavigator();
     }
 }
@@ -1603,6 +1601,7 @@ function renderPracticeNavigator() {
         }
     }, 100);
 }
+
 
 
 
