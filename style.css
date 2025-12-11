@@ -257,7 +257,7 @@ button {
 
 
 /* =========================================
-   6. DASHBOARD & MAIN UI
+   6. DASHBOARD & MAIN UI (Side-by-Side Fix)
    ========================================= */
 
 /* DASHBOARD HEADER (TopBar) */
@@ -290,29 +290,18 @@ button {
 }
 .logout-btn:hover { background: #fecaca; transform: translateY(-1px); }
 
-/* DASHBOARD GRID SYSTEM (The Side-by-Side Fix) */
+/* DASHBOARD GRID SYSTEM */
 .gameContainer { 
     width: 100%; 
-    
-    /* This command puts the columns next to each other */
-    display: flex;              
-    
-    /* This allows them to stack on mobile phones */
-    flex-wrap: wrap;            
-    
-    /* This packs them tightly to the center (removing the empty gap) */
-    justify-content: center;    
-    
-    /* Aligns them to the top so they start at the same height */
-    align-items: flex-start;    
-    
-    /* Space between the two columns */
-    gap: 40px;                  
-    
+    display: flex;              /* Use Flexbox */
+    flex-wrap: wrap;            /* Allow wrapping on small screens */
+    justify-content: center;    /* Center the group horizontally */
+    align-items: flex-start;    /* Align tops of boxes */
+    gap: 40px;                  /* Space between Left and Right columns */
     padding: 0 20px;
 }
 
-/* 1. General Cards (Progress & Settings) - Compact & Auto Height */
+/* --- LEFT COLUMN PANELS (Progress & Settings) --- */
 .panel { 
     padding: 25px; 
     text-align: center;
@@ -322,30 +311,12 @@ button {
     box-shadow: var(--shadow-sm); 
     transition: transform 0.3s ease;
     
-    /* Keep these compact */
+    /* Dimensions */
     max-width: 450px;
     width: 100%;
-    height: auto;       /* Let them grow naturally based on text */
-    margin-left: 0;     /* Left Aligned */
-    margin-right: auto;
-    margin-bottom: 30px;
-}
-
-/* 2. SPECIFIC STYLE FOR STUDY SESSION (Fixed Dimensions) */
-#study-panel {
-    /* 1. Dimensions */
-    width: 720px !important;      /* Target width */
-    height: 810px !important;     /* Target height */
     
-    /* 2. Safety Rail (The Fix) */
-    max-width: 100% !important;  /* Stops it from going past the right margin */
-    
-    /* 3. Alignment */
-    margin-left: 0 !important;   /* Aligns to the Left */
-    margin-right: auto !important;
-    
-    /* 4. Scrollbar */
-    overflow-y: auto !important; 
+    /* IMPORTANT: No 'auto' margins here! */
+    margin: 0 0 30px 0; 
 }
 
 .panel h3 {
@@ -356,10 +327,26 @@ button {
    display: flex; 
    align-items: center; 
    gap: 10px;
-   justify-content: center; /* <--- Header Title Centered */
+   justify-content: center; 
    border-bottom: 2px solid #e2e8f0;
    padding-bottom: 15px;
    margin-bottom: 20px;
+}
+
+/* --- RIGHT COLUMN PANEL (Study Session - 16cm x 17cm) --- */
+#study-panel {
+    /* Force Dimensions */
+    width: 16cm !important;
+    height: 17cm !important;
+    
+    /* Allow shrinking on mobile */
+    max-width: 100% !important; 
+    
+    /* Scrollbar */
+    overflow-y: auto !important;
+    
+    /* IMPORTANT: No 'auto' margins here either! */
+    margin: 0 !important; 
 }
 
 /* =========================================
@@ -1040,6 +1027,7 @@ details[open] .subject-summary::after {
     background: var(--primary);
     color: white;
 }
+
 
 
 
