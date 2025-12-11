@@ -503,16 +503,29 @@ function setMode(mode) {
 }
 
 function startPractice(subject, topic) {
+    // 1. Load Data
     filteredQuestions = allQuestions.filter(q => q.Subject === subject && (!topic || q.Topic === topic));
     if (filteredQuestions.length === 0) return alert("No questions!");
-    filteredQuestions.sort(() => Math.random() - 0.5);
+    
+    // --- CHANGE 1: NO RANDOMIZATION ---
+    // We removed the .sort() line. Now it stays in Google Sheet order.
+    
+    // --- CHANGE 2: AUTO-RESUME ---
+    // Find the index of the first question that is NOT in the solved list
+    let firstUnsolvedIndex = filteredQuestions.findIndex(q => !userSolvedIDs.includes(q._uid));
+    
+    // If -1 (means all are solved), start at 0. Otherwise start at the unsolved one.
+    if (firstUnsolvedIndex === -1) firstUnsolvedIndex = 0;
     
     currentMode = 'practice';
-    isMistakeReview = false; // <--- ADD THIS: We are NOT reviewing mistakes, just practicing
-    currentIndex = 0;
+    isMistakeReview = false;
+    currentIndex = firstUnsolvedIndex; // <--- Jump to resume point
     
     showScreen('quiz-screen');
     renderPage();
+    
+    // Render the bottom numbers
+    renderPracticeNavigator();
 }
 
 function startSavedQuestions() {
@@ -572,41 +585,46 @@ function renderPage() {
     const prevBtn = document.getElementById('prev-btn');
     const nextBtn = document.getElementById('next-btn');
     const submitBtn = document.getElementById('submit-btn');
-    const flagBtn = document.getElementById('flag-btn'); // NEW FLAG BUTTON
+    const flagBtn = document.getElementById('flag-btn'); 
     
+    // Show Previous button only if we are not on the first question
     prevBtn.classList.toggle('hidden', currentIndex === 0);
 
     if (currentMode === 'practice') {
+        // --- PRACTICE MODE SETUP ---
         document.getElementById('timer').classList.add('hidden');
         document.getElementById('test-sidebar').classList.remove('active'); 
-        flagBtn.classList.add('hidden'); // Hide flag in practice
+        flagBtn.classList.add('hidden'); 
         submitBtn.classList.add('hidden');
-        nextBtn.classList.add('hidden'); 
+        nextBtn.classList.add('hidden'); // Hidden until you answer
+        
+        // Render the Single Card
         container.appendChild(createQuestionCard(filteredQuestions[currentIndex], currentIndex, false));
+        
+        // --- THE NEW LINE: UPDATE BOTTOM NAVIGATOR ---
+        renderPracticeNavigator(); 
+
     } else {
+        // --- EXAM MODE SETUP ---
         document.getElementById('timer').classList.remove('hidden');
         nextBtn.classList.remove('hidden');
         submitBtn.classList.add('hidden');
-        flagBtn.classList.remove('hidden'); // Show flag in Test
-
-        // Update Flag Button State for current page
-        // Note: With 5 questions per page, the "Flag" button applies to WHICH question?
-        // Ah, tricky. Usually Flag is per question. 
-        // For 5-per-page, we need a flag button ON EACH CARD, not in the header.
-        // OR, we assume header flag is disabled or we remove it from header and put it on cards.
-        // Let's put a flag icon ON EACH CARD for Test Mode.
-        // I will hide the header flag button for now to avoid confusion.
         flagBtn.classList.add('hidden'); 
 
+        // Render 5 Questions per page
         const start = currentIndex;
         const end = Math.min(start + 5, filteredQuestions.length);
         for (let i = start; i < end; i++) {
             container.appendChild(createQuestionCard(filteredQuestions[i], i, true));
         }
+        
+        // Show Submit if on last page
         if (end === filteredQuestions.length) {
             nextBtn.classList.add('hidden');
             submitBtn.classList.remove('hidden');
         }
+        
+        // Update Sidebar Navigator
         renderNavigator(); 
     }
 }
@@ -1361,6 +1379,55 @@ function updateBadgeButton() {
     // We need to give the button an ID first (See Step 3 below)
     const btn = document.getElementById('main-badge-btn');
     if (btn) btn.innerText = currentIcon;
+}
+
+/* =========================================
+   PRACTICE NAVIGATOR (Bottom Bar)
+   ========================================= */
+function renderPracticeNavigator() {
+    const container = document.getElementById('practice-nav-container');
+    if (!container) return;
+
+    // Only show in Practice Mode
+    if (currentMode !== 'practice') {
+        container.classList.add('hidden');
+        return;
+    }
+    
+    container.classList.remove('hidden');
+    container.innerHTML = "";
+
+    filteredQuestions.forEach((q, idx) => {
+        const btn = document.createElement('button');
+        btn.className = "prac-nav-btn";
+        btn.innerText = idx + 1;
+        
+        // Color Logic
+        if (idx === currentIndex) {
+            btn.classList.add('active'); // Blue (Current)
+        } else if (userSolvedIDs.includes(q._uid)) {
+            btn.classList.add('solved'); // Green (Done)
+        } else if (userMistakes.includes(q._uid)) {
+            btn.classList.add('wrong'); // Red (Mistake)
+        }
+        
+        btn.onclick = () => {
+            currentIndex = idx;
+            renderPage();
+            renderPracticeNavigator(); // Re-render to update the Blue active circle
+        };
+        
+        container.appendChild(btn);
+    });
+    
+    // Auto-scroll the bar to the current question
+    // This ensures if you are on Q 50, the bar starts scrolled to 50.
+    setTimeout(() => {
+        const activeBtn = container.querySelector('.active');
+        if (activeBtn) {
+            activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+        }
+    }, 100);
 }
 
 
