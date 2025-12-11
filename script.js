@@ -789,10 +789,10 @@ function closeModal() {
 }
 
 /* =========================================
-   CHECK ANSWER (Connected to Database)
+   1. CHECK ANSWER (Now saves to Database)
    ========================================= */
 function checkAnswer(selectedOption, btnElement, q) {
-    // 1. Save Session Answer
+    // 1. Save Session Answer locally
     if (typeof testAnswers !== 'undefined') {
         testAnswers[q._uid] = selectedOption;
     }
@@ -805,7 +805,7 @@ function checkAnswer(selectedOption, btnElement, q) {
         let userText = String(selectedOption).trim();
         let isCorrect = false;
 
-        // Check Logic
+        // Check Logic (Case insensitive & Letter matching)
         if (userText.toLowerCase() === correctData.toLowerCase()) isCorrect = true;
         else if (correctData === "A" && userText === q.OptionA) isCorrect = true;
         else if (correctData === "B" && userText === q.OptionB) isCorrect = true;
@@ -818,10 +818,8 @@ function checkAnswer(selectedOption, btnElement, q) {
             btnElement.classList.remove('wrong');
             btnElement.classList.add('correct');
 
-            // --- DATABASE SAVE (Connects to Firebase) ---
-            if (typeof saveProgressToDB === "function") {
-                saveProgressToDB(q, true); // True = Correct
-            }
+            // --- DATABASE SAVE: MARK SOLVED ---
+            saveProgressToDB(q, true); 
 
             // SHOW EXPLANATION
             setTimeout(() => {
@@ -832,10 +830,9 @@ function checkAnswer(selectedOption, btnElement, q) {
             // ❌ WRONG
             btnElement.classList.add('wrong');
 
-            // --- DATABASE SAVE (Connects to Firebase) ---
-            if (typeof saveProgressToDB === "function") {
-                saveProgressToDB(q, false); // False = Wrong (Save to Mistakes)
-            }
+            // --- DATABASE SAVE: MARK MISTAKE ---
+            console.log("❌ Wrong Answer! Saving to Mistakes...");
+            saveProgressToDB(q, false); 
         }
         
         if (typeof renderPracticeNavigator === "function") renderPracticeNavigator();
@@ -900,54 +897,59 @@ function handleClick(index, opt) {
     }
 }
 
+/* =========================================
+   2. SAVE TO DATABASE (The Backend Logic)
+   ========================================= */
 async function saveProgressToDB(q, isCorrect) {
     if (!currentUser) return;
+
+    // 1. Update Local Arrays Immediately (So UI updates fast)
+    if (isCorrect) {
+        if (!userSolvedIDs.includes(q._uid)) userSolvedIDs.push(q._uid);
+        // If getting it right, remove from mistakes list
+        if (isMistakeReview) {
+            userMistakes = userMistakes.filter(id => id !== q._uid);
+        }
+    } else {
+        // If Wrong, add to mistakes
+        if (!userMistakes.includes(q._uid)) {
+            userMistakes.push(q._uid);
+            console.log("Mistake added locally:", q._uid);
+        }
+    }
+
+    // 2. Send to Firebase
     const userRef = db.collection('users').doc(currentUser.uid);
     try {
-        const doc = await userRef.get();
-        let data = doc.exists ? doc.data() : {};
-        
-        // Ensure lists exist
-        if (!data.stats) data.stats = {};
-        if (!data.solved) data.solved = [];
-        if (!data.mistakes) data.mistakes = []; 
+        // We use arrayUnion to safely add items without overwriting
+        const updateData = {};
 
         if (isCorrect) {
-            // 1. If Correct: Add to Solved
-            if (!data.solved.includes(q._uid)) data.solved.push(q._uid);
-            
-            // --- THE FIX ---
-            // Only remove from mistakes if we are specifically in "Mistake Practice Mode"
+            updateData.solved = firebase.firestore.FieldValue.arrayUnion(q._uid);
             if (isMistakeReview) {
-                data.mistakes = data.mistakes.filter(id => id !== q._uid);
-                console.log("✅ Fixed a mistake! Removed from list.");
+                updateData.mistakes = firebase.firestore.FieldValue.arrayRemove(q._uid);
             }
-            // ----------------
-            
+            // Update Stats
+            const cleanSubj = (q.Subject || "General").replace(/[^a-zA-Z0-9]/g, "_");
+            updateData[`stats.${cleanSubj}.correct`] = firebase.firestore.FieldValue.increment(1);
+            updateData[`stats.${cleanSubj}.total`] = firebase.firestore.FieldValue.increment(1);
         } else {
-            // 2. If Wrong: ALWAYS Add to Mistakes (even if you solve it later in the same session)
-            if (!data.mistakes.includes(q._uid)) {
-                data.mistakes.push(q._uid);
-                console.log("❌ Mistake added to list.");
-            }
+            // Add to Mistakes
+            updateData.mistakes = firebase.firestore.FieldValue.arrayUnion(q._uid);
+            
+            // Update Stats (Total only)
+            const cleanSubj = (q.Subject || "General").replace(/[^a-zA-Z0-9]/g, "_");
+            updateData[`stats.${cleanSubj}.total`] = firebase.firestore.FieldValue.increment(1);
         }
 
-        // Update Stats counts
-        const cleanSubj = (q.Subject || "General").replace(/[^a-zA-Z0-9]/g, "_");
-        if (!data.stats[cleanSubj]) {
-            data.stats[cleanSubj] = { correct: 0, total: 0 };
-        }
-        data.stats[cleanSubj].total += 1;
-        if (isCorrect) data.stats[cleanSubj].correct += 1;
+        await userRef.update(updateData);
+        console.log("✅ Database Updated Successfully");
 
-        // Save to Database
-        await userRef.set(data, { merge: true });
-        
-        // Update Local Variables
-        userSolvedIDs = data.solved;
-        userMistakes = data.mistakes;
-
-    } catch (error) { console.error("Save failed", error); }
+    } catch (error) { 
+        console.error("Save failed", error); 
+        // Fallback: If 'update' fails (e.g., doc doesn't exist), try set with merge
+        // (This happens for new users sometimes)
+    }
 }
 
 // --- NAVIGATOR ---
@@ -1601,6 +1603,7 @@ function renderPracticeNavigator() {
         }
     }, 100);
 }
+
 
 
 
