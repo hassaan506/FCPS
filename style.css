@@ -492,6 +492,7 @@ button {
 .opt-text {
     flex: 1; /* Grow to fill space */
     word-break: break-word; /* Prevent long words breaking layout */
+    pointer-events: none;
 }
 
 /* Hover Effect */
@@ -1103,6 +1104,7 @@ details[open] .subject-summary::after {
     width: 100% !important;
     margin: 0 !important;
 }
+
 
 
 
