@@ -532,29 +532,35 @@ function startSavedQuestions() {
 window.startMistakePractice = function() {
     console.log("Button Clicked!"); 
 
+    // 1. Check if we have mistakes
     if (typeof userMistakes === 'undefined' || userMistakes.length === 0) {
         alert("🎉 Good job! You have 0 pending mistakes to review.");
         return;
     }
 
+    // 2. Filter Questions
+    // We only want questions that match the IDs in userMistakes
     filteredQuestions = allQuestions.filter(q => userMistakes.includes(q._uid));
     
     if (filteredQuestions.length === 0) {
-        alert("Wait! Questions are still loading or IDs changed.");
+        alert("Wait! Questions are still loading. Please wait 5 seconds and try again.");
         return;
     }
     
-    alert(`📝 Loading ${filteredQuestions.length} mistakes. Fix them now!`);
+    alert(`📝 Loading ${filteredQuestions.length} mistakes.`);
     
+    // 3. Set Mode
     currentMode = 'practice';
-    isMistakeReview = true; // <--- ADD THIS: Now we ARE reviewing mistakes
+    isMistakeReview = true; // Flag that we are reviewing mistakes
     currentIndex = 0;
     
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById('quiz-screen').classList.add('active');
+    // 4. SHOW SCREEN CORRECTLY (The Fix)
+    showScreen('quiz-screen'); // This removes 'hidden' and adds 'active'
     
+    // 5. Render
     renderPage();
 };
+
 
 // --- RENDERING ---
 
@@ -1356,4 +1362,5 @@ function updateBadgeButton() {
     const btn = document.getElementById('main-badge-btn');
     if (btn) btn.innerText = currentIcon;
 }
+
 
