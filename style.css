@@ -344,7 +344,7 @@ button {
     max-width: none !important;
     
     /* Keep your preferred height */
-    height: 19cm !important;
+    height: 20cm !important;
     
     overflow-y: auto !important;
     margin: 0 !important;
@@ -1046,6 +1046,7 @@ details[open] .subject-summary::after {
     background: var(--primary);
     color: white;
 }
+
 
 
 
