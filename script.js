@@ -673,7 +673,7 @@ function renderPage() {
 
 
 /* =========================================
-   CREATE QUESTION CARD (Safe Version)
+   CREATE QUESTION CARD (Guaranteed Options Fix)
    ========================================= */
 function createQuestionCard(q, index, showNumber = true) {
     const block = document.createElement('div');
@@ -689,60 +689,59 @@ function createQuestionCard(q, index, showNumber = true) {
     const optionsDiv = document.createElement('div');
     optionsDiv.className = "options-group";
 
-    // SAFETY CHECK: If options are missing, show error instead of crashing
-    if (!q.Options || !Array.isArray(q.Options)) {
-        console.error("Missing options for Q:", q.Question);
-        return block;
+    // --- FIX: Force Options to Load ---
+    // If q.Options is missing, use an empty list instead of crashing/stopping.
+    let opts = q.Options;
+    
+    // Safety: If opts isn't an array (e.g. undefined), make it empty to avoid errors
+    if (!opts || !Array.isArray(opts)) {
+        console.warn("Options issue for Q:", q.Question);
+        opts = []; 
     }
 
-    // 3. Create Options
-    // Using [...q.Options] to create a safe copy
-    [...q.Options].forEach(opt => {
+    // 3. Create Buttons
+    opts.forEach(opt => {
         const btn = document.createElement('button');
         btn.className = "option-btn";
         
-        // --- LAYOUT: Text Span + Eye Span ---
-        // We wrap the text in a span so CSS can position it
-        btn.innerHTML = `<span class="opt-text">${opt}</span>`;
+        // --- CONTENT: Text + Eye Icon ---
+        btn.innerHTML = `
+            <span class="opt-text">${opt}</span>
+            <span class="elim-eye" title="Eliminate">👁️</span>
+        `;
         
-        // Create the Eye Icon
-        const eyeIcon = document.createElement('span');
-        eyeIcon.className = "elim-eye";
-        eyeIcon.innerHTML = "👁️"; 
-        eyeIcon.title = "Eliminate this option";
-        
-        // --- CLICK EYE to Eliminate ---
-        eyeIcon.onclick = (e) => {
-            e.stopPropagation(); // Don't select the answer
+        // --- CLICK LOGIC ---
+        // A. Clicking the Eye (Eliminate)
+        const eye = btn.querySelector('.elim-eye');
+        eye.onclick = (e) => {
+            e.stopPropagation(); // Stop click from selecting answer
             btn.classList.toggle('eliminated');
         };
 
-        // Append Eye to Button
-        btn.appendChild(eyeIcon);
+        // B. Clicking the Button (Select Answer)
+        btn.onclick = (e) => {
+            // If we clicked the eye, do nothing (handled above)
+            if (e.target.classList.contains('elim-eye')) return;
 
-        // --- RIGHT CLICK (Desktop Shortcut) ---
+            // If it was eliminated, un-eliminate it
+            if (btn.classList.contains('eliminated')) {
+                btn.classList.remove('eliminated');
+            }
+            
+            // Run the checking logic
+            if (typeof checkAnswer === "function") {
+                checkAnswer(opt, btn, q);
+            }
+        };
+
+        // C. Right Click (Eliminate)
         btn.addEventListener('contextmenu', (e) => {
             e.preventDefault(); 
             btn.classList.toggle('eliminated');
             return false;
         });
 
-        // --- NORMAL SELECTION ---
-        btn.onclick = (e) => {
-            if (e.target.classList.contains('elim-eye')) return; // Ignore eye clicks
-
-            // Auto-uneliminate if selected
-            if (btn.classList.contains('eliminated')) {
-                btn.classList.remove('eliminated');
-            }
-            
-            // Check Answer (Make sure checkAnswer exists in your code!)
-            if (typeof checkAnswer === "function") {
-                checkAnswer(opt, btn, q);
-            }
-        };
-
-        // Restore saved state (if reviewing)
+        // Restore saved state
         if (typeof testAnswers !== 'undefined' && testAnswers[q._uid] === opt) {
             btn.classList.add('selected');
         }
@@ -1506,6 +1505,7 @@ function renderPracticeNavigator() {
         }
     }, 100);
 }
+
 
 
 
