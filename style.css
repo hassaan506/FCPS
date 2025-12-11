@@ -415,80 +415,79 @@ button {
 #dynamic-menus::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
 
-/* =========================================
-   8. QUIZ INTERFACE & EXAM MODE
-   ========================================= */
-#quiz-screen .gameContainer { 
-    display: flex; 
-    flex-direction: column; 
-    max-width: 850px; 
-    margin: 0 auto; 
-}
-
-.quiz-header { 
-    width: 100%; 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    margin-bottom: 25px; 
-    background: var(--card-bg); 
-    padding: 15px 30px; 
-    border-radius: 20px; 
-    box-shadow: var(--shadow-md);
-}
-
-#timer { 
-    font-size: 20px; 
-    font-weight: 700; 
-    color: var(--primary); 
-    background: #ebf8ff; 
-    padding: 10px 20px; 
-    border-radius: 14px; 
-    border: 1px solid #bee3f8;
-}
-
-/* Question Box */
-.test-question-block { 
-    padding: 50px; 
-    text-align: left; 
-    position: relative; 
-    overflow: hidden; 
-    border-left: 8px solid var(--primary); 
-    margin-bottom: 25px;
-    animation: slideUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.test-q-text { 
-    font-size: 1.4rem; 
-    font-weight: 600; 
-    line-height: 1.8; 
-    color: var(--text-dark); 
-    margin-bottom: 35px; 
-    text-align: justify; 
-}
-
 /* Quiz Options */
 .options-group { display: flex; flex-direction: column; gap: 15px; }
 
-.option-btn { 
-    background: white; 
-    border: 2px solid var(--border-color); 
-    text-align: left; 
-    color: var(--text-dark); 
-    border-radius: 16px; 
-    padding: 20px 25px; 
+/* --- OPTION BUTTON LAYOUT (Flexbox for Text + Eye) --- */
+.option-btn {
+    background: white;
+    border: 2px solid var(--border-color);
+    border-radius: 16px;
+    padding: 15px 20px;
     margin: 0;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     font-size: 15px;
+    color: var(--text-dark);
+    text-align: left;
+    
+    /* FLEXBOX: Pushes text left, eye right */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    position: relative; /* Needed for the red line */
 }
 
-.option-btn:hover:not(:disabled) { 
-    border-color: var(--primary); 
-    background: #f0f9ff; 
-    transform: translateX(8px); 
+.option-btn:hover:not(:disabled) {
+    border-color: var(--primary);
+    background: #f0f9ff;
+    transform: translateX(5px);
     box-shadow: var(--shadow-sm);
 }
 
+/* The Eye Icon */
+.elim-eye {
+    font-size: 18px;
+    cursor: pointer;
+    opacity: 0.3; /* Subtle by default */
+    padding: 5px;
+    border-radius: 50%;
+    transition: opacity 0.2s;
+    flex-shrink: 0; /* Don't squash the eye */
+    z-index: 10; /* Keep it clickable above the line */
+}
+
+.option-btn:hover .elim-eye {
+    opacity: 1; /* Show fully on hover */
+}
+
+.elim-eye:hover {
+    background: rgba(0,0,0,0.1); /* Circle hover effect */
+}
+
+/* --- ELIMINATION STATE --- */
+.option-btn.eliminated {
+    opacity: 0.6;                 /* Fade it out */
+    background-color: #f1f5f9;    /* Light grey bg */
+    border-color: #cbd5e1;        /* Grey border */
+    color: #94a3b8;               /* Grey text */
+}
+
+/* The Red Strikethrough Line */
+.option-btn.eliminated::after {
+    content: '';
+    position: absolute;
+    left: 15px;
+    right: 50px; /* Stop before the eye icon so eye stays clear */
+    top: 50%;
+    height: 2px;
+    background-color: #ef4444;    /* Bright Red */
+    transform: translateY(-50%);
+    pointer-events: none;         /* Click through the line */
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* Selected / Correct / Wrong States (Keep existing colors) */
 .option-btn.selected { 
     background: #e3f2fd; 
     border-color: var(--primary); 
@@ -512,14 +511,13 @@ button {
     animation: shake 0.5s both; 
 }
 
-.quiz-footer { 
-    width: 100%; 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    margin-top: 30px; 
+/* Dark Mode Fixes */
+[data-theme="dark"] .option-btn { background: var(--input-bg); }
+[data-theme="dark"] .option-btn.eliminated { 
+    background: rgba(255,255,255,0.05); 
+    color: #64748b; 
+    border-color: #334155; 
 }
-
 
 /* =========================================
    9. POPUPS, MODALS & OVERLAYS
@@ -1046,17 +1044,4 @@ details[open] .subject-summary::after {
     background: var(--primary);
     color: white;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
