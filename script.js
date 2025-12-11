@@ -587,7 +587,8 @@ function renderPage() {
     const submitBtn = document.getElementById('submit-btn');
     const flagBtn = document.getElementById('flag-btn'); 
     
-    // Show Previous button only if we are not on the first question
+    // --- 1. PREVIOUS BUTTON LOGIC (Same for both modes) ---
+    // Hide if we are at the very first question (Index 0)
     prevBtn.classList.toggle('hidden', currentIndex === 0);
 
     if (currentMode === 'practice') {
@@ -596,20 +597,26 @@ function renderPage() {
         document.getElementById('test-sidebar').classList.remove('active'); 
         flagBtn.classList.add('hidden'); 
         submitBtn.classList.add('hidden');
-        nextBtn.classList.add('hidden'); // Hidden until you answer
+        
+        // --- 2. NEXT BUTTON LOGIC (THE FIX) ---
+        // Show Next button if we are NOT at the last question.
+        // This allows you to skip questions.
+        if (currentIndex < filteredQuestions.length - 1) {
+            nextBtn.classList.remove('hidden');
+        } else {
+            nextBtn.classList.add('hidden');
+        }
         
         // Render the Single Card
         container.appendChild(createQuestionCard(filteredQuestions[currentIndex], currentIndex, false));
         
-        // --- THE NEW LINE: UPDATE BOTTOM NAVIGATOR ---
+        // Update Bottom Navigator
         renderPracticeNavigator(); 
 
     } else {
         // --- EXAM MODE SETUP ---
         document.getElementById('timer').classList.remove('hidden');
-        nextBtn.classList.remove('hidden');
-        submitBtn.classList.add('hidden');
-        flagBtn.classList.add('hidden'); 
+        flagBtn.classList.remove('hidden'); 
 
         // Render 5 Questions per page
         const start = currentIndex;
@@ -618,16 +625,19 @@ function renderPage() {
             container.appendChild(createQuestionCard(filteredQuestions[i], i, true));
         }
         
-        // Show Submit if on last page
+        // NEXT / SUBMIT LOGIC for Exam
         if (end === filteredQuestions.length) {
             nextBtn.classList.add('hidden');
             submitBtn.classList.remove('hidden');
+        } else {
+            nextBtn.classList.remove('hidden');
+            submitBtn.classList.add('hidden');
         }
         
-        // Update Sidebar Navigator
         renderNavigator(); 
     }
 }
+
 
 function createQuestionCard(q, index, isTest) {
     const card = document.createElement('div');
@@ -1429,5 +1439,6 @@ function renderPracticeNavigator() {
         }
     }, 100);
 }
+
 
 
