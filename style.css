@@ -306,9 +306,17 @@ button {
     } 
 }
 
-.panel { padding: 25px; text-align: center; }
+/* --- FIXED PANEL DIMENSIONS (450px) --- */
+.panel { 
+    padding: 25px; 
+    text-align: center;
+    max-width: 450px;   /* Forces the 450px width */
+    width: 100%;        /* Allows shrinking on mobile */
+    margin-left: auto;  /* Centers horizontally */
+    margin-right: auto; /* Centers horizontally */
+}
+
 .panel h3 {
-   width: 450px;
    font-size: 19px; 
    font-weight: 700; 
    color: var(--text-dark); 
@@ -1001,6 +1009,3 @@ details[open] .subject-summary::after {
     background: var(--primary);
     color: white;
 }
-
-
-
