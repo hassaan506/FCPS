@@ -106,6 +106,12 @@
                     
                     <button class="primary" onclick="startTest()">Start Exam</button>
                 </div>
+                <div id="practice-filter-controls" style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px; padding: 0 5px;">
+                    <input type="checkbox" id="unattempted-only" style="width: 20px; height: 20px; margin: 0; cursor: pointer;">
+                    <label for="unattempted-only" style="font-size: 14px; font-weight: 600; color: var(--text-dark); cursor: pointer;">
+                        Show Unattempted Only <span style="font-size: 11px; color: var(--text-light); font-weight: 400;">(Hide solved)</span>
+                    </label>
+                </div>
 
                 <div id="dynamic-menus">
                     <p style="color:#718096;">Loading Question Bank...</p>
@@ -215,6 +221,7 @@
     <script src="script.js"></script>
 </body>
 </html>
+
 
 
 
