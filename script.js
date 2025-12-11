@@ -712,7 +712,6 @@ function createQuestionCard(q, index, showNumber = true) {
         btn.className = "option-btn";
         
         // HTML: Text on left, Eye on right
-        // We add 'pointer-events: none' to spans in CSS so clicks go to the button
         btn.innerHTML = `
             <span class="opt-text">${opt}</span>
             <span class="elim-eye" title="Eliminate">👁️</span>
@@ -802,6 +801,7 @@ function checkAnswer(selectedOption, btnElement, q) {
         let userText = String(selectedOption).trim();     
 
         let isCorrect = false;
+        // Check Logic: Direct Match vs Letter Match
         if (userText.toLowerCase() === correctData.toLowerCase()) isCorrect = true;
         else if (correctData === "A" && userText === q.OptionA) isCorrect = true;
         else if (correctData === "B" && userText === q.OptionB) isCorrect = true;
@@ -820,7 +820,7 @@ function checkAnswer(selectedOption, btnElement, q) {
                 localStorage.setItem('medical_solved', JSON.stringify(userSolvedIDs)); // FORCE SAVE
             }
 
-            // --- SHOW EXPLANATION (Fix 1) ---
+            // --- SHOW EXPLANATION ---
             setTimeout(() => {
                 showExplanation(q);
             }, 300);
@@ -829,12 +829,10 @@ function checkAnswer(selectedOption, btnElement, q) {
             // ❌ WRONG
             btnElement.classList.add('wrong');
             
-            // --- SAVE TO MISTAKES (Fix 2) ---
-            // If userMistakes list exists, add this question ID
+            // --- SAVE TO MISTAKES ---
             if (typeof userMistakes !== 'undefined') {
                 if (!userMistakes.includes(q._uid)) {
                     userMistakes.push(q._uid);
-                    // FORCE SAVE immediately so it doesn't get lost
                     localStorage.setItem('medical_mistakes', JSON.stringify(userMistakes));
                     console.log("Mistake Saved:", q._uid);
                 }
@@ -1605,6 +1603,7 @@ function renderPracticeNavigator() {
         }
     }, 100);
 }
+
 
 
 
