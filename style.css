@@ -257,7 +257,7 @@ button {
 
 
 /* =========================================
-   6. DASHBOARD & MAIN UI (Side-by-Side Fix)
+   6. DASHBOARD & MAIN UI (Grid Layout)
    ========================================= */
 
 /* DASHBOARD HEADER (TopBar) */
@@ -290,19 +290,22 @@ button {
 }
 .logout-btn:hover { background: #fecaca; transform: translateY(-1px); }
 
-/* DASHBOARD GRID SYSTEM */
+/* DASHBOARD LAYOUT (CSS Grid) */
 .gameContainer { 
     width: 100%; 
-    display: flex;              /* Use Flexbox */
-    flex-wrap: wrap;            /* Allow wrapping on small screens */
-    justify-content: center;    /* Center the group horizontally */
-    align-items: flex-start;    /* Align tops of boxes */
-    gap: 40px;                  /* Space between Left and Right columns */
+    display: grid; 
+    /* Col 1 is fixed 450px. Col 2 is 1fr (Takes all remaining space) */
+    grid-template-columns: 450px 1fr; 
+    gap: 30px; 
     padding: 0 20px;
+    align-items: start;
 }
 
-/* --- LEFT COLUMN PANELS (Progress & Settings) --- */
+/* --- LEFT COLUMN (Progress & Settings) --- */
 .panel { 
+    /* Force into First Column */
+    grid-column: 1;
+    
     padding: 25px; 
     text-align: center;
     background: var(--card-bg); 
@@ -311,12 +314,8 @@ button {
     box-shadow: var(--shadow-sm); 
     transition: transform 0.3s ease;
     
-    /* Dimensions */
-    max-width: 450px;
-    width: 100%;
-    
-    /* IMPORTANT: No 'auto' margins here! */
-    margin: 0 0 30px 0; 
+    width: 100%; 
+    margin-bottom: 30px;
 }
 
 .panel h3 {
@@ -333,22 +332,41 @@ button {
    margin-bottom: 20px;
 }
 
-/* --- RIGHT COLUMN PANEL (Study Session - 16cm x 17cm) --- */
+/* --- RIGHT COLUMN (Study Session - Fills Remaining Width) --- */
 #study-panel {
-    /* Force Dimensions */
-    width: 675px !important;
-    height: 900px !important;
+    /* Force into Second Column */
+    grid-column: 2;
+    /* Span 10 rows so it sits next to both Progress AND Settings */
+    grid-row: 1 / span 10; 
     
-    /* Allow shrinking on mobile */
-    max-width: 100% !important; 
+    /* Fill the remaining space */
+    width: 100% !important;
+    max-width: none !important;
     
-    /* Scrollbar */
+    /* Keep your preferred height */
+    height: 19cm !important;
+    
     overflow-y: auto !important;
-    
-    /* IMPORTANT: No 'auto' margins here either! */
-    margin: 0 !important; 
+    margin: 0 !important;
 }
 
+/* --- MOBILE RESPONSIVENESS --- */
+/* If screen is smaller than 950px, switch back to single column stack */
+@media screen and (max-width: 950px) {
+    .gameContainer {
+        grid-template-columns: 1fr; /* One column */
+    }
+    .panel, #study-panel {
+        grid-column: 1; /* Everything in col 1 */
+        grid-row: auto;
+        max-width: 450px !important; /* Limit width on mobile */
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+    #study-panel {
+        width: 100% !important; /* Allow study to fit screen width */
+    }
+}
 
 /* =========================================
    7. STUDY MENU & INTERACTION
@@ -1028,6 +1046,7 @@ details[open] .subject-summary::after {
     background: var(--primary);
     color: white;
 }
+
 
 
 
