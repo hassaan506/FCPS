@@ -336,7 +336,7 @@ button {
 /* --- RIGHT COLUMN PANEL (Study Session - 16cm x 17cm) --- */
 #study-panel {
     /* Force Dimensions */
-    width: 720px !important;
+    width: 675px !important;
     height: 900px !important;
     
     /* Allow shrinking on mobile */
@@ -1028,6 +1028,7 @@ details[open] .subject-summary::after {
     background: var(--primary);
     color: white;
 }
+
 
 
 
