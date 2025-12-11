@@ -29,6 +29,7 @@ let userSolvedIDs = [];
 let userMistakes = [];
 
 let currentMode = 'practice';
+let isMistakeReview = false;
 let currentIndex = 0; 
 let testTimer = null;
 let testAnswers = {}; 
@@ -505,65 +506,56 @@ function startPractice(subject, topic) {
     filteredQuestions = allQuestions.filter(q => q.Subject === subject && (!topic || q.Topic === topic));
     if (filteredQuestions.length === 0) return alert("No questions!");
     filteredQuestions.sort(() => Math.random() - 0.5);
+    
     currentMode = 'practice';
+    isMistakeReview = false; // <--- ADD THIS: We are NOT reviewing mistakes, just practicing
     currentIndex = 0;
+    
     showScreen('quiz-screen');
     renderPage();
 }
-
 
 function startSavedQuestions() {
     if(userBookmarks.length === 0) return alert("No bookmarks!");
     filteredQuestions = allQuestions.filter(q => userBookmarks.includes(q._uid));
     if(filteredQuestions.length === 0) return alert("No matching bookmarks found.");
+    
     currentMode = 'practice';
+    isMistakeReview = false; // <--- ADD THIS
     currentIndex = 0;
+    
     showScreen('quiz-screen');
     renderPage();
 }
 
-/* --- SAFE MISTAKE BUTTON LOGIC --- */
+
 window.startMistakePractice = function() {
     console.log("Button Clicked!"); 
 
-    // 1. Check userMistakes list
-    if (typeof userMistakes === 'undefined') {
-        alert("❌ Error: 'userMistakes' variable is missing at top of file.");
-        return;
-    }
-
-    if (userMistakes.length === 0) {
+    if (typeof userMistakes === 'undefined' || userMistakes.length === 0) {
         alert("🎉 Good job! You have 0 pending mistakes to review.");
         return;
     }
 
-    // 2. Check Questions Data
-    if (typeof allQuestions === 'undefined' || allQuestions.length === 0) {
-        alert("Wait! Questions are still loading...");
-        return;
-    }
-
-    // 3. Filter the questions
     filteredQuestions = allQuestions.filter(q => userMistakes.includes(q._uid));
     
     if (filteredQuestions.length === 0) {
-        alert("⚠️ Found mistake IDs, but couldn't find the questions. (Maybe the question IDs changed?)");
-        // Optional: Reset mistakes if they are invalid
-        // userMistakes = [];
+        alert("Wait! Questions are still loading or IDs changed.");
         return;
     }
     
-    // 4. Start Session
-    alert(`📝 Loading ${filteredQuestions.length} mistakes. You can do this!`);
+    alert(`📝 Loading ${filteredQuestions.length} mistakes. Fix them now!`);
+    
     currentMode = 'practice';
+    isMistakeReview = true; // <--- ADD THIS: Now we ARE reviewing mistakes
     currentIndex = 0;
     
-    // Force switch to quiz screen
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('quiz-screen').classList.add('active');
     
     renderPage();
 };
+
 // --- RENDERING ---
 
 function renderPage() {
@@ -725,12 +717,19 @@ async function saveProgressToDB(q, isCorrect) {
         if (!data.mistakes) data.mistakes = []; 
 
         if (isCorrect) {
-            // 1. If Correct: Add to Solved, Remove from Mistakes
+            // 1. If Correct: Add to Solved
             if (!data.solved.includes(q._uid)) data.solved.push(q._uid);
-            data.mistakes = data.mistakes.filter(id => id !== q._uid);
-            console.log("✅ Fixed a mistake! Removed from list.");
+            
+            // --- THE FIX ---
+            // Only remove from mistakes if we are specifically in "Mistake Practice Mode"
+            if (isMistakeReview) {
+                data.mistakes = data.mistakes.filter(id => id !== q._uid);
+                console.log("✅ Fixed a mistake! Removed from list.");
+            }
+            // ----------------
+            
         } else {
-            // 2. If Wrong: Add to Mistakes
+            // 2. If Wrong: ALWAYS Add to Mistakes (even if you solve it later in the same session)
             if (!data.mistakes.includes(q._uid)) {
                 data.mistakes.push(q._uid);
                 console.log("❌ Mistake added to list.");
@@ -748,7 +747,7 @@ async function saveProgressToDB(q, isCorrect) {
         // Save to Database
         await userRef.set(data, { merge: true });
         
-        // Update Local Variables (So the button works immediately)
+        // Update Local Variables
         userSolvedIDs = data.solved;
         userMistakes = data.mistakes;
 
@@ -1357,3 +1356,4 @@ function updateBadgeButton() {
     const btn = document.getElementById('main-badge-btn');
     if (btn) btn.innerText = currentIcon;
 }
+
