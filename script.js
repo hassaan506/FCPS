@@ -673,7 +673,7 @@ function renderPage() {
 
 
 /* =========================================
-   CREATE QUESTION CARD (With Eye Toggle)
+   CREATE QUESTION CARD (Safe Version)
    ========================================= */
 function createQuestionCard(q, index, showNumber = true) {
     const block = document.createElement('div');
@@ -689,16 +689,20 @@ function createQuestionCard(q, index, showNumber = true) {
     const optionsDiv = document.createElement('div');
     optionsDiv.className = "options-group";
 
+    // SAFETY CHECK: If options are missing, show error instead of crashing
+    if (!q.Options || !Array.isArray(q.Options)) {
+        console.error("Missing options for Q:", q.Question);
+        return block;
+    }
+
     // 3. Create Options
-    let opts = [...q.Options]; 
-    
-    opts.forEach(opt => {
+    // Using [...q.Options] to create a safe copy
+    [...q.Options].forEach(opt => {
         const btn = document.createElement('button');
         btn.className = "option-btn";
         
-        // --- LAYOUT: Text on Left, Eye on Right ---
-        // We use a span for text so the strikethrough only affects the text area if we want,
-        // but typically eliminating the whole button is clearer.
+        // --- LAYOUT: Text Span + Eye Span ---
+        // We wrap the text in a span so CSS can position it
         btn.innerHTML = `<span class="opt-text">${opt}</span>`;
         
         // Create the Eye Icon
@@ -709,34 +713,37 @@ function createQuestionCard(q, index, showNumber = true) {
         
         // --- CLICK EYE to Eliminate ---
         eyeIcon.onclick = (e) => {
-            e.stopPropagation(); // Stop the button from being selected
+            e.stopPropagation(); // Don't select the answer
             btn.classList.toggle('eliminated');
         };
 
         // Append Eye to Button
         btn.appendChild(eyeIcon);
 
-        // --- RIGHT CLICK (Legacy Support) ---
+        // --- RIGHT CLICK (Desktop Shortcut) ---
         btn.addEventListener('contextmenu', (e) => {
             e.preventDefault(); 
             btn.classList.toggle('eliminated');
             return false;
         });
 
-        // --- NORMAL SELECTION (Clicking the empty space or text) ---
+        // --- NORMAL SELECTION ---
         btn.onclick = (e) => {
-            // If checking the eye, do nothing (handled above)
-            if (e.target.classList.contains('elim-eye')) return;
+            if (e.target.classList.contains('elim-eye')) return; // Ignore eye clicks
 
-            // Allow selecting even if eliminated (auto-uneliminate)
+            // Auto-uneliminate if selected
             if (btn.classList.contains('eliminated')) {
                 btn.classList.remove('eliminated');
             }
-            checkAnswer(opt, btn, q);
+            
+            // Check Answer (Make sure checkAnswer exists in your code!)
+            if (typeof checkAnswer === "function") {
+                checkAnswer(opt, btn, q);
+            }
         };
 
-        // Restore state
-        if (testAnswers[q._uid] === opt) {
+        // Restore saved state (if reviewing)
+        if (typeof testAnswers !== 'undefined' && testAnswers[q._uid] === opt) {
             btn.classList.add('selected');
         }
 
@@ -1499,6 +1506,7 @@ function renderPracticeNavigator() {
         }
     }, 100);
 }
+
 
 
 
