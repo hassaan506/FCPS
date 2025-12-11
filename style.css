@@ -436,21 +436,20 @@ button {
     border: 1px solid #bee3f8;
 }
 
-/* Question Box */
 /* Question Box (Strong Animation Force) */
-.test-question-block {
-    padding: 30px;
-    text-align: left;
-    position: relative;
-    overflow: visible;
+.test-question-block { 
+    padding: 30px; 
+    text-align: left; 
+    position: relative; 
+    overflow: visible; 
     
     /* Layout & Border */
-    width: 100% !important;
-    margin: 0 !important;
+    width: 100% !important; 
+    margin: 0 !important; 
     border: 8px solid var(--primary); 
-    background: var(--card-bg);
-    border-radius: 16px;
-    box-shadow: var(--shadow-sm);
+    background: var(--card-bg); 
+    border-radius: 16px; 
+    box-shadow: var(--shadow-sm); 
     margin-bottom: 25px !important;
 
     /* --- ANIMATION --- */
@@ -540,10 +539,31 @@ button {
     pointer-events: none;
 }
 
-/* States */
-.option-btn.selected { background: #e3f2fd; border-color: var(--primary); color: #0056b3; font-weight: 600; }
-.option-btn.correct { background: #d1fae5 !important; border-color: var(--success) !important; color: #065f46; font-weight: 700; }
-.option-btn.wrong { background: #fee2e2 !important; border-color: var(--danger) !important; color: #991b1b; font-weight: 700; }
+/* States (FIXED: Added Animations Back) */
+.option-btn.selected { 
+    background: #e3f2fd; 
+    border-color: var(--primary); 
+    color: #0056b3; 
+    font-weight: 600; 
+}
+
+.option-btn.correct { 
+    background: #d1fae5 !important; 
+    border-color: var(--success) !important; 
+    color: #065f46; 
+    font-weight: 700;
+    /* POP Animation */
+    animation: successPop 0.4s ease-out forwards; 
+}
+
+.option-btn.wrong { 
+    background: #fee2e2 !important; 
+    border-color: var(--danger) !important; 
+    color: #991b1b; 
+    font-weight: 700;
+    /* SHAKE Animation */
+    animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; 
+}
 
 /* Dark Mode */
 [data-theme="dark"] .option-btn { background: var(--input-bg); }
@@ -556,6 +576,7 @@ button {
     align-items: center; 
     margin-top: 30px; 
 }
+
 
 
 /* =========================================
@@ -1129,6 +1150,7 @@ details[open] .subject-summary::after {
 #explanation-modal.hidden {
     display: none !important;
 }
+
 
 
 
