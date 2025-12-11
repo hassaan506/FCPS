@@ -761,7 +761,31 @@ function createQuestionCard(q, index, showNumber = true) {
 }
 
 /* =========================================
-   2. CHECK ANSWER (Fixes "Red/Green" Bug)
+   EXPLANATION MODAL FUNCTIONS
+   ========================================= */
+function showExplanation(q) {
+    const modal = document.getElementById('explanation-modal');
+    const text = document.getElementById('explanation-text');
+    
+    const explContent = q.Explanation || "Good job! No detailed explanation is available.";
+
+    // SAFETY: If HTML is missing, use Alert instead of crashing
+    if (!modal || !text) {
+        alert("✅ Correct!\n\n" + explContent);
+        return;
+    }
+    
+    text.innerHTML = explContent;
+    modal.classList.remove('hidden');
+}
+
+function closeExplanation() {
+    const modal = document.getElementById('explanation-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+/* =========================================
+   CHECK ANSWER (No Spoilers Version)
    ========================================= */
 function checkAnswer(selectedOption, btnElement, q) {
     // 1. Save Answer
@@ -774,11 +798,10 @@ function checkAnswer(selectedOption, btnElement, q) {
     if (mode === 'practice') {
         // --- PRACTICE MODE ---
         
-        // Clean strings
         let correctData = (q.CorrectAnswer || "").trim(); 
         let userText = String(selectedOption).trim();     
 
-        // Check if Correct
+        // Check Logic
         let isCorrect = false;
         if (userText.toLowerCase() === correctData.toLowerCase()) isCorrect = true;
         else if (correctData === "A" && userText === q.OptionA) isCorrect = true;
@@ -788,53 +811,46 @@ function checkAnswer(selectedOption, btnElement, q) {
         else if (correctData === "E" && userText === q.OptionE) isCorrect = true;
 
         if (isCorrect) {
-            // ✅ CORRECT
+            // ✅ CORRECT CASE
+            // 1. Remove 'wrong' class if they tried before
             btnElement.classList.remove('wrong');
+            // 2. Add 'correct' class (Green)
             btnElement.classList.add('correct');
             
+            // 3. Mark in database/array
             if (typeof userSolvedIDs !== 'undefined' && !userSolvedIDs.includes(q._uid)) {
                 userSolvedIDs.push(q._uid);
             }
 
-            // Show Explanation
+            // 4. SHOW EXPLANATION
             setTimeout(() => {
-                if(typeof showExplanation === 'function') showExplanation(q);
+                showExplanation(q);
             }, 300);
 
         } else {
-            // ❌ WRONG
+            // ❌ WRONG CASE
+            // 1. Turn THIS button Red
             btnElement.classList.add('wrong');
             
-            // --- FIX: Highlight the Real Answer (ignoring the Eye Icon) ---
-            const allBtns = btnElement.parentElement.querySelectorAll('.option-btn');
-            allBtns.forEach(b => {
-                // We must grab the text inside .opt-text to ignore the eye emoji
-                const textSpan = b.querySelector('.opt-text');
-                const btnText = textSpan ? textSpan.innerText : b.innerText;
-
-                let match = false;
-                if (btnText === correctData) match = true;
-                if (correctData === "A" && btnText === q.OptionA) match = true;
-                if (correctData === "B" && btnText === q.OptionB) match = true;
-                if (correctData === "C" && btnText === q.OptionC) match = true;
-                if (correctData === "D" && btnText === q.OptionD) match = true;
-                
-                if (match) b.classList.add('correct');
-            });
+            // 2. DO NOT REVEAL THE ANSWER!
+            // I removed the code that searched for the correct button.
+            // Now the user must try again.
         }
         
+        // Update Bottom Bar
         if (typeof renderPracticeNavigator === "function") renderPracticeNavigator();
 
     } else {
         // --- EXAM MODE ---
+        // Deselect others first
         const allBtns = btnElement.parentElement.querySelectorAll('.option-btn');
         allBtns.forEach(b => b.classList.remove('selected'));
+        // Select this one
         btnElement.classList.add('selected');
         
         if (typeof renderNavigator === "function") renderNavigator();
     }
 }
-
 
 // --- NEW: FLAG LOGIC ---
 function toggleFlag(uid, btn) {
@@ -1588,6 +1604,7 @@ function renderPracticeNavigator() {
         }
     }, 100);
 }
+
 
 
 
