@@ -437,7 +437,7 @@ button {
 }
 
 /* Question Box */
-/* Question Box (With Animations Restored) */
+/* Question Box (Strong Animation Force) */
 .test-question-block {
     padding: 30px;
     text-align: left;
@@ -447,13 +447,13 @@ button {
     /* Layout & Border */
     width: 100% !important;
     margin: 0 !important;
-    border: 8px solid var(--primary); /* Full Blue Border */
+    border: 8px solid var(--primary); 
     background: var(--card-bg);
     border-radius: 16px;
     box-shadow: var(--shadow-sm);
     margin-bottom: 25px !important;
 
-    /* --- FIX 3: ANIMATION --- */
+    /* --- ANIMATION --- */
     animation: slideUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; 
 }
 
@@ -1129,6 +1129,7 @@ details[open] .subject-summary::after {
 #explanation-modal.hidden {
     display: none !important;
 }
+
 
 
 
