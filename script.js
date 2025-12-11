@@ -497,29 +497,63 @@ function startTest() {
 function setMode(mode) {
     currentMode = mode;
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    if(event.target) event.target.classList.add('active');
+    if(event && event.target) event.target.classList.add('active');
+    
+    // Toggle Sections
     document.getElementById('test-settings').classList.toggle('hidden', mode !== 'test');
     document.getElementById('dynamic-menus').classList.toggle('hidden', mode === 'test');
+    
+    // Toggle the new Filter Checkbox (Hide in Exam Mode)
+    const filterControls = document.getElementById('practice-filter-controls');
+    if(filterControls) {
+        filterControls.style.display = (mode === 'test') ? 'none' : 'flex';
+    }
 }
 
 function startPractice(subject, topic) {
-    // 1. Load Data
-    filteredQuestions = allQuestions.filter(q => q.Subject === subject && (!topic || q.Topic === topic));
-    if (filteredQuestions.length === 0) return alert("No questions!");
+    // 1. Get the checkbox state
+    const onlyUnattempted = document.getElementById('unattempted-only').checked;
+
+    // 2. Filter by Subject & Topic FIRST
+    let pool = allQuestions.filter(q => q.Subject === subject && (!topic || q.Topic === topic));
     
-    // --- CHANGE 1: NO RANDOMIZATION ---
-    // We removed the .sort() line. Now it stays in Google Sheet order.
+    // 3. Apply "Unattempted Only" Filter if checked
+    if (onlyUnattempted) {
+        const initialCount = pool.length;
+        pool = pool.filter(q => !userSolvedIDs.includes(q._uid));
+        
+        console.log(`Filter Active: Reduced from ${initialCount} to ${pool.length} questions.`);
+        
+        if (pool.length === 0) {
+            // Check if it was empty BEFORE or AFTER filtering
+            if (initialCount === 0) {
+                return alert("No questions found for this topic.");
+            } else {
+                return alert("🎉 Amazing! You have already solved ALL questions in this section.");
+            }
+        }
+    } else {
+        // Standard check for empty topic
+        if (pool.length === 0) return alert("No questions available.");
+    }
+
+    // 4. Assign to Global Variable
+    filteredQuestions = pool;
+
+    // --- CHANGE: AUTO-RESUME LOGIC ---
+    // If we are filtering unattempted, we naturally start at 0.
+    // If NOT filtering, we try to jump to the first unsolved one.
+    let startIndex = 0;
     
-    // --- CHANGE 2: AUTO-RESUME ---
-    // Find the index of the first question that is NOT in the solved list
-    let firstUnsolvedIndex = filteredQuestions.findIndex(q => !userSolvedIDs.includes(q._uid));
-    
-    // If -1 (means all are solved), start at 0. Otherwise start at the unsolved one.
-    if (firstUnsolvedIndex === -1) firstUnsolvedIndex = 0;
-    
+    if (!onlyUnattempted) {
+        // Find the first question we haven't solved yet to be helpful
+        startIndex = filteredQuestions.findIndex(q => !userSolvedIDs.includes(q._uid));
+        if (startIndex === -1) startIndex = 0;
+    }
+
     currentMode = 'practice';
     isMistakeReview = false;
-    currentIndex = firstUnsolvedIndex; // <--- Jump to resume point
+    currentIndex = startIndex;
     
     showScreen('quiz-screen');
     renderPage();
@@ -527,7 +561,6 @@ function startPractice(subject, topic) {
     // Render the bottom numbers
     renderPracticeNavigator();
 }
-
 function startSavedQuestions() {
     if(userBookmarks.length === 0) return alert("No bookmarks!");
     filteredQuestions = allQuestions.filter(q => userBookmarks.includes(q._uid));
@@ -1439,6 +1472,7 @@ function renderPracticeNavigator() {
         }
     }, 100);
 }
+
 
 
 
