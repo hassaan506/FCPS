@@ -1025,4 +1025,25 @@ details[open] .subject-summary::after {
     color: white;
 }
 
+/* =========================================
+   22. QUIZ LAYOUT ISOLATION (The Final Fix)
+   ========================================= */
+
+/* This replaces .gameContainer ONLY for the Quiz screen */
+.quiz-container-unique {
+    display: flex;
+    flex-direction: column;       /* Stack Top-to-Bottom */
+    width: 100%;
+    max-width: 850px;             /* Standard reading width */
+    margin: 0 auto;               /* Center in the middle of screen */
+    padding: 0 20px;
+    box-sizing: border-box;
+    position: relative;
+}
+
+/* Ensure the content inside fills the width */
+.test-question-block {
+    width: 100% !important;
+    margin: 0 !important;
+}
 
