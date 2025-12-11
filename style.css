@@ -328,21 +328,19 @@ button {
 
 /* 2. SPECIFIC STYLE FOR STUDY SESSION (Fixed Dimensions) */
 #study-panel {
-    /* FORCE exact dimensions */
-    width: 720px !important;
-    height: 765px !important;
+    /* 1. Dimensions */
+    width: 720px !important;      /* Target width */
+    height: 810px !important;     /* Target height */
     
-    /* CRITICAL: This command breaks the 450px limit */
-    max-width: none !important; 
+    /* 2. Safety Rail (The Fix) */
+    max-width: 100% !important;  /* Stops it from going past the right margin */
     
-    /* Mobile Safety: On small phones, fit the screen instead of overflowing */
-    @media screen and (max-width: 600px) {
-        width: 95% !important;
-        max-width: 100% !important;
-    }
-
-    /* Allow scrolling inside if list is long */
-    overflow-y: auto; 
+    /* 3. Alignment */
+    margin-left: 0 !important;   /* Aligns to the Left */
+    margin-right: auto !important;
+    
+    /* 4. Scrollbar */
+    overflow-y: auto !important; 
 }
 
 .panel h3 {
@@ -1037,6 +1035,7 @@ details[open] .subject-summary::after {
     background: var(--primary);
     color: white;
 }
+
 
 
 
