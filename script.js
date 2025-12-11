@@ -673,75 +673,85 @@ function renderPage() {
 
 
 /* =========================================
-   CREATE QUESTION CARD (Guaranteed Options Fix)
+   CREATE QUESTION CARD (Smart Data Fix)
    ========================================= */
 function createQuestionCard(q, index, showNumber = true) {
+    console.log("Rendering Question:", q); // <--- Check Console for this!
+
     const block = document.createElement('div');
     block.className = "test-question-block";
 
     // 1. Question Text
     const qText = document.createElement('div');
     qText.className = "test-q-text";
-    qText.innerHTML = `${showNumber ? (index + 1) + ". " : ""}${q.Question}`;
+    qText.innerHTML = `${showNumber ? (index + 1) + ". " : ""}${q.Question || "Question Text Missing"}`;
     block.appendChild(qText);
 
     // 2. Options Container
     const optionsDiv = document.createElement('div');
     optionsDiv.className = "options-group";
 
-    // --- FIX: Force Options to Load ---
-    // If q.Options is missing, use an empty list instead of crashing/stopping.
-    let opts = q.Options;
-    
-    // Safety: If opts isn't an array (e.g. undefined), make it empty to avoid errors
-    if (!opts || !Array.isArray(opts)) {
-        console.warn("Options issue for Q:", q.Question);
-        opts = []; 
+    // --- STEP 3: FIND THE OPTIONS (The Fix) ---
+    let opts = [];
+
+    // Case A: The data is already a nice list (Ideal)
+    if (Array.isArray(q.Options)) {
+        opts = q.Options;
+    } 
+    // Case B: The data is separate columns (A, B, C, D)
+    else if (q.A && q.B) {
+        opts = [q.A, q.B, q.C, q.D].filter(x => x); // Filter removes empty ones
+    }
+    // Case C: The data uses "Option 1", "Option 2", etc.
+    else if (q['Option 1'] || q['Option A']) {
+        opts = [
+            q['Option 1'] || q['Option A'],
+            q['Option 2'] || q['Option B'],
+            q['Option 3'] || q['Option C'],
+            q['Option 4'] || q['Option D']
+        ].filter(x => x);
+    }
+    // Case D: Fallback (If nothing found)
+    else {
+        opts = ["Option A (Error loading)", "Option B", "Option C", "Option D"];
+        console.error("Could not find options in data:", q);
     }
 
-    // 3. Create Buttons
+    // 4. Create Buttons
     opts.forEach(opt => {
         const btn = document.createElement('button');
         btn.className = "option-btn";
         
-        // --- CONTENT: Text + Eye Icon ---
         btn.innerHTML = `
             <span class="opt-text">${opt}</span>
             <span class="elim-eye" title="Eliminate">👁️</span>
         `;
         
-        // --- CLICK LOGIC ---
-        // A. Clicking the Eye (Eliminate)
+        // Eye Click
         const eye = btn.querySelector('.elim-eye');
         eye.onclick = (e) => {
-            e.stopPropagation(); // Stop click from selecting answer
+            e.stopPropagation();
             btn.classList.toggle('eliminated');
         };
 
-        // B. Clicking the Button (Select Answer)
+        // Button Click
         btn.onclick = (e) => {
-            // If we clicked the eye, do nothing (handled above)
             if (e.target.classList.contains('elim-eye')) return;
-
-            // If it was eliminated, un-eliminate it
-            if (btn.classList.contains('eliminated')) {
-                btn.classList.remove('eliminated');
-            }
+            if (btn.classList.contains('eliminated')) btn.classList.remove('eliminated');
             
-            // Run the checking logic
             if (typeof checkAnswer === "function") {
                 checkAnswer(opt, btn, q);
             }
         };
 
-        // C. Right Click (Eliminate)
+        // Right Click
         btn.addEventListener('contextmenu', (e) => {
             e.preventDefault(); 
             btn.classList.toggle('eliminated');
             return false;
         });
 
-        // Restore saved state
+        // Restore State
         if (typeof testAnswers !== 'undefined' && testAnswers[q._uid] === opt) {
             btn.classList.add('selected');
         }
@@ -1505,6 +1515,7 @@ function renderPracticeNavigator() {
         }
     }, 100);
 }
+
 
 
 
