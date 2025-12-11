@@ -335,7 +335,7 @@ button {
     grid-row: 1 / span 10; 
     width: 100% !important;
     max-width: none !important;
-    height: 17cm !important;
+    height: 20.5cm !important;
     overflow-y: auto !important;
     margin: 0 !important;
 }
@@ -1103,4 +1103,5 @@ details[open] .subject-summary::after {
     width: 100% !important;
     margin: 0 !important;
 }
+
 
