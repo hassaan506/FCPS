@@ -1107,6 +1107,28 @@ details[open] .subject-summary::after {
 }
 
 
+/* Explanation Modal CSS */
+#explanation-modal {
+    position: fixed;
+    top: 0; 
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(5px);
+    z-index: 10000; /* Ensure it's on top of everything */
+    
+    /* Center Content */
+    display: flex; 
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+/* When hidden, it must vanish completely */
+#explanation-modal.hidden {
+    display: none !important;
+}
 
 
 
