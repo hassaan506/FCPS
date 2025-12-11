@@ -291,14 +291,16 @@ button {
 .logout-btn:hover { background: #fecaca; transform: translateY(-1px); }
 
 /* DASHBOARD GRID SYSTEM */
+/* DASHBOARD GRID SYSTEM (Flexbox Fix) */
 .gameContainer { 
     width: 100%; 
-    display: grid; 
-    grid-template-columns: 1fr; 
-    gap: 30px; 
+    display: flex;              /* Arrange columns side-by-side */
+    flex-wrap: wrap;            /* Wrap to next line on small screens */
+    align-items: flex-start;    /* Align items to the top */
+    justify-content: flex-start;/* Pack everything to the LEFT (No gap!) */
+    gap: 30px;                  /* Space between the columns */
     padding: 0 20px;
 }
-
 /* 1. General Cards (Progress & Settings) - Compact & Auto Height */
 .panel { 
     padding: 25px; 
@@ -1027,6 +1029,7 @@ details[open] .subject-summary::after {
     background: var(--primary);
     color: white;
 }
+
 
 
 
