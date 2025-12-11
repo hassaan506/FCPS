@@ -673,11 +673,9 @@ function renderPage() {
 
 
 /* =========================================
-   CREATE QUESTION CARD (Smart Data Fix)
+   CREATE QUESTION CARD (Fixed for your Headers)
    ========================================= */
 function createQuestionCard(q, index, showNumber = true) {
-    console.log("Rendering Question:", q); // <--- Check Console for this!
-
     const block = document.createElement('div');
     block.className = "test-question-block";
 
@@ -691,67 +689,66 @@ function createQuestionCard(q, index, showNumber = true) {
     const optionsDiv = document.createElement('div');
     optionsDiv.className = "options-group";
 
-    // --- STEP 3: FIND THE OPTIONS (The Fix) ---
-    let opts = [];
+    // --- FIX: READ YOUR SPECIFIC HEADERS ---
+    // We explicitly look for OptionA, OptionB, OptionC, OptionD, OptionE
+    let opts = [
+        q.OptionA, 
+        q.OptionB, 
+        q.OptionC, 
+        q.OptionD, 
+        q.OptionE // Will include E if it exists, ignore if empty
+    ];
 
-    // Case A: The data is already a nice list (Ideal)
-    if (Array.isArray(q.Options)) {
-        opts = q.Options;
-    } 
-    // Case B: The data is separate columns (A, B, C, D)
-    else if (q.A && q.B) {
-        opts = [q.A, q.B, q.C, q.D].filter(x => x); // Filter removes empty ones
-    }
-    // Case C: The data uses "Option 1", "Option 2", etc.
-    else if (q['Option 1'] || q['Option A']) {
-        opts = [
-            q['Option 1'] || q['Option A'],
-            q['Option 2'] || q['Option B'],
-            q['Option 3'] || q['Option C'],
-            q['Option 4'] || q['Option D']
-        ].filter(x => x);
-    }
-    // Case D: Fallback (If nothing found)
-    else {
-        opts = ["Option A (Error loading)", "Option B", "Option C", "Option D"];
-        console.error("Could not find options in data:", q);
+    // Filter out empty options (in case OptionE is blank)
+    opts = opts.filter(opt => opt && String(opt).trim() !== "");
+
+    if (opts.length === 0) {
+        console.error("No options found for:", q);
+        opts = ["Error: Options Missing"]; 
     }
 
-    // 4. Create Buttons
+    // 3. Create Buttons
     opts.forEach(opt => {
         const btn = document.createElement('button');
         btn.className = "option-btn";
         
+        // Content: Text + Eye Icon
         btn.innerHTML = `
             <span class="opt-text">${opt}</span>
             <span class="elim-eye" title="Eliminate">👁️</span>
         `;
         
-        // Eye Click
+        // --- CLICK LOGIC ---
+        
+        // A. Eye Click (Eliminate)
         const eye = btn.querySelector('.elim-eye');
         eye.onclick = (e) => {
-            e.stopPropagation();
+            e.stopPropagation(); 
             btn.classList.toggle('eliminated');
         };
 
-        // Button Click
+        // B. Button Click (Select)
         btn.onclick = (e) => {
             if (e.target.classList.contains('elim-eye')) return;
-            if (btn.classList.contains('eliminated')) btn.classList.remove('eliminated');
+            
+            // Allow selecting even if eliminated
+            if (btn.classList.contains('eliminated')) {
+                btn.classList.remove('eliminated');
+            }
             
             if (typeof checkAnswer === "function") {
                 checkAnswer(opt, btn, q);
             }
         };
 
-        // Right Click
+        // C. Right Click (Eliminate)
         btn.addEventListener('contextmenu', (e) => {
             e.preventDefault(); 
             btn.classList.toggle('eliminated');
             return false;
         });
 
-        // Restore State
+        // Restore State (If reviewing)
         if (typeof testAnswers !== 'undefined' && testAnswers[q._uid] === opt) {
             btn.classList.add('selected');
         }
@@ -762,6 +759,7 @@ function createQuestionCard(q, index, showNumber = true) {
     block.appendChild(optionsDiv);
     return block;
 }
+
 
 // --- NEW: FLAG LOGIC ---
 function toggleFlag(uid, btn) {
@@ -1515,6 +1513,7 @@ function renderPracticeNavigator() {
         }
     }, 100);
 }
+
 
 
 
