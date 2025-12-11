@@ -761,31 +761,92 @@ function createQuestionCard(q, index, showNumber = true) {
 }
 
 /* =========================================
-   CHECK ANSWER FUNCTION (Restored)
+   CHECK ANSWER LOGIC (Smart Matcher)
    ========================================= */
-function checkAnswer(selectedOption, btnElement, questionData) {
-    // 1. Visual Selection
-    // Remove 'selected' from all other buttons in this card
-    const allBtns = btnElement.parentElement.querySelectorAll('.option-btn');
-    allBtns.forEach(b => b.classList.remove('selected'));
-    
-    // Add 'selected' to the clicked button
-    btnElement.classList.add('selected');
+function checkAnswer(selectedOption, btnElement, q) {
+    console.log("Checking Answer...");
+    console.log("Mode:", currentMode);
+    console.log("User Clicked:", selectedOption);
+    console.log("Correct Answer Data:", q.CorrectAnswer);
 
-    // 2. Save the Answer
-    // Assuming 'testAnswers' is your global object for saving selections
+    // 1. Save Answer Globally (for exam submission)
     if (typeof testAnswers !== 'undefined') {
-        testAnswers[questionData._uid] = selectedOption;
+        testAnswers[q._uid] = selectedOption;
     }
-    
-    // 3. Update Sidebar Navigator (if it exists)
-    // Marks the circle as "Answered" (Blue)
-    if (typeof updateNavStatus === "function") {
-        updateNavStatus(questionData._uid, true);
+
+    // 2. Reset Visuals (Remove old colors)
+    const allBtns = btnElement.parentElement.querySelectorAll('.option-btn');
+    allBtns.forEach(b => b.classList.remove('selected', 'correct', 'wrong'));
+
+    // --- MODE CHECK ---
+    // If currentMode is missing, assume 'practice' for testing purposes
+    const mode = (typeof currentMode !== 'undefined') ? currentMode : 'practice';
+
+    if (mode === 'practice') {
+        // --- PRACTICE MODE: Validate Green/Red ---
+
+        // A. Clean the data strings
+        let correctData = (q.CorrectAnswer || "").trim(); // e.g., "A" or "Mitochondria"
+        let userText = String(selectedOption).trim();     // e.g., "Mitochondria"
+
+        // B. Determine if User is Correct
+        let isCorrect = false;
+
+        // CHECK 1: Direct Text Match (e.g. "Apple" === "Apple")
+        if (userText.toLowerCase() === correctData.toLowerCase()) {
+            isCorrect = true;
+        }
+        
+        // CHECK 2: Letter Match (e.g. Correct is "A", User clicked q.OptionA)
+        // We check if the Correct Data matches the letter corresponding to the user's text
+        else if (correctData === "A" && userText === q.OptionA) isCorrect = true;
+        else if (correctData === "B" && userText === q.OptionB) isCorrect = true;
+        else if (correctData === "C" && userText === q.OptionC) isCorrect = true;
+        else if (correctData === "D" && userText === q.OptionD) isCorrect = true;
+        else if (correctData === "E" && userText === q.OptionE) isCorrect = true;
+
+        console.log("Is Correct?", isCorrect);
+
+        // C. Apply Colors
+        if (isCorrect) {
+            // GREEN
+            btnElement.classList.add('correct');
+            
+            // Mark as solved
+            if (typeof userSolvedIDs !== 'undefined' && !userSolvedIDs.includes(q._uid)) {
+                userSolvedIDs.push(q._uid);
+            }
+        } else {
+            // RED
+            btnElement.classList.add('wrong');
+            
+            // Highlight the actual correct answer (Show user what was right)
+            allBtns.forEach(b => {
+                // Find which button holds the correct text
+                let btnText = b.querySelector('.opt-text') ? b.querySelector('.opt-text').innerText : b.innerText;
+                
+                // Logic to find the right button
+                let match = false;
+                if (btnText === correctData) match = true; // Direct match
+                if (correctData === "A" && btnText === q.OptionA) match = true;
+                if (correctData === "B" && btnText === q.OptionB) match = true;
+                if (correctData === "C" && btnText === q.OptionC) match = true;
+                if (correctData === "D" && btnText === q.OptionD) match = true;
+                if (correctData === "E" && btnText === q.OptionE) match = true;
+
+                if (match) {
+                    b.classList.add('correct');
+                }
+            });
+        }
+        
+        // Update Bottom Bar Numbers
+        if (typeof renderPracticeNavigator === "function") renderPracticeNavigator();
+
     } else {
-        // Fallback if you don't have a helper function
-        const navBtn = document.getElementById(`nav-${questionData._uid}`);
-        if (navBtn) navBtn.classList.add('answered');
+        // --- EXAM MODE: Just Blue ---
+        btnElement.classList.add('selected');
+        if (typeof renderNavigator === "function") renderNavigator();
     }
 }
 
@@ -1541,6 +1602,7 @@ function renderPracticeNavigator() {
         }
     }, 100);
 }
+
 
 
 
