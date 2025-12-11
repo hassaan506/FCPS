@@ -290,17 +290,28 @@ button {
 }
 .logout-btn:hover { background: #fecaca; transform: translateY(-1px); }
 
-/* DASHBOARD GRID SYSTEM */
-/* DASHBOARD GRID SYSTEM (Flexbox Fix) */
+/* DASHBOARD GRID SYSTEM (The Side-by-Side Fix) */
 .gameContainer { 
     width: 100%; 
-    display: flex;              /* Arrange columns side-by-side */
-    flex-wrap: wrap;            /* Wrap to next line on small screens */
-    align-items: flex-start;    /* Align items to the top */
-    justify-content: flex-start;/* Pack everything to the LEFT (No gap!) */
-    gap: 30px;                  /* Space between the columns */
+    
+    /* This command puts the columns next to each other */
+    display: flex;              
+    
+    /* This allows them to stack on mobile phones */
+    flex-wrap: wrap;            
+    
+    /* This packs them tightly to the center (removing the empty gap) */
+    justify-content: center;    
+    
+    /* Aligns them to the top so they start at the same height */
+    align-items: flex-start;    
+    
+    /* Space between the two columns */
+    gap: 40px;                  
+    
     padding: 0 20px;
 }
+
 /* 1. General Cards (Progress & Settings) - Compact & Auto Height */
 .panel { 
     padding: 25px; 
@@ -1029,6 +1040,7 @@ details[open] .subject-summary::after {
     background: var(--primary);
     color: white;
 }
+
 
 
 
