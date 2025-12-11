@@ -336,8 +336,8 @@ button {
 /* --- RIGHT COLUMN PANEL (Study Session - 16cm x 17cm) --- */
 #study-panel {
     /* Force Dimensions */
-    width: 16cm !important;
-    height: 17cm !important;
+    width: 720px !important;
+    height: 900px !important;
     
     /* Allow shrinking on mobile */
     max-width: 100% !important; 
@@ -348,6 +348,7 @@ button {
     /* IMPORTANT: No 'auto' margins here either! */
     margin: 0 !important; 
 }
+
 
 /* =========================================
    7. STUDY MENU & INTERACTION
@@ -1027,6 +1028,7 @@ details[open] .subject-summary::after {
     background: var(--primary);
     color: white;
 }
+
 
 
 
