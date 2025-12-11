@@ -992,13 +992,37 @@ details[open] .subject-summary::after {
 
 /* Dark Mode Fixes */
 [data-theme="dark"] .prac-nav-btn {
-    background: var(--input-bg);
+    background: var(--input-bg/* =========================================
+   21. QUIZ LAYOUT FORCE-FIX (Nuclear Option)
+   ========================================= */
+
+/* Force the Quiz Container to be a single column, centered stack */
+#quiz-screen .gameContainer {
+    display: flex !important;
+    flex-direction: column !important;
+    grid-template-columns: none !important; /* Turn off grid */
+    
+    max-width: 850px !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    
+    /* Reset alignment */
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    gap: 0 !important;
+}
+
+/* Ensure question card takes full width of this centered container */
+.test-question-block {
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
     color: var(--text-light);
 }
 [data-theme="dark"] .prac-nav-btn.active {
     background: var(--primary);
     color: white;
 }
-
 
 
