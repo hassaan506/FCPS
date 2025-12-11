@@ -672,52 +672,79 @@ function renderPage() {
 }
 
 
-function createQuestionCard(q, index, isTest) {
-    const card = document.createElement('div');
-    card.className = "test-question-block"; 
-    card.id = `q-card-${index}`; 
+/* =========================================
+   CREATE QUESTION CARD (With Eye Toggle)
+   ========================================= */
+function createQuestionCard(q, index, showNumber = true) {
+    const block = document.createElement('div');
+    block.className = "test-question-block";
 
-    let headerHTML = "";
-    
-    // HEADER LOGIC
-    if (!isTest) {
-        // PRACTICE MODE
-        const isSaved = userBookmarks.includes(q._uid);
-        headerHTML = `<div style="font-size:0.85em; color:#999; margin-bottom:10px; text-transform:uppercase; letter-spacing:1px;">${q.Subject} • ${q.Topic} 
-        <span onclick="toggleBookmark('${q._uid}', this)" class="bookmark-icon" style="color:${isSaved ? '#ffc107' : '#e2e8f0'}">${isSaved ? '★' : '☆'}</span></div>`;
-    } else {
-        // TEST MODE: Add Flag Icon Here
-        const isFlagged = testFlags[q._uid];
-        headerHTML = `<div style="text-align:right; margin-bottom:10px;">
-            <button onclick="toggleFlag('${q._uid}', this)" class="flag-btn ${isFlagged ? 'active' : ''}" style="display:inline-flex; width:auto; margin:0;">
-                🚩 Mark Review
-            </button>
-        </div>`;
-    }
-    
-    let html = headerHTML + `<div class="test-q-text">${index+1}. ${q.Question}</div>`;
-    
-    html += `<div class="options-group" id="opts-${index}">`;
-    const opts = ['A','B','C','D'];
-    if(q.OptionE) opts.push('E');
+    // 1. Question Text
+    const qText = document.createElement('div');
+    qText.className = "test-q-text";
+    qText.innerHTML = `${showNumber ? (index + 1) + ". " : ""}${q.Question}`;
+    block.appendChild(qText);
+
+    // 2. Options Container
+    const optionsDiv = document.createElement('div');
+    optionsDiv.className = "options-group";
+
+    // 3. Create Options
+    let opts = [...q.Options]; 
     
     opts.forEach(opt => {
-        let isSelected = false;
-        if(isTest && testAnswers[q._uid] === opt) isSelected = true;
-        html += `<button class="option-btn ${isSelected ? 'selected' : ''}" 
-                  onclick="handleClick(${index}, '${opt}')" 
-                  id="btn-${index}-${opt}">
-                  <b>${opt}.</b> ${q['Option'+opt]}
-                 </button>`;
+        const btn = document.createElement('button');
+        btn.className = "option-btn";
+        
+        // --- LAYOUT: Text on Left, Eye on Right ---
+        // We use a span for text so the strikethrough only affects the text area if we want,
+        // but typically eliminating the whole button is clearer.
+        btn.innerHTML = `<span class="opt-text">${opt}</span>`;
+        
+        // Create the Eye Icon
+        const eyeIcon = document.createElement('span');
+        eyeIcon.className = "elim-eye";
+        eyeIcon.innerHTML = "👁️"; 
+        eyeIcon.title = "Eliminate this option";
+        
+        // --- CLICK EYE to Eliminate ---
+        eyeIcon.onclick = (e) => {
+            e.stopPropagation(); // Stop the button from being selected
+            btn.classList.toggle('eliminated');
+        };
+
+        // Append Eye to Button
+        btn.appendChild(eyeIcon);
+
+        // --- RIGHT CLICK (Legacy Support) ---
+        btn.addEventListener('contextmenu', (e) => {
+            e.preventDefault(); 
+            btn.classList.toggle('eliminated');
+            return false;
+        });
+
+        // --- NORMAL SELECTION (Clicking the empty space or text) ---
+        btn.onclick = (e) => {
+            // If checking the eye, do nothing (handled above)
+            if (e.target.classList.contains('elim-eye')) return;
+
+            // Allow selecting even if eliminated (auto-uneliminate)
+            if (btn.classList.contains('eliminated')) {
+                btn.classList.remove('eliminated');
+            }
+            checkAnswer(opt, btn, q);
+        };
+
+        // Restore state
+        if (testAnswers[q._uid] === opt) {
+            btn.classList.add('selected');
+        }
+
+        optionsDiv.appendChild(btn);
     });
-    html += `</div>`;
 
-    if (!isTest) {
-        html += `<button id="reopen-exp-${index}" class="secondary hidden" style="margin-top:15px; width:auto; font-size:13px;" onclick="reOpenModal(${index})">📖 View Explanation Again</button>`;
-    }
-
-    card.innerHTML = html;
-    return card;
+    block.appendChild(optionsDiv);
+    return block;
 }
 
 // --- NEW: FLAG LOGIC ---
@@ -1472,6 +1499,7 @@ function renderPracticeNavigator() {
         }
     }, 100);
 }
+
 
 
 
