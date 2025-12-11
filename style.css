@@ -307,17 +307,35 @@ button {
 }
 
 /* --- FIXED PANEL: Left Aligned Card, Centered Text --- */
+/* 1. General Cards (Progress & Settings) - Compact & Auto Height */
 .panel { 
     padding: 25px; 
-    text-align: center; /* <--- Text is Centered (Pretty) */
+    text-align: center;
+    background: var(--card-bg); 
+    border: 1px solid var(--border-color); 
+    border-radius: 16px; 
+    box-shadow: var(--shadow-sm); 
+    transition: transform 0.3s ease;
     
-    /* Box Dimensions & Position */
-    max-width: 450px;   /* Fixed small width */
-    width: 100%;        
-    margin-left: 0;     /* <--- Card is Left Aligned */
-    margin-right: auto; /* Ensures it stays left */
+    /* Keep these compact */
+    max-width: 450px;
+    width: 100%;
+    height: auto;       /* Let them grow naturally based on text */
+    margin-left: 0;     /* Left Aligned */
+    margin-right: auto;
+    margin-bottom: 30px;
 }
 
+/* 2. SPECIFIC STYLE FOR STUDY SESSION (Fixed Dimensions) */
+#study-panel {
+    /* Override dimensions specifically for this box */
+    width: 16cm !important;
+    height: 17cm !important;
+    max-width: 100%; /* Safety for mobile screens */
+    
+    /* Allow scrolling inside if list is long */
+    overflow-y: auto; 
+}
 .panel h3 {
    font-size: 19px; 
    font-weight: 700; 
@@ -1010,5 +1028,6 @@ details[open] .subject-summary::after {
     background: var(--primary);
     color: white;
 }
+
 
 
