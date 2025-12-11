@@ -673,7 +673,7 @@ function renderPage() {
 
 
 /* =========================================
-   CREATE QUESTION CARD (Fixed for your Headers)
+   1. CREATE QUESTION CARD (Stable Version)
    ========================================= */
 function createQuestionCard(q, index, showNumber = true) {
     const block = document.createElement('div');
@@ -689,56 +689,56 @@ function createQuestionCard(q, index, showNumber = true) {
     const optionsDiv = document.createElement('div');
     optionsDiv.className = "options-group";
 
-    // --- FIX: READ YOUR SPECIFIC HEADERS ---
-    // We explicitly look for OptionA, OptionB, OptionC, OptionD, OptionE
+    // 3. Get Options from your specific columns
     let opts = [
         q.OptionA, 
         q.OptionB, 
         q.OptionC, 
         q.OptionD, 
-        q.OptionE // Will include E if it exists, ignore if empty
-    ];
-
-    // Filter out empty options (in case OptionE is blank)
-    opts = opts.filter(opt => opt && String(opt).trim() !== "");
+        q.OptionE
+    ].filter(opt => opt && String(opt).trim() !== ""); // Remove empty ones
 
     if (opts.length === 0) {
-        console.error("No options found for:", q);
-        opts = ["Error: Options Missing"]; 
+        // Fallback if columns are named differently (e.g. "A", "B")
+        if (q.A) opts.push(q.A);
+        if (q.B) opts.push(q.B);
+        if (q.C) opts.push(q.C);
+        if (q.D) opts.push(q.D);
     }
 
-    // 3. Create Buttons
+    // 4. Create Buttons
     opts.forEach(opt => {
         const btn = document.createElement('button');
         btn.className = "option-btn";
         
-        // Content: Text + Eye Icon
+        // HTML: Text on left, Eye on right
+        // We add 'pointer-events: none' to spans in CSS so clicks go to the button
         btn.innerHTML = `
             <span class="opt-text">${opt}</span>
             <span class="elim-eye" title="Eliminate">👁️</span>
         `;
         
-        // --- CLICK LOGIC ---
+        // --- CLICK HANDLERS ---
         
-        // A. Eye Click (Eliminate)
+        // A. Clicking the Eye (Eliminate Only)
         const eye = btn.querySelector('.elim-eye');
         eye.onclick = (e) => {
-            e.stopPropagation(); 
+            e.stopPropagation(); // Stop bubbling
             btn.classList.toggle('eliminated');
         };
 
-        // B. Button Click (Select)
+        // B. Clicking the Button (Select Answer)
         btn.onclick = (e) => {
+            // Ignore if clicked directly on eye (double safety)
             if (e.target.classList.contains('elim-eye')) return;
             
-            // Allow selecting even if eliminated
+            // Un-eliminate if selected
             if (btn.classList.contains('eliminated')) {
                 btn.classList.remove('eliminated');
             }
             
-            if (typeof checkAnswer === "function") {
-                checkAnswer(opt, btn, q);
-            }
+            // Pass the CLEAN text (opt) to the checker
+            checkAnswer(opt, btn, q);
         };
 
         // C. Right Click (Eliminate)
@@ -748,7 +748,7 @@ function createQuestionCard(q, index, showNumber = true) {
             return false;
         });
 
-        // Restore State (If reviewing)
+        // Restore Selection (if previously answered)
         if (typeof testAnswers !== 'undefined' && testAnswers[q._uid] === opt) {
             btn.classList.add('selected');
         }
@@ -761,94 +761,80 @@ function createQuestionCard(q, index, showNumber = true) {
 }
 
 /* =========================================
-   CHECK ANSWER LOGIC (Smart Matcher)
+   2. CHECK ANSWER (Fixes "Red/Green" Bug)
    ========================================= */
 function checkAnswer(selectedOption, btnElement, q) {
-    console.log("Checking Answer...");
-    console.log("Mode:", currentMode);
-    console.log("User Clicked:", selectedOption);
-    console.log("Correct Answer Data:", q.CorrectAnswer);
-
-    // 1. Save Answer Globally (for exam submission)
+    // 1. Save Answer
     if (typeof testAnswers !== 'undefined') {
         testAnswers[q._uid] = selectedOption;
     }
 
-    // 2. Reset Visuals (Remove old colors)
-    const allBtns = btnElement.parentElement.querySelectorAll('.option-btn');
-    allBtns.forEach(b => b.classList.remove('selected', 'correct', 'wrong'));
-
-    // --- MODE CHECK ---
-    // If currentMode is missing, assume 'practice' for testing purposes
     const mode = (typeof currentMode !== 'undefined') ? currentMode : 'practice';
 
     if (mode === 'practice') {
-        // --- PRACTICE MODE: Validate Green/Red ---
-
-        // A. Clean the data strings
-        let correctData = (q.CorrectAnswer || "").trim(); // e.g., "A" or "Mitochondria"
-        let userText = String(selectedOption).trim();     // e.g., "Mitochondria"
-
-        // B. Determine if User is Correct
-        let isCorrect = false;
-
-        // CHECK 1: Direct Text Match (e.g. "Apple" === "Apple")
-        if (userText.toLowerCase() === correctData.toLowerCase()) {
-            isCorrect = true;
-        }
+        // --- PRACTICE MODE ---
         
-        // CHECK 2: Letter Match (e.g. Correct is "A", User clicked q.OptionA)
-        // We check if the Correct Data matches the letter corresponding to the user's text
+        // Clean strings
+        let correctData = (q.CorrectAnswer || "").trim(); 
+        let userText = String(selectedOption).trim();     
+
+        // Check if Correct
+        let isCorrect = false;
+        if (userText.toLowerCase() === correctData.toLowerCase()) isCorrect = true;
         else if (correctData === "A" && userText === q.OptionA) isCorrect = true;
         else if (correctData === "B" && userText === q.OptionB) isCorrect = true;
         else if (correctData === "C" && userText === q.OptionC) isCorrect = true;
         else if (correctData === "D" && userText === q.OptionD) isCorrect = true;
         else if (correctData === "E" && userText === q.OptionE) isCorrect = true;
 
-        console.log("Is Correct?", isCorrect);
-
-        // C. Apply Colors
         if (isCorrect) {
-            // GREEN
+            // ✅ CORRECT
+            btnElement.classList.remove('wrong');
             btnElement.classList.add('correct');
             
-            // Mark as solved
             if (typeof userSolvedIDs !== 'undefined' && !userSolvedIDs.includes(q._uid)) {
                 userSolvedIDs.push(q._uid);
             }
+
+            // Show Explanation
+            setTimeout(() => {
+                if(typeof showExplanation === 'function') showExplanation(q);
+            }, 300);
+
         } else {
-            // RED
+            // ❌ WRONG
             btnElement.classList.add('wrong');
             
-            // Highlight the actual correct answer (Show user what was right)
+            // --- FIX: Highlight the Real Answer (ignoring the Eye Icon) ---
+            const allBtns = btnElement.parentElement.querySelectorAll('.option-btn');
             allBtns.forEach(b => {
-                // Find which button holds the correct text
-                let btnText = b.querySelector('.opt-text') ? b.querySelector('.opt-text').innerText : b.innerText;
-                
-                // Logic to find the right button
+                // We must grab the text inside .opt-text to ignore the eye emoji
+                const textSpan = b.querySelector('.opt-text');
+                const btnText = textSpan ? textSpan.innerText : b.innerText;
+
                 let match = false;
-                if (btnText === correctData) match = true; // Direct match
+                if (btnText === correctData) match = true;
                 if (correctData === "A" && btnText === q.OptionA) match = true;
                 if (correctData === "B" && btnText === q.OptionB) match = true;
                 if (correctData === "C" && btnText === q.OptionC) match = true;
                 if (correctData === "D" && btnText === q.OptionD) match = true;
-                if (correctData === "E" && btnText === q.OptionE) match = true;
-
-                if (match) {
-                    b.classList.add('correct');
-                }
+                
+                if (match) b.classList.add('correct');
             });
         }
         
-        // Update Bottom Bar Numbers
         if (typeof renderPracticeNavigator === "function") renderPracticeNavigator();
 
     } else {
-        // --- EXAM MODE: Just Blue ---
+        // --- EXAM MODE ---
+        const allBtns = btnElement.parentElement.querySelectorAll('.option-btn');
+        allBtns.forEach(b => b.classList.remove('selected'));
         btnElement.classList.add('selected');
+        
         if (typeof renderNavigator === "function") renderNavigator();
     }
 }
+
 
 // --- NEW: FLAG LOGIC ---
 function toggleFlag(uid, btn) {
@@ -1602,6 +1588,7 @@ function renderPracticeNavigator() {
         }
     }, 100);
 }
+
 
 
 
