@@ -256,17 +256,29 @@ function processData(data) {
     const map = {}; 
 
     data.forEach(row => {
-        if (!row.Question || !row.CorrectAnswer) return;
+        delete row.Book;
+        delete row.Exam;
+        delete row.Number;
+        
+        const qText = row.Question || row.Questions;
+        const correctVal = row.CorrectAnswer;
 
-        const qSignature = row.Question.trim().toLowerCase();
-        if (seen.has(qSignature)) return;
+        if (!qText || !correctVal) return;
+
+        const qSignature = String(qText).trim().toLowerCase();
+        
+        if (seen.has(qSignature)) return; // Skip duplicates
         seen.add(qSignature);
 
         row._uid = generateStableID(qSignature);
+        
+        row.Question = qText; 
 
         const subj = row.Subject ? row.Subject.trim() : "General";
         const topic = row.Topic ? row.Topic.trim() : "Mixed";
-        row.Subject = subj; row.Topic = topic;
+        row.Subject = subj; 
+        row.Topic = topic;
+        
         allQuestions.push(row);
 
         subjects.add(subj);
@@ -1603,6 +1615,7 @@ function renderPracticeNavigator() {
         }
     }, 100);
 }
+
 
 
 
