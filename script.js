@@ -94,16 +94,16 @@ function saveProfile() {
     });
 }
 
-// ... (Keep your existing configuration and top variables) ...
-
-// === REPLACE FROM HERE DOWN ===
-
+/* =========================================
+   LOAD USER DATA (Now Updates Progress Bars)
+   ========================================= */
 async function loadUserData() {
     if (!currentUser) return;
 
     // --- FIX START: Restore the Name on Refresh ---
     if (currentUser.displayName) {
-        document.getElementById('user-display').innerText = currentUser.displayName;
+        const nameDisplay = document.getElementById('user-display');
+        if(nameDisplay) nameDisplay.innerText = currentUser.displayName;
     }
     // --- FIX END ---
 
@@ -137,8 +137,16 @@ async function loadUserData() {
                 <div class="stat-row" style="border:none;"><span class="stat-lbl">Practice Solved:</span> <span class="stat-val">${userSolvedIDs.length}</span></div>`;
         }
 
-        // --- NEW LINE: Update the Badge Icon on Dashboard ---
-        updateBadgeButton(); 
+        // --- Update the Badge Icon on Dashboard ---
+        if(typeof updateBadgeButton === 'function') updateBadgeButton(); 
+
+        // --- THE FIX: REDRAW THE GREEN BARS ---
+        // We re-run processData using the existing questions. 
+        // This forces the menu to rebuild using the NEW userSolvedIDs.
+        if (typeof allQuestions !== 'undefined' && allQuestions.length > 0) {
+            console.log("🔄 Updating Progress Bars...");
+            processData(allQuestions);
+        }
 
     } catch (e) { 
         console.error("Load Error:", e); 
@@ -152,11 +160,6 @@ function checkStreak(data) {
     const lastLogin = data.lastLoginDate;
     let currentStreak = data.streak || 0;
 
-    // Logic:
-    // 1. If last login was yesterday, streak + 1
-    // 2. If last login was today, streak stays same
-    // 3. If last login was older, streak resets to 1
-    
     if (lastLogin !== today) {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
@@ -1615,6 +1618,7 @@ function renderPracticeNavigator() {
         }
     }, 100);
 }
+
 
 
 
