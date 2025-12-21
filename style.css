@@ -580,8 +580,9 @@ button {
 
 
 /* =========================================
-   9. POPUPS, MODALS & OVERLAYS
+   9. POPUPS, MODALS & OVERLAYS (Mobile Fixed)
    ========================================= */
+
 .modal-overlay {
     position: fixed; 
     top: 0; 
@@ -598,41 +599,57 @@ button {
     animation: fadeIn 0.3s ease-out;
 }
 
-/* Ensure Modals behave nicely */
 .modal-overlay .joinCard {
     max-height: 85vh; 
+    width: 95%; 
+    max-width: 600px; 
+    
     display: flex; 
     flex-direction: column; 
-    overflow: hidden; 
+    overflow: hidden; /* Prevents whole card from scrolling */
+    
     margin: 0; 
-    width: 100%; 
-    max-width: 650px; 
     text-align: left;
+    padding: 0; /* We move padding to children for better scroll control */
 }
 
-/* Explanation Content */
+.modal-overlay .joinCard h2, 
+.modal-overlay .joinCard h3 {
+    padding: 25px 25px 10px 25px;
+    margin: 0;
+    flex-shrink: 0; /* Never shrink the header */
+}
+
 .dynamic-explanation {
     background: #f8fafc; 
-    padding: 25px; 
-    border-radius: 16px; 
     color: #475569; 
     line-height: 1.8; 
     white-space: pre-wrap; 
     font-size: 15px;
-    border: 1px solid var(--border-color);
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    
+    flex: 1;           /* Take all available remaining height */
+    overflow-y: auto;  /* Scroll ONLY this part */
+    min-height: 0;     /* Critical for Flexbox scrolling */
+    
+    padding: 20px 25px; /* Internal padding */
+    margin: 0 !important; /* Reset margins */
+    max-height: none !important; /* Override any inline style */
 }
 
-#modal-content {
-    overflow-y: auto; 
-    flex: 1; 
-    margin: 20px 0; 
-    padding-right: 15px; 
-    border-top: 1px solid #f1f5f9; 
-    border-bottom: 1px solid #f1f5f9; 
-    padding-top: 15px; 
-    padding-bottom: 15px;
+.modal-overlay .joinCard > div:last-child,
+.modal-overlay .joinCard > div:nth-last-child(2) {
+    padding: 15px 25px 25px 25px;
+    flex-shrink: 0; /* Never shrink the buttons */
+    background: var(--card-bg);
 }
 
+#explanation-text {
+    /* Ensure the specific ID also follows the rules */
+    display: block;
+    width: 100%;
+}
 
 /* =========================================
    10. EXTRAS (Sidebar, Badges, Search)
@@ -1150,6 +1167,7 @@ details[open] .subject-summary::after {
 #explanation-modal.hidden {
     display: none !important;
 }
+
 
 
 
