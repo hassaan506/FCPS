@@ -1393,10 +1393,68 @@ window.onload = () => {
     if(localStorage.getItem('fcps-theme')==='dark') toggleTheme();
 }
 
+// --- 1. RESET PASSWORD FUNCTION ---
+function resetPassword() {
+    const email = document.getElementById('email').value;
+    if (!email) return alert("Please enter your email address in the box above first.");
+    
+    auth.sendPasswordResetEmail(email)
+        .then(() => alert("📧 Password reset email sent! Check your inbox."))
+        .catch(e => alert("Error: " + e.message));
+}
 
+// --- 2. PROFILE FUNCTIONS ---
 
+// Open Modal & Load Data
+function openProfileModal() {
+    if (!currentUser || isGuest) return alert("Please log in to edit profile.");
+    
+    document.getElementById('profile-modal').classList.remove('hidden');
+    
+    // Load data from userProfile global variable
+    document.getElementById('profile-email').innerText = currentUser.email;
+    document.getElementById('profile-plan').innerText = userProfile.isPremium ? "PREMIUM 👑" : "Free Plan";
+    document.getElementById('profile-joined').innerText = userProfile.joined ? new Date(userProfile.joined.seconds * 1000).toLocaleDateString() : "N/A";
+    
+    // Fill Inputs
+    document.getElementById('edit-name').value = userProfile.displayName || "";
+    document.getElementById('edit-phone').value = userProfile.phone || "";
+    document.getElementById('edit-college').value = userProfile.college || "";
+    document.getElementById('edit-exam').value = userProfile.targetExam || "FCPS-1";
+}
 
+// Save Data to Firebase
+async function saveDetailedProfile() {
+    const name = document.getElementById('edit-name').value;
+    const phone = document.getElementById('edit-phone').value;
+    const college = document.getElementById('edit-college').value;
+    const exam = document.getElementById('edit-exam').value;
 
+    try {
+        // Update Auth Profile (Display Name)
+        if (currentUser.displayName !== name) {
+            await currentUser.updateProfile({ displayName: name });
+        }
 
+        // Update Firestore Document
+        await db.collection('users').doc(currentUser.uid).update({
+            displayName: name,
+            phone: phone,
+            college: college,
+            targetExam: exam
+        });
 
+        // Update Local State
+        userProfile.displayName = name;
+        userProfile.phone = phone;
+        userProfile.college = college;
+        userProfile.targetExam = exam;
+        
+        document.getElementById('user-display').innerText = name || "User"; // Update header
+        alert("✅ Profile Updated Successfully!");
+        document.getElementById('profile-modal').classList.add('hidden');
 
+    } catch (e) {
+        alert("Error saving profile: " + e.message);
+    }
+}
