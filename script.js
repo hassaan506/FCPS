@@ -1213,48 +1213,84 @@ function switchPremTab(tab) {
     document.getElementById('tab-btn-'+tab).classList.add('active');
 }
 
-function openProfileModal() {
+async function openProfileModal() {
     if (!currentUser || isGuest) return alert("Please log in to edit profile.");
     
     document.getElementById('profile-modal').classList.remove('hidden');
     
-    // 1. Basic Info
+    // 1. Fetch Latest Data Direct from DB (Ensures fresh data)
+    let freshData = {};
+    try {
+        const doc = await db.collection('users').doc(currentUser.uid).get();
+        if (doc.exists) freshData = doc.data();
+    } catch (e) {
+        console.error("Profile fetch error:", e);
+        freshData = userProfile || {}; // Fallback
+    }
+
+    // 2. Email & Plan
     document.getElementById('profile-email').innerText = currentUser.email;
-    document.getElementById('profile-plan').innerText = userProfile.isPremium ? "PREMIUM 👑" : "Free Plan";
+    const isPrem = freshData.isPremium || false;
+    document.getElementById('profile-plan').innerText = isPrem ? "PREMIUM 👑" : "Free Plan";
     
-    // 2. Joined Date Logic (With Backup)
+    // 3. Joined Date Logic (Robust)
     let joinedText = "N/A";
-    if (userProfile.joined) {
-        // Try Firestore Timestamp or standard Date
-        const ms = userProfile.joined.seconds ? userProfile.joined.seconds * 1000 : new Date(userProfile.joined).getTime();
-        joinedText = new Date(ms).toLocaleDateString();
-    } else if (currentUser.metadata.creationTime) {
-        // Backup: Use Firebase Auth Creation Time
+    
+    // Check DB first, then Auth Metadata
+    if (freshData.joined) {
+        joinedText = formatDateHelper(freshData.joined);
+    } else if (currentUser.metadata && currentUser.metadata.creationTime) {
         joinedText = new Date(currentUser.metadata.creationTime).toLocaleDateString();
     }
     document.getElementById('profile-joined').innerText = joinedText;
 
-    // 3. Expiry Date Logic
+    // 4. Expiry Date Logic
     let expiryText = "-";
-    if (userProfile.isPremium) {
-        if (userProfile.expiryDate) {
-            const ms = userProfile.expiryDate.seconds ? userProfile.expiryDate.seconds * 1000 : new Date(userProfile.expiryDate).getTime();
-            if (ms > 4000000000000) expiryText = "Lifetime"; 
-            else expiryText = new Date(ms).toLocaleDateString();
-        } else {
-            // Premium active but no date found (Assume Lifetime or Admin Grant)
-            expiryText = "Lifetime / Admin";
-        }
-    }
-    document.getElementById('profile-expiry').innerText = expiryText;
+    const expiryElem = document.getElementById('profile-expiry');
     
-    // 4. Fill Editable Inputs
-    document.getElementById('edit-name').value = userProfile.displayName || "";
-    document.getElementById('edit-phone').value = userProfile.phone || "";
-    document.getElementById('edit-college').value = userProfile.college || "";
-    document.getElementById('edit-exam').value = userProfile.targetExam || "FCPS-1";
+    if (isPrem) {
+        if (freshData.expiryDate) {
+            // Check if it's Lifetime (Year 2090+)
+            const dateObj = parseDateHelper(freshData.expiryDate);
+            if (dateObj.getFullYear() > 2090) {
+                expiryText = "Lifetime";
+                expiryElem.style.color = "#10b981"; // Green
+            } else {
+                expiryText = dateObj.toLocaleDateString();
+                expiryElem.style.color = "#d97706"; // Orange
+            }
+        } else {
+            expiryText = "Lifetime / Admin";
+            expiryElem.style.color = "#10b981";
+        }
+    } else {
+        expiryElem.style.color = "#64748b"; // Grey
+    }
+    
+    expiryElem.innerText = expiryText;
+    
+    // 5. Fill Editable Inputs
+    document.getElementById('edit-name').value = freshData.displayName || "";
+    document.getElementById('edit-phone').value = freshData.phone || "";
+    document.getElementById('edit-college').value = freshData.college || "";
+    document.getElementById('edit-exam').value = freshData.targetExam || "FCPS-1";
 }
 
+// --- HELPER TO HANDLE ALL DATE FORMATS ---
+function parseDateHelper(dateInput) {
+    if (!dateInput) return new Date();
+    // 1. Firestore Timestamp (has .toMillis)
+    if (typeof dateInput.toMillis === 'function') return new Date(dateInput.toMillis());
+    // 2. Firestore Timestamp Object (has .seconds)
+    if (dateInput.seconds) return new Date(dateInput.seconds * 1000);
+    // 3. Standard Date/String/Number
+    return new Date(dateInput);
+}
+
+function formatDateHelper(dateInput) {
+    const d = parseDateHelper(dateInput);
+    return isNaN(d.getTime()) ? "N/A" : d.toLocaleDateString();
+}
 // --- FIX: RESTORE BADGE DESCRIPTIONS & TROPHIES ---
 function openBadges() {
     const modal = document.getElementById('badges-modal');
@@ -1491,4 +1527,5 @@ async function saveDetailedProfile() {
         alert("Error saving profile: " + e.message);
     }
 }
+
 
