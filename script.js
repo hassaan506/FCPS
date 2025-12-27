@@ -115,7 +115,11 @@ async function loadUserData() {
         // 2. FORCE FETCH FROM SERVER
         const userDoc = await db.collection('users').doc(currentUser.uid).get({ source: 'server' });
         let userData = userDoc.exists ? userDoc.data() : {};
-
+      
+        if (userData.role === 'admin') {
+            const btn = document.getElementById('admin-btn');
+            if(btn) btn.classList.remove('hidden');
+        }
         userBookmarks = userData.bookmarks || [];
         userSolvedIDs = userData.solved || [];
         userMistakes = userData.mistakes || []; 
@@ -258,10 +262,9 @@ function processData(data) {
     const subjects = new Set();
     const map = {}; 
 
-    data.forEach(row => {
-        delete row.Book;
-        delete row.Exam;
-        delete row.Number;
+    data.forEach((row, index) => {
+        // Cleanup keys
+        delete row.Book; delete row.Exam; delete row.Number;
         
         const qText = row.Question || row.Questions;
         const correctVal = row.CorrectAnswer;
@@ -269,13 +272,16 @@ function processData(data) {
         if (!qText || !correctVal) return;
 
         const qSignature = String(qText).trim().toLowerCase();
-        
-        if (seen.has(qSignature)) return; // Skip duplicates
+        if (seen.has(qSignature)) return; 
         seen.add(qSignature);
 
         row._uid = generateStableID(qSignature);
-        
         row.Question = qText; 
+        
+        // --- NEW: CALCULATE ROW NUMBER ---
+        // Array index 0 = Google Sheet Row 2 (Row 1 is header)
+        row.SheetRow = index + 2; 
+        // --------------------------------
 
         const subj = row.Subject ? row.Subject.trim() : "General";
         const topic = row.Topic ? row.Topic.trim() : "Mixed";
@@ -292,6 +298,7 @@ function processData(data) {
     renderMenus(subjects, map); 
     renderTestFilters(subjects, map); 
 }
+
 
 function renderMenus(subjects, map) {
     const container = document.getElementById('dynamic-menus');
@@ -1619,21 +1626,122 @@ function renderPracticeNavigator() {
     }, 100);
 }
 
+// ==========================================
+// 6. ADMIN DASHBOARD LOGIC (ROW LOCATOR)
+// ==========================================
 
+// A. SHOW/HIDE ADMIN PANEL
+function openAdminPanel() {
+    if (!currentUser) return;
+    // Check role locally first
+    db.collection('users').doc(currentUser.uid).get().then(doc => {
+        if (doc.data().role === 'admin') {
+            showScreen('admin-screen');
+            loadAdminReports();
+        } else {
+            alert("⛔ Access Denied: You are not an admin.");
+        }
+    });
+}
 
+function switchAdminTab(tab) {
+    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    ['reports', 'users'].forEach(t => document.getElementById('tab-'+t).classList.add('hidden'));
+    document.getElementById('tab-'+tab).classList.remove('hidden');
+}
 
+// B. REPORTS & ROW LOCATOR
+async function loadAdminReports() {
+    const list = document.getElementById('admin-reports-list');
+    list.innerHTML = "Fetching reports...";
+    
+    try {
+        const snap = await db.collection('reports').orderBy('timestamp', 'desc').limit(20).get();
+        
+        if (snap.empty) { 
+            list.innerHTML = "<p style='color:#718096; padding:10px;'>No pending reports. Great job! 🎉</p>"; 
+            return; 
+        }
 
+        let html = "";
+        snap.forEach(doc => {
+            const r = doc.data();
+            
+            // --- THE MAGIC LOCATOR ---
+            // Find the question in the live CSV data to get the current Row #
+            const liveQ = allQuestions.find(q => q._uid === r.questionID);
+            const rowNum = liveQ ? liveQ.SheetRow : "Unknown (Deleted?)";
+            const dateStr = r.timestamp ? new Date(r.timestamp.seconds*1000).toLocaleDateString() : '-';
 
+            html += `
+                <div class="report-card" id="rep-${doc.id}">
+                    <div class="report-meta">
+                        <span>👤 ${r.reportedBy}</span>
+                        <span>📅 ${dateStr}</span>
+                    </div>
+                    
+                    <div style="margin: 8px 0;">
+                        <span style="background:#fee2e2; color:#b91c1c; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold; text-transform:uppercase;">
+                            ${r.reportReason}
+                        </span>
+                    </div>
 
+                    <div style="font-size:13px; color:#334155; margin-bottom:12px; font-style:italic; background:#f8fafc; padding:5px; border-radius:4px;">
+                        "${r.questionText.substring(0, 100)}..."
+                    </div>
 
+                    <div style="background:#f0f9ff; border:1px dashed #0ea5e9; padding:10px; border-radius:6px; margin-bottom:10px; display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:20px;">📍</span>
+                        <div>
+                            <div style="font-size:10px; color:#64748b; font-weight:bold; text-transform:uppercase;">Google Sheet Location</div>
+                            <div style="font-size:16px; font-weight:800; color:#0284c7;">ROW ${rowNum}</div>
+                        </div>
+                    </div>
 
+                    <div style="display:flex; gap:10px;">
+                        <button class="secondary" style="padding:8px; font-size:12px; width:auto;" onclick="deleteReport('${doc.id}')">
+                            ✅ Resolve & Delete
+                        </button>
+                    </div>
+                </div>`;
+        });
+        list.innerHTML = html;
+    } catch (e) {
+        list.innerHTML = "Error loading reports: " + e.message;
+    }
+}
 
+function deleteReport(id) {
+    if(confirm("Mark as resolved and delete?")) {
+        db.collection('reports').doc(id).delete()
+            .then(() => document.getElementById(`rep-${id}`).remove());
+    }
+}
 
+// C. USER MANAGER
+function adminLookupUser() {
+    const uid = document.getElementById('admin-user-id').value;
+    const div = document.getElementById('admin-user-result');
+    div.innerHTML = "Searching...";
+    
+    db.collection('users').doc(uid).get().then(doc => {
+        if(!doc.exists) { div.innerHTML = "Not found."; return; }
+        const u = doc.data();
+        div.innerHTML = `
+            <div style="border:1px solid #ccc; padding:10px; border-radius:8px; background:white;">
+                <b>${u.email}</b><br>
+                Solved: ${u.solved ? u.solved.length : 0}<br>
+                Role: ${u.role || 'student'}
+                <button onclick="resetUser('${uid}')" style="background:red; color:white; width:100%; margin-top:5px;">⚠️ Reset Progress</button>
+            </div>
+        `;
+    });
+}
 
-
-
-
-
-
-
-
+function resetUser(uid) {
+    if(confirm("Wipe this user's progress?")) {
+        db.collection('users').doc(uid).update({ solved: [], mistakes: [], bookmarks: [], stats: {} })
+            .then(() => alert("Reset complete."));
+    }
+}
