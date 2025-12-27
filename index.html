@@ -249,64 +249,82 @@
     </div>
 
     <div id="premium-modal" class="modal-overlay hidden">
-        <div class="joinCard" style="max-width: 500px; text-align: left;">
-            <h2 style="color:#d97706; margin-bottom:5px;">✨ Unlock Premium</h2>
-            <p style="font-size:13px; color:#666; margin-bottom:20px;">Unlock full question bank, remove limits, and master your exam.</p>
+    <div class="joinCard" style="max-width: 480px; height: 85vh; padding: 0; display: flex; flex-direction: column;">
+        
+        <div style="padding: 25px 25px 15px 25px; flex-shrink: 0;">
+            <h2 style="color:#d97706; font-size: 22px; display:flex; align-items:center; gap:8px; margin-bottom: 5px;">
+                <span>✨ Unlock Premium</span>
+            </h2>
+            <p style="font-size:13px; color:#666;">Get unlimited access & exam mode.</p>
+        </div>
+
+        <div class="prem-tabs">
+            <button onclick="switchPremTab('manual')" class="prem-tab-btn active" id="tab-btn-manual">Upload Proof</button>
+            <button onclick="switchPremTab('code')" class="prem-tab-btn" id="tab-btn-code">Redeem Code</button>
+        </div>
+
+        <div class="modal-body-scroll">
             
-            <div style="display:flex; gap:10px; margin-bottom:15px;">
-                <button onclick="switchPremTab('code')" class="secondary active-prem-tab" id="tab-btn-code">Redeem Code</button>
-                <button onclick="switchPremTab('manual')" class="secondary" id="tab-btn-manual">Upload Proof</button>
-            </div>
-
-            <div id="prem-content-code">
-                <input type="text" id="activation-code" placeholder="Enter Activation Key (e.g. KEY-1234)">
-                <button class="primary" onclick="redeemKey()">Unlock Now</button>
-            </div>
-
             <div id="prem-content-manual">
-    
-    <div style="background:#f8fafc; padding:12px; border-radius:8px; font-size:12px; color:#333; margin-bottom:15px; border:1px solid #e2e8f0; line-height:1.6;">
-        <strong>💸 Payment Methods:</strong><br>
-        EasyPaisa / JazzCash: <b>03343412168</b><br>
-        <hr style="margin:5px 0; border:0; border-top:1px dashed #ccc;">
-        Bank: <b>Meezan Bank</b><br>
-        Account: <b>01860104738754</b><br>
-        Title: <b>Hassaan Shahid</b>
-    </div>
+                
+                <label style="font-size:12px; font-weight:700; color:#1e293b; display:block; margin-bottom:8px;">1. Select Plan:</label>
+                <div class="pricing-grid">
+                    <div class="price-item"><span class="price-duration">1 Day</span> <span class="price-cost">Rs. 50</span></div>
+                    <div class="price-item"><span class="price-duration">1 Week</span> <span class="price-cost">Rs. 200</span></div>
+                    <div class="price-item"><span class="price-duration">15 Days</span> <span class="price-cost">Rs. 300</span></div>
+                    <div class="price-item"><span class="price-duration">1 Month</span> <span class="price-cost">Rs. 500</span></div>
+                    <div class="price-item"><span class="price-duration">3 Months</span> <span class="price-cost">Rs. 1,200</span></div>
+                    <div class="price-item"><span class="price-duration">6 Months</span> <span class="price-cost">Rs. 2,000</span></div>
+                    <div class="price-item"><span class="price-duration">12 Months</span> <span class="price-cost">Rs. 3,500</span></div>
+                    <div class="price-item" style="border-color:#d97706; background:#fffbeb;"><span class="price-duration" style="color:#d97706;">Lifetime</span> <span class="price-cost" style="color:#b45309;">Rs. 5,000</span></div>
+                </div>
 
-    <label style="font-size:12px; font-weight:bold; color:#0072ff; display:block; margin-bottom:5px;">1. Check Prices:</label>
-    <div class="pricing-grid" style="grid-template-columns: repeat(4, 1fr); gap:5px;">
-        <div class="price-item"><span>1 Day</span> <b>Rs. 50</b></div>
-        <div class="price-item"><span>1 Week</span> <b>Rs. 200</b></div>
-        <div class="price-item"><span>15 Days</span> <b>Rs. 300</b></div>
-        <div class="price-item"><span>1 Month</span> <b>Rs. 500</b></div>
-        <div class="price-item"><span>3 Months</span> <b>Rs. 1,200</b></div>
-        <div class="price-item"><span>6 Months</span> <b>Rs. 2,000</b></div>
-        <div class="price-item"><span>12 Months</span> <b>Rs. 3,500</b></div>
-        <div class="price-item"><span>Lifetime</span> <b>Rs. 5,000</b></div>
-    </div>
+                <label style="font-size:12px; font-weight:700; color:#1e293b; display:block; margin-bottom:8px;">2. Send Payment To:</label>
+                <div class="bank-info-box">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <span>EasyPaisa / JazzCash:</span>
+                        <strong style="color:#1e293b; font-size:13px;">03343412168</strong>
+                    </div>
+                    <div style="width:100%; height:1px; background:#e2e8f0; margin:8px 0;"></div>
+                    <div style="margin-bottom:2px;">Bank: <b>Meezan Bank</b></div>
+                    <div style="margin-bottom:2px;">Account: <b>01860104738754</b></div>
+                    <div>Title: <b>Hassaan Shahid</b></div>
+                </div>
 
-    <label style="font-size:12px; font-weight:bold; display:block; margin-top:15px; margin-bottom:5px;">2. Select Plan Paid For:</label>
-    <select id="pay-plan-select" style="width:100%; padding:10px; border-radius:8px; border:1px solid #ccc; background:white;">
-        <option value="1_day">1 Day (Rs. 50)</option>
-        <option value="1_week">1 Week (Rs. 200)</option>
-        <option value="15_days">15 Days (Rs. 300)</option>
-        <option value="1_month">1 Month (Rs. 500)</option>
-        <option value="3_months">3 Months (Rs. 1,200)</option>
-        <option value="6_months">6 Months (Rs. 2,000)</option>
-        <option value="12_months">12 Months (Rs. 3,500)</option>
-        <option value="lifetime">Lifetime (Rs. 5,000)</option>
-    </select>
+                <label style="font-size:12px; font-weight:700; color:#1e293b; display:block; margin-bottom:8px;">3. Submit Request:</label>
+                
+                <select id="pay-plan-select" style="width:100%; padding:12px; border-radius:10px; border:1px solid #cbd5e1; background:white; font-size:13px; margin-bottom:10px;">
+                    <option value="1_day">1 Day (Rs. 50)</option>
+                    <option value="1_week">1 Week (Rs. 200)</option>
+                    <option value="15_days">15 Days (Rs. 300)</option>
+                    <option value="1_month">1 Month (Rs. 500)</option>
+                    <option value="3_months">3 Months (Rs. 1,200)</option>
+                    <option value="6_months">6 Months (Rs. 2,000)</option>
+                    <option value="12_months">12 Months (Rs. 3,500)</option>
+                    <option value="lifetime">Lifetime (Rs. 5,000)</option>
+                </select>
 
-    <label style="font-size:12px; font-weight:bold; display:block; margin-top:15px; margin-bottom:5px;">3. Upload Screenshot:</label>
-    <input type="file" id="pay-proof" accept="image/*" style="font-size:12px; border:1px dashed #ccc; padding:10px; width:100%;">
+                <input type="file" id="pay-proof" accept="image/*" style="font-size:12px; width:100%; padding:10px; border:1px dashed #cbd5e1; border-radius:10px;">
 
-    <button class="primary" onclick="submitPaymentProof()" style="margin-top:20px; background:#10b981;">✅ Submit Proof</button>
-</div>
+                <button class="primary" onclick="submitPaymentProof()" style="margin-top:20px; background:#10b981; width:100%;">✅ Submit Proof</button>
+            </div>
 
-            <button onclick="document.getElementById('premium-modal').classList.add('hidden')" style="margin-top:15px; background:transparent; color:#666; padding:10px; width:100%;">Close</button>
+            <div id="prem-content-code" class="hidden">
+                <div style="text-align:center; padding:20px 0;">
+                    <p style="font-size:13px; color:#666; margin-bottom:15px;">Enter the activation key provided by the admin.</p>
+                    <input type="text" id="activation-code" placeholder="KEY-XXXX-XXXX" style="font-size:18px; font-weight:bold; letter-spacing:2px; text-transform:uppercase; text-align:center; padding:15px;">
+                    <button class="primary" onclick="redeemKey()" style="margin-top:20px;">Unlock Now</button>
+                </div>
+            </div>
+
+            <div style="height:20px;"></div>
+        </div>
+
+        <div style="padding: 10px 25px 25px 25px; border-top: 1px solid #f1f5f9; text-align:center; background:white;">
+            <button onclick="document.getElementById('premium-modal').classList.add('hidden')" style="background:transparent; color:#94a3b8; font-size:13px; padding:10px; margin:0; width:auto; font-weight:normal;">Close</button>
         </div>
     </div>
+</div>
 
     <div id="profile-modal" class="modal-overlay hidden">
         <div class="joinCard" style="max-width: 400px; text-align: center;">
@@ -338,4 +356,5 @@
     <script src="script.js"></script>
 </body>
 </html>
+
 
