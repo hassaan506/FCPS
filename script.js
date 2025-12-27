@@ -1,5 +1,5 @@
 // ======================================================
-// 1. CONFIGURATION
+// 1. CONFIGURATION & FIREBASE SETUP
 // ======================================================
 
 const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8aw1eGppF_fgvI5VAOO_3XEONyI-4QgWa0IgQg7K-VdxeFyn4XBpWT9tVDewbQ6PnMEQ80XpwbASh/pub?output=csv";
@@ -22,7 +22,7 @@ const db = firebase.firestore();
 // ======================================================
 
 let currentUser = null;
-let userProfile = null; // Stores full user data (role, premium, etc.)
+let userProfile = null; // Stores role, premium status, device ID
 let isGuest = false;
 
 let allQuestions = [];
@@ -39,14 +39,14 @@ let testAnswers = {};
 let testFlags = {}; 
 let testTimeRemaining = 0;
 
-// --- DEVICE ID (Anti-Sharing) ---
+// --- FEATURE: DEVICE LOCK (Anti-Sharing) ---
 let currentDeviceId = localStorage.getItem('fcps_device_id');
 if (!currentDeviceId) {
     currentDeviceId = 'dev_' + Math.random().toString(36).substr(2, 9);
     localStorage.setItem('fcps_device_id', currentDeviceId);
 }
 
-// --- PREMIUM PLANS (Duration in Milliseconds) ---
+// --- FEATURE: PREMIUM PLANS (Milliseconds) ---
 const PLAN_DURATIONS = {
     '1_day': 86400000,
     '1_week': 604800000,
@@ -58,18 +58,18 @@ const PLAN_DURATIONS = {
 };
 
 // ======================================================
-// 3. AUTHENTICATION & SECURITY
+// 3. AUTHENTICATION & SECURITY LOGIC
 // ======================================================
 
 auth.onAuthStateChanged(async (user) => {
     if (user) {
         currentUser = user;
         isGuest = false;
-        console.log("User detected:", user.email);
+        console.log("✅ User detected:", user.email);
         await checkLoginSecurity(user);
     } else {
         if (!isGuest) {
-            console.log("No user signed in.");
+            console.log("🔒 No user signed in.");
             currentUser = null;
             userProfile = null;
             showScreen('auth-screen');
@@ -77,14 +77,14 @@ auth.onAuthStateChanged(async (user) => {
     }
 });
 
-// --- CORE SECURITY CHECK (Device Lock & Ban) ---
+// --- CORE SECURITY CHECK ---
 async function checkLoginSecurity(user) {
     try {
         const docRef = db.collection('users').doc(user.uid);
         const doc = await docRef.get();
 
         if (!doc.exists) {
-            // First Login: Create Profile
+            // New User: Create Profile
             await docRef.set({
                 email: user.email,
                 deviceId: currentDeviceId,
@@ -93,12 +93,11 @@ async function checkLoginSecurity(user) {
                 joined: new Date(),
                 solved: [], bookmarks: [], mistakes: [], stats: {}
             }, { merge: true });
-            
             loadUserData();
         } else {
             const data = doc.data();
             
-            // 1. BAN CHECK
+            // 1. ADMIN BAN CHECK
             if (data.disabled) {
                 auth.signOut();
                 alert("⛔ Your account has been disabled by the admin.");
@@ -108,41 +107,42 @@ async function checkLoginSecurity(user) {
             // 2. DEVICE LOCK CHECK
             if (data.deviceId && data.deviceId !== currentDeviceId) {
                 auth.signOut();
-                alert("🚫 Security Alert: Login detected on a new device.\n\nPlease log out from other devices first.");
+                alert("🚫 Security Alert: Account logged in on another device.\n\nPlease log out from the other device first.");
                 return;
             }
 
-            // Update legacy users or current session
+            // Update Device ID if missing (Legacy support)
             if (!data.deviceId) await docRef.update({ deviceId: currentDeviceId });
             
-            userProfile = data; // Store profile globally
+            userProfile = data;
             loadUserData();
         }
         
-        // Load App Content
+        // Success: Load App
         showScreen('dashboard-screen');
         loadQuestions(); 
         
         // Show Admin Button if Authorized
         if (userProfile && userProfile.role === 'admin') {
-            document.getElementById('admin-btn').classList.remove('hidden');
+            const btn = document.getElementById('admin-btn');
+            if(btn) btn.classList.remove('hidden');
         }
 
-        // Check Premium Status
         checkPremiumExpiry();
 
     } catch (e) { 
         console.error("Auth Error:", e); 
-        loadUserData(); // Fallback
+        // Fallback to allow entry if DB read fails (optional)
+        loadUserData();
         showScreen('dashboard-screen');
         loadQuestions();
     }
 }
 
-// --- GUEST MODE ---
 function guestLogin() {
     isGuest = true;
     userProfile = { role: 'guest', isPremium: false };
+    
     showScreen('dashboard-screen');
     loadQuestions();
     
@@ -154,15 +154,17 @@ function guestLogin() {
 }
 
 function login() {
-    const email = document.getElementById('email').value;
-    const pass = document.getElementById('password').value;
-    auth.signInWithEmailAndPassword(email, pass).catch(e => document.getElementById('auth-msg').innerText = e.message);
+    const e = document.getElementById('email').value;
+    const p = document.getElementById('password').value;
+    if(!e || !p) return alert("Please enter email and password");
+    auth.signInWithEmailAndPassword(e, p).catch(err => document.getElementById('auth-msg').innerText = err.message);
 }
 
 function signup() {
-    const email = document.getElementById('email').value;
-    const pass = document.getElementById('password').value;
-    auth.createUserWithEmailAndPassword(email, pass).catch(e => document.getElementById('auth-msg').innerText = e.message);
+    const e = document.getElementById('email').value;
+    const p = document.getElementById('password').value;
+    if(!e || !p) return alert("Please enter email and password");
+    auth.createUserWithEmailAndPassword(e, p).catch(err => document.getElementById('auth-msg').innerText = err.message);
 }
 
 function logout() {
@@ -172,7 +174,6 @@ function logout() {
     });
 }
 
-// --- PREMIUM EXPIRY CHECK ---
 function checkPremiumExpiry() {
     if (!userProfile || !userProfile.isPremium || !userProfile.expiryDate) {
         document.getElementById('premium-badge').classList.add('hidden');
@@ -181,22 +182,26 @@ function checkPremiumExpiry() {
     }
     
     const now = new Date().getTime();
+    // Handle Firestore Timestamp vs JS Date
     const expiry = userProfile.expiryDate.toMillis ? userProfile.expiryDate.toMillis() : new Date(userProfile.expiryDate).getTime();
 
     if (now > expiry) {
+        // Expired: Revoke Premium
         db.collection('users').doc(currentUser.uid).update({ isPremium: false });
         userProfile.isPremium = false;
+        
         document.getElementById('premium-badge').classList.add('hidden');
         document.getElementById('get-premium-btn').classList.remove('hidden');
         alert("⚠️ Your Premium Subscription has expired.");
     } else {
+        // Active
         document.getElementById('premium-badge').classList.remove('hidden');
         document.getElementById('get-premium-btn').classList.add('hidden');
     }
 }
 
 // ======================================================
-// 4. USER DATA MANAGEMENT
+// 4. USER DATA MANAGEMENT (Fixed Stats)
 // ======================================================
 
 async function loadUserData() {
@@ -220,23 +225,33 @@ async function loadUserData() {
 
         checkStreak(userData);
 
-        // --- NEW: Calculate Total Correct from Stats ---
+        // --- CALCULATION FIX: Total Attempts vs Correct ---
+        let totalAttempts = 0;
         let totalCorrect = 0;
-        if(userData.stats) {
-            Object.values(userData.stats).forEach(s => totalCorrect += (s.correct || 0));
+        
+        if (userData.stats) {
+            Object.values(userData.stats).forEach(s => {
+                totalAttempts += (s.total || 0);
+                totalCorrect += (s.correct || 0);
+            });
         }
+        
+        const accuracy = totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0;
 
-        // --- FIX: Show Count instead of % on Dashboard ---
+        // --- DASHBOARD UI UPDATE ---
         if(statsBox) {
             statsBox.style.opacity = "1"; 
             statsBox.innerHTML = `
-                <div class="stat-row"><span class="stat-lbl">✅ Correct:</span> <span class="stat-val" style="color:#2ecc71">${totalCorrect} / ${userSolvedIDs.length}</span></div>
-                <div class="stat-row"><span class="stat-lbl">❌ Mistakes:</span> <span class="stat-val" style="color:#e74c3c">${userMistakes.length}</span></div>
-                <div class="stat-row" style="border:none;"><span class="stat-lbl">⭐ Bookmarks:</span> <span class="stat-val">${userBookmarks.length}</span></div>`;
+                <div style="margin-top:5px; font-size:14px; line-height:1.8;">
+                    <div>✅ Unique Solved: <b style="color:#2ecc71;">${userSolvedIDs.length}</b></div>
+                    <div>🎯 Accuracy: <b>${accuracy}%</b> <span style="font-size:11px; color:#666;">(${totalCorrect}/${totalAttempts})</span></div>
+                    <div style="color:#ef4444;">❌ Pending Mistakes: <b>${userMistakes.length}</b></div>
+                </div>`;
         }
 
         updateBadgeButton(); 
 
+        // Refresh Menus if data exists
         if (allQuestions.length > 0) processData(allQuestions, true);
 
     } catch (e) { console.error("Load Error:", e); }
@@ -250,16 +265,11 @@ function checkStreak(data) {
     if (lastLogin !== today) {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
-        
-        if (lastLogin === yesterday.toDateString()) {
-            currentStreak++;
-        } else {
-            currentStreak = 1;
-        }
+        if (lastLogin === yesterday.toDateString()) currentStreak++;
+        else currentStreak = 1;
         
         db.collection('users').doc(currentUser.uid).set({
-            lastLoginDate: today,
-            streak: currentStreak
+            lastLoginDate: today, streak: currentStreak
         }, { merge: true });
     }
 
@@ -270,7 +280,7 @@ function checkStreak(data) {
 }
 
 // ======================================================
-// 5. DATA LOADING (CSV)
+// 5. DATA LOADING & PROCESSING
 // ======================================================
 
 function loadQuestions() {
@@ -284,7 +294,6 @@ function processData(data, reRenderOnly = false) {
     if(!reRenderOnly) {
         const seen = new Set();
         allQuestions = [];
-        
         data.forEach((row, index) => {
             delete row.Book; delete row.Exam; delete row.Number;
             const qText = row.Question || row.Questions;
@@ -296,8 +305,10 @@ function processData(data, reRenderOnly = false) {
             if (seen.has(qSignature)) return; 
             seen.add(qSignature);
 
-            row._uid = generateStableID(qSignature);
+            row._uid = "id_" + Math.abs(generateHash(qSignature));
             row.Question = qText; 
+            
+            // --- ROW LOCATOR (For Admin) ---
             row.SheetRow = index + 2; 
 
             const subj = row.Subject ? row.Subject.trim() : "General";
@@ -318,51 +329,45 @@ function processData(data, reRenderOnly = false) {
     });
 
     renderMenus(subjects, map); 
-    renderTestFilters(subjects, map); 
+    renderTestFilters(subjects, map);
     
+    // Update Admin Stats
     if(document.getElementById('admin-total-q')) {
         document.getElementById('admin-total-q').innerText = allQuestions.length;
     }
 }
 
-function generateStableID(str) {
+function generateHash(str) {
     let hash = 0;
-    if (str.length === 0) return hash;
-    for (let i = 0; i < str.length; i++) {
-        const char = str.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash |= 0; 
-    }
-    return "id_" + Math.abs(hash);
+    for (let i = 0; i < str.length; i++) hash = ((hash << 5) - hash) + str.charCodeAt(i) | 0;
+    return hash;
 }
 
 // ======================================================
-// 6. UI RENDERING (Menus & Filters)
+// 6. UI RENDERERS (Menu with Counts)
 // ======================================================
 
 function renderMenus(subjects, map) {
     const container = document.getElementById('dynamic-menus');
     container.innerHTML = "";
-    const sortedSubjects = Array.from(subjects).sort();
-
-    sortedSubjects.forEach(subj => {
+    Array.from(subjects).sort().forEach(subj => {
         const subjQuestions = allQuestions.filter(q => q.Subject === subj);
+        const solvedCount = subjQuestions.filter(q => userSolvedIDs.includes(q._uid)).length;
         const totalSubj = subjQuestions.length;
-        const solvedSubj = subjQuestions.filter(q => userSolvedIDs.includes(q._uid)).length;
-        const percentSubj = totalSubj > 0 ? Math.round((solvedSubj / totalSubj) * 100) : 0;
-        
+        const pct = totalSubj > 0 ? Math.round((solvedCount/totalSubj)*100) : 0;
+
         const details = document.createElement('details');
         details.className = "subject-dropdown-card";
-
+        
         // FIX: Display "Solved / Total" instead of just Percentage
         details.innerHTML = `
             <summary class="subject-summary">
                 <div class="summary-header">
                     <span class="subj-name">${subj}</span>
-                    <span class="subj-stats">${solvedSubj} / ${totalSubj}</span>
+                    <span class="subj-stats">${solvedCount} / ${totalSubj}</span>
                 </div>
                 <div class="progress-bar-thin">
-                    <div class="fill" style="width:${percentSubj}%"></div>
+                    <div class="fill" style="width:${pct}%"></div>
                 </div>
             </summary>
         `;
@@ -392,8 +397,12 @@ function renderMenus(subjects, map) {
                 item.className = "topic-item-container";
                 item.onclick = () => startPractice(subj, topic);
 
+                // FIX: Added small count inside topic box
                 item.innerHTML = `
-                    <span class="topic-name">${topic}</span>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span class="topic-name">${topic}</span>
+                        <span style="font-size:10px; color:#888;">${solvedTop}/${totalTop}</span>
+                    </div>
                     <div class="topic-mini-track">
                         <div class="topic-mini-fill" style="width:${percentTop}%"></div>
                     </div>
@@ -471,7 +480,7 @@ function toggleSubjectAll(checkbox, subjName) {
 }
 
 // ======================================================
-// 7. STUDY LOGIC (Practice/Test)
+// 7. STUDY LOGIC (Practice/Test with Admin Bypass)
 // ======================================================
 
 function setMode(mode) {
@@ -489,7 +498,7 @@ function setMode(mode) {
 function startPractice(subject, topic) {
     let pool = allQuestions.filter(q => q.Subject === subject && (!topic || q.Topic === topic));
     
-    // --- CONTENT GATING (New) ---
+    // --- CONTENT GATING ---
     const isPrem = userProfile && userProfile.isPremium;
     if (!isPrem) {
         if (pool.length > 20) {
@@ -508,7 +517,6 @@ function startPractice(subject, topic) {
 
     filteredQuestions = pool;
     
-    // Auto-Resume Logic
     let startIndex = 0;
     if (!onlyUnattempted) {
         startIndex = filteredQuestions.findIndex(q => !userSolvedIDs.includes(q._uid));
@@ -550,10 +558,11 @@ function startSavedQuestions() {
 }
 
 function startTest() {
-    // --- ADMIN BYPASS FIX: Allow Admins to enter Exam Mode freely ---
+    // --- ADMIN BYPASS FIX ---
     const isAdmin = userProfile && userProfile.role === 'admin';
     const isPrem = userProfile && userProfile.isPremium;
 
+    // Only block if NOT Guest AND NOT Premium AND NOT Admin
     if (!isGuest && !isPrem && !isAdmin) {
         if(!confirm("⚠️ Free Version: Exam mode is limited.\nUpgrade for unlimited tests?")) return;
     }
@@ -597,7 +606,7 @@ function startTest() {
 }
 
 // ======================================================
-// 8. QUIZ EXECUTION
+// 8. QUIZ ENGINE (Fixed Sidebar Logic)
 // ======================================================
 
 function renderPage() {
@@ -627,9 +636,7 @@ function renderPage() {
     } else {
         document.getElementById('timer').classList.remove('hidden');
         flagBtn.classList.remove('hidden'); 
-
-        // FIX: Ensure Sidebar is Active on Mobile/Desktop
-        document.getElementById('test-sidebar').classList.add('active');
+        document.getElementById('test-sidebar').classList.add('active'); // Force sidebar
 
         const start = currentIndex;
         const end = Math.min(start + 5, filteredQuestions.length);
@@ -806,7 +813,6 @@ function submitTest() {
 
     const pct = Math.round((score/filteredQuestions.length)*100);
     
-    // Save Result
     if(currentUser && !isGuest) {
         db.collection('users').doc(currentUser.uid).collection('results').add({
             date: new Date(), score: pct, total: filteredQuestions.length
@@ -908,7 +914,7 @@ function switchAdminTab(tab) {
     if(tab==='reports') loadAdminReports();
     if(tab==='payments') loadAdminPayments();
     if(tab==='keys') loadAdminKeys();
-    if(tab==='users') loadAllUsers(); // <--- LIST USERS (Fixed)
+    if(tab==='users') loadAllUsers();
 }
 
 async function loadAllUsers() {
@@ -1035,11 +1041,15 @@ async function adminLookupUser(targetId) {
 }
 
 // ======================================================
-// 11. HELPERS & UTILITIES (Badges & Analytics Fixed)
+// 11. HELPERS & UTILITIES (Badges, Analytics, Screen Switcher)
 // ======================================================
 
+// --- FIX: SCREEN SWITCHER (Correctly hides everything) ---
 function showScreen(screenId) {
-    const ids = ['auth-screen', 'dashboard-screen', 'quiz-screen', 'result-screen', 'admin-screen'];
+    const ids = [
+        'auth-screen', 'dashboard-screen', 'quiz-screen', 'result-screen', 'admin-screen',
+        'explanation-modal', 'premium-modal', 'profile-modal', 'analytics-modal', 'badges-modal'
+    ];
     ids.forEach(id => {
         const el = document.getElementById(id);
         if(el) { el.classList.add('hidden'); el.classList.remove('active'); }
@@ -1114,7 +1124,6 @@ function openBadges() {
 }
 
 function updateBadgeButton() {
-    // Basic icon update logic
     if(userSolvedIDs.length > 5000) document.getElementById('main-badge-btn').innerText = "👑";
     else if(userSolvedIDs.length > 2000) document.getElementById('main-badge-btn').innerText = "💎";
     else if(userSolvedIDs.length > 1000) document.getElementById('main-badge-btn').innerText = "🥇";
@@ -1137,14 +1146,13 @@ async function openAnalytics() {
         const doc = await db.collection('users').doc(currentUser.uid).get();
         const stats = doc.data().stats || {};
         
-        let html = "<h3>📊 Performance</h3>";
+        let html = "<h3>📊 Subject Performance</h3>";
         Object.keys(stats).forEach(key => {
             const s = stats[key];
             const pct = Math.round((s.correct/s.total)*100);
             html += `<div class="stat-item">
-                <div class="stat-header"><span>${key}</span><span>${pct}%</span></div>
+                <div class="stat-header"><span>${key}</span><span>${pct}% (${s.correct}/${s.total})</span></div>
                 <div class="progress-track"><div class="progress-fill" style="width:${pct}%; background:#2ecc71;"></div></div>
-                <div class="stat-meta">${s.correct}/${s.total} Correct</div>
             </div>`;
         });
 
@@ -1158,13 +1166,13 @@ async function openAnalytics() {
             historySnap.forEach(r => {
                 const d = r.data();
                 const dateStr = d.date ? new Date(d.date.seconds*1000).toLocaleDateString() : '-';
-                html += `<tr><td style='border:1px solid #eee; padding:5px;'>${dateStr}</td><td style='border:1px solid #eee; padding:5px;'>${d.score}%</td></tr>`;
+                html += `<tr><td style='border:1px solid #eee; padding:5px;'>${dateStr}</td><td style='border:1px solid #eee; padding:5px;'>${d.score}% (${d.total} Qs)</td></tr>`;
             });
             html += "</table>";
         }
         
         container.innerHTML = html || "No data yet.";
-    } catch(e) { container.innerHTML = "Error: " + e.message; }
+    } catch(e) { container.innerHTML = "Error: Please check if you updated the Firebase Rules (Step 1)."; }
 }
 
 function toggleTheme() {
@@ -1237,6 +1245,11 @@ function goHome() {
     showScreen('dashboard-screen'); 
     loadUserData(); 
 }
+
+// Fallback for missing admin functions in case of load errors
+if (typeof loadAdminReports !== 'function') window.loadAdminReports = function(){};
+if (typeof loadAdminPayments !== 'function') window.loadAdminPayments = function(){};
+if (typeof loadAdminKeys !== 'function') window.loadAdminKeys = function(){};
 
 window.onload = () => {
     if(localStorage.getItem('fcps-theme')==='dark') toggleTheme();
