@@ -777,6 +777,7 @@ async function saveProgressToDB(q, isCorrect) {
                 [`stats.${q.Subject.replace(/\W/g,'_')}.total`]: firebase.firestore.FieldValue.increment(1)
             });
         }
+      updateBadgeButton();
     }
 }
 
@@ -997,7 +998,7 @@ async function loadAdminKeys() {
     list.innerHTML = html + "</table>";
 }
 
-async function adminLookupUser(targetId) {
+aasync function adminLookupUser(targetId) {
     const input = targetId || document.getElementById('admin-user-input').value;
     const res = document.getElementById('admin-user-result');
     res.innerHTML = "Searching...";
@@ -1011,7 +1012,7 @@ async function adminLookupUser(targetId) {
     if(!doc.exists) { res.innerHTML = "Not found"; return; }
     const u = doc.data();
     
-    // --- UPDATED CARD WITH PREMIUM DROPDOWN ---
+    // Updated HTML with Dropdown and "Refresh-on-Click" logic
     res.innerHTML = `
     <div class="user-card">
         <h3>${u.email}</h3>
@@ -1033,22 +1034,39 @@ async function adminLookupUser(targetId) {
         </div>
         
         <div style="display:flex; gap:10px; margin-top:15px;">
-            <button onclick="db.collection('users').doc('${doc.id}').update({disabled:${!u.disabled}}).then(()=>alert('Done'))" style="background:${u.disabled?'green':'red'}; color:white; flex:1;">
+            <button onclick="adminToggleBan('${doc.id}', ${!u.disabled})" style="background:${u.disabled?'green':'red'}; color:white; flex:1;">
                 ${u.disabled?'Unban':'Ban User'}
             </button>
-            <button onclick="db.collection('users').doc('${doc.id}').update({isPremium:false}).then(()=>alert('Revoked'))" style="background:#64748b; color:white; flex:1;">
+            <button onclick="adminRevokePremium('${doc.id}')" style="background:#64748b; color:white; flex:1;">
                 Revoke Premium
             </button>
         </div>
     </div>`;
 }
 
+// --- ADD THESE NEW FUNCTIONS RIGHT BELOW adminLookupUser ---
+
 async function adminGrantPremium(uid) {
     const plan = document.getElementById('admin-grant-plan-'+uid).value;
-    const expiry = new Date().getTime() + PLAN_DURATIONS[plan];
+    // PLAN_DURATIONS must be defined at the top of your file
+    const duration = PLAN_DURATIONS[plan] || 2592000000; 
+    const expiry = new Date().getTime() + duration;
+    
     await db.collection('users').doc(uid).update({ isPremium: true, expiryDate: new Date(expiry) });
     alert("✅ Granted " + plan);
-    adminLookupUser(uid); // Refresh card
+    adminLookupUser(uid); // <--- This refreshes the card without reloading page
+}
+
+async function adminRevokePremium(uid) {
+    await db.collection('users').doc(uid).update({ isPremium: false });
+    alert("🚫 Revoked Premium");
+    adminLookupUser(uid); // <--- This refreshes the card
+}
+
+async function adminToggleBan(uid, newStatus) {
+    await db.collection('users').doc(uid).update({ disabled: newStatus });
+    alert("Status Updated");
+    adminLookupUser(uid); // <--- This refreshes the card
 }
 
 // ======================================================
@@ -1277,4 +1295,5 @@ if (typeof loadAdminKeys !== 'function') window.loadAdminKeys = function(){};
 window.onload = () => {
     if(localStorage.getItem('fcps-theme')==='dark') toggleTheme();
 }
+
 
