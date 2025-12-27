@@ -1042,7 +1042,7 @@ function renderUserRow(u, extraLabel = "") {
     let dateStr = "N/A";
     if(u.joined) {
         const d = u.joined.seconds ? new Date(u.joined.seconds * 1000) : new Date(u.joined);
-        if(!isNaN(d.getTime())) dateStr = d.toLocaleDateString();
+        if(!isNaN(d.getTime())) dateStr = formatDateHelper(d);
     }
 
     return `
@@ -1364,7 +1364,7 @@ async function openProfileModal() {
                     expiryText = "Lifetime";
                     expiryElem.style.color = "#10b981"; 
                 } else {
-                    expiryText = d.toLocaleDateString();
+                    expiryText = formatDateHelper(d);
                     expiryElem.style.color = "#d97706"; 
                 }
             } else {
@@ -1430,7 +1430,15 @@ function parseDateHelper(dateInput) {
 
 function formatDateHelper(dateInput) {
     const d = parseDateHelper(dateInput);
-    return isNaN(d.getTime()) ? "N/A" : d.toLocaleDateString();
+    if (isNaN(d.getTime())) return "N/A";
+
+    // CUSTOM FORMAT: DD/MMM/YYYY
+    const day = String(d.getDate()).padStart(2, '0'); // Ensures '05' instead of '5'
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const month = months[d.getMonth()];
+    const year = d.getFullYear();
+
+    return `${day}/${month}/${year}`;
 }
 
 function openBadges() {
@@ -1604,3 +1612,4 @@ function resetPassword() {
 window.onload = () => {
     if(localStorage.getItem('fcps-theme')==='dark') toggleTheme();
 }
+
