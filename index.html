@@ -248,17 +248,17 @@
         </div>
     </div>
 
-    <div id="premium-modal" class="modal-overlay hidden">
-    <div class="joinCard" style="padding: 0 !important; overflow: hidden; display: flex; flex-direction: column; max-height: 85vh;">
+<div id="premium-modal" class="modal-overlay hidden">
+    <div class="joinCard" style="padding: 0 !important; overflow: hidden; display: flex; flex-direction: column; max-height: 85vh; width: 100%; max-width: 450px; background: white; border-radius: 20px;">
         
-        <div class="modal-header">
-            <h2 style="color:#d97706; font-size: 22px; display:flex; align-items:center; gap:8px; margin-bottom: 5px;">
+        <div class="modal-header" style="flex-shrink: 0; padding: 20px 25px; border-bottom: 1px solid #f1f5f9; background: white;">
+            <h2 style="color:#d97706; font-size: 22px; display:flex; align-items:center; gap:8px; margin-bottom: 5px; margin-top: 0;">
                 <span>✨ Unlock Premium</span>
             </h2>
             <p style="font-size:13px; color:#666; margin:0;">Select a plan to start your journey.</p>
         </div>
 
-        <div class="modal-body-scroll">
+        <div class="modal-body-scroll" style="flex: 1; overflow-y: auto; min-height: 0; padding: 10px 25px;">
             
             <div class="prem-tabs" style="display:flex; background:#f1f5f9; padding:4px; border-radius:10px; margin: 15px 0;">
                 <button onclick="switchPremTab('manual')" class="prem-tab-btn active" id="tab-btn-manual" style="flex:1; border:none; padding:10px; border-radius:8px; cursor:pointer;">Upload Proof</button>
@@ -292,7 +292,8 @@
                 <input type="hidden" id="selected-plan-value" value=""> 
 
                 <button class="primary" onclick="submitPaymentProof()" style="margin-top:20px; width:100%;">✅ Submit Request</button>
-                <div style="height: 20px;"></div> </div>
+                <div style="height: 20px;"></div> 
+            </div>
 
             <div id="prem-content-code" class="hidden" style="text-align:center; padding:40px 0;">
                 <input type="text" id="activation-code" placeholder="KEY-XXXX-XXXX" style="width:100%; padding:15px; font-size:16px; text-align:center; border:2px solid #e2e8f0; border-radius:10px; margin-bottom:15px; text-transform:uppercase;">
@@ -300,12 +301,11 @@
             </div>
         </div>
 
-        <div class="modal-footer">
+        <div class="modal-footer" style="flex-shrink: 0; padding: 15px 25px; border-top: 1px solid #f1f5f9; background: white; text-align: center;">
             <button onclick="document.getElementById('premium-modal').classList.add('hidden')" style="background:transparent; color:#94a3b8; width:auto; margin:0; font-weight:normal; font-size:13px;">Close</button>
         </div>
     </div>
 </div>
-
     
     <div id="profile-modal" class="modal-overlay hidden">
         <div class="joinCard" style="max-width: 400px; text-align: center;">
@@ -337,6 +337,7 @@
     <script src="script.js"></script>
 </body>
 </html>
+
 
 
 
