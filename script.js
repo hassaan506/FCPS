@@ -18,11 +18,11 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 
 // ======================================================
-// 2. STATE VARIABLES
+// 2. STATE VARIABLES & GLOBALS
 // ======================================================
 
 let currentUser = null;
-let userProfile = null; // Stores role, premium status, device ID
+let userProfile = null; 
 let isGuest = false;
 
 let allQuestions = [];
@@ -39,14 +39,14 @@ let testAnswers = {};
 let testFlags = {}; 
 let testTimeRemaining = 0;
 
-// --- FEATURE: DEVICE LOCK (Anti-Sharing) ---
+// --- FEATURE: DEVICE LOCK ---
 let currentDeviceId = localStorage.getItem('fcps_device_id');
 if (!currentDeviceId) {
     currentDeviceId = 'dev_' + Math.random().toString(36).substr(2, 9);
     localStorage.setItem('fcps_device_id', currentDeviceId);
 }
 
-// --- PREMIUM PLANS (Duration in Milliseconds) ---
+// --- GLOBAL PREMIUM PLANS CONFIGURATION (The Calculator) ---
 const PLAN_DURATIONS = {
     '1_day': 86400000,
     '1_week': 604800000,
@@ -55,7 +55,7 @@ const PLAN_DURATIONS = {
     '3_months': 7776000000,
     '6_months': 15552000000,
     '12_months': 31536000000,
-    'lifetime': 2524608000000
+    'lifetime': 2524608000000 // ~80 Years
 };
 
 // ======================================================
@@ -64,38 +64,30 @@ const PLAN_DURATIONS = {
 
 auth.onAuthStateChanged(async (user) => {
     if (user) {
-        // User LOGGED IN
         console.log("✅ User detected:", user.email);
         currentUser = user;
         isGuest = false;
         
-        // Hide Auth, Show Dashboard
         document.getElementById('auth-screen').classList.add('hidden');
         document.getElementById('auth-screen').classList.remove('active');
         
-        // Run security check (this will eventually show the dashboard)
         await checkLoginSecurity(user);
         
     } else {
-        // User LOGGED OUT
         if (!isGuest) {
             console.log("🔒 No user signed in.");
             currentUser = null;
             userProfile = null;
             
-            // CRITICAL FIX: Hide Dashboard & Modals explicitly
             document.getElementById('dashboard-screen').classList.add('hidden');
             document.getElementById('dashboard-screen').classList.remove('active');
+            document.getElementById('premium-modal').classList.add('hidden');
             
-            document.getElementById('premium-modal').classList.add('hidden'); // Hide modal
-            
-            // Show Login
             showScreen('auth-screen');
         }
     }
 });
 
-// --- CORE SECURITY CHECK ---
 async function checkLoginSecurity(user) {
     try {
         const docRef = db.collection('users').doc(user.uid);
@@ -116,36 +108,28 @@ async function checkLoginSecurity(user) {
         } else {
             const data = doc.data();
             
-            // --- AUTO-REPAIR: Fix Missing Email & Date ---
+            // --- AUTO-REPAIR: Fix Missing Data ---
             const updates = {};
             
-            // 1. Fix Missing Email (This fixes your Admin visibility)
             if (!data.email || data.email !== user.email) {
                 updates.email = user.email;
-                data.email = user.email; // Update local state
+                data.email = user.email; 
             }
 
-            // 2. Fix Missing 'Joined' Date
             if (!data.joined) {
                 const creationTime = user.metadata.creationTime ? new Date(user.metadata.creationTime) : new Date();
                 updates.joined = creationTime;
                 data.joined = creationTime;
             }
 
-            // Apply updates if needed
             if (Object.keys(updates).length > 0) {
                 await docRef.update(updates);
             }
-            // ---------------------------------------------
 
             if (data.disabled) {
                 auth.signOut();
                 alert("⛔ Your account has been disabled by the admin.");
                 return;
-            }
-
-            if (data.deviceId && data.deviceId !== currentDeviceId) {
-                // strict mode (optional): auth.signOut(); return alert("Used on another device");
             }
 
             if (!data.deviceId) await docRef.update({ deviceId: currentDeviceId });
@@ -174,14 +158,11 @@ async function checkLoginSecurity(user) {
 function guestLogin() {
     isGuest = true;
     userProfile = { role: 'guest', isPremium: false };
-    
     showScreen('dashboard-screen');
     loadQuestions();
-    
     document.getElementById('user-display').innerText = "Guest User";
     document.getElementById('premium-badge').classList.add('hidden');
     document.getElementById('get-premium-btn').classList.remove('hidden');
-    
     alert("👤 Guest Mode Active\n\n⚠️ Progress is NOT saved.\n🔒 Limit: 20 Questions per topic.");
 }
 
@@ -218,22 +199,19 @@ function checkPremiumExpiry() {
     const expiry = userProfile.expiryDate.toMillis ? userProfile.expiryDate.toMillis() : new Date(userProfile.expiryDate).getTime();
 
     if (now > expiry) {
-        // Expired: Revoke Premium
         db.collection('users').doc(currentUser.uid).update({ isPremium: false });
         userProfile.isPremium = false;
-        
         document.getElementById('premium-badge').classList.add('hidden');
         document.getElementById('get-premium-btn').classList.remove('hidden');
         alert("⚠️ Your Premium Subscription has expired.");
     } else {
-        // Active
         document.getElementById('premium-badge').classList.remove('hidden');
         document.getElementById('get-premium-btn').classList.add('hidden');
     }
 }
 
 // ======================================================
-// 4. USER DATA MANAGEMENT (Fixed Stats)
+// 4. USER DATA MANAGEMENT
 // ======================================================
 
 async function loadUserData() {
@@ -257,7 +235,6 @@ async function loadUserData() {
 
         checkStreak(userData);
 
-        // --- CALCULATION FIX: Total Attempts vs Correct ---
         let totalAttempts = 0;
         let totalCorrect = 0;
         
@@ -270,7 +247,6 @@ async function loadUserData() {
         
         const accuracy = totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0;
 
-        // --- DASHBOARD UI UPDATE ---
         if(statsBox) {
             statsBox.style.opacity = "1"; 
             statsBox.innerHTML = `
@@ -283,7 +259,6 @@ async function loadUserData() {
 
         updateBadgeButton(); 
 
-        // Refresh Menus if data exists
         if (allQuestions.length > 0) processData(allQuestions, true);
 
     } catch (e) { console.error("Load Error:", e); }
@@ -339,8 +314,6 @@ function processData(data, reRenderOnly = false) {
 
             row._uid = "id_" + Math.abs(generateHash(qSignature));
             row.Question = qText; 
-            
-            // --- ROW LOCATOR (For Admin) ---
             row.SheetRow = index + 2; 
 
             const subj = row.Subject ? row.Subject.trim() : "General";
@@ -363,7 +336,6 @@ function processData(data, reRenderOnly = false) {
     renderMenus(subjects, map); 
     renderTestFilters(subjects, map);
     
-    // Update Admin Stats
     if(document.getElementById('admin-total-q')) {
         document.getElementById('admin-total-q').innerText = allQuestions.length;
     }
@@ -376,7 +348,7 @@ function generateHash(str) {
 }
 
 // ======================================================
-// 6. UI RENDERERS (Menu with Counts)
+// 6. UI RENDERERS
 // ======================================================
 
 function renderMenus(subjects, map) {
@@ -391,7 +363,6 @@ function renderMenus(subjects, map) {
         const details = document.createElement('details');
         details.className = "subject-dropdown-card";
         
-        // FIX: Display "Solved / Total" instead of just Percentage
         details.innerHTML = `
             <summary class="subject-summary">
                 <div class="summary-header">
@@ -429,7 +400,6 @@ function renderMenus(subjects, map) {
                 item.className = "topic-item-container";
                 item.onclick = () => startPractice(subj, topic);
 
-                // FIX: Added small count inside topic box
                 item.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <span class="topic-name">${topic}</span>
@@ -512,7 +482,7 @@ function toggleSubjectAll(checkbox, subjName) {
 }
 
 // ======================================================
-// 7. STUDY LOGIC (Practice/Test with Admin Bypass)
+// 7. STUDY LOGIC
 // ======================================================
 
 function setMode(mode) {
@@ -530,7 +500,6 @@ function setMode(mode) {
 function startPractice(subject, topic) {
     let pool = allQuestions.filter(q => q.Subject === subject && (!topic || q.Topic === topic));
     
-    // --- CONTENT GATING ---
     const isPrem = userProfile && userProfile.isPremium;
     if (!isPrem) {
         if (pool.length > 20) {
@@ -590,11 +559,9 @@ function startSavedQuestions() {
 }
 
 function startTest() {
-    // --- ADMIN BYPASS FIX ---
     const isAdmin = userProfile && userProfile.role === 'admin';
     const isPrem = userProfile && userProfile.isPremium;
 
-    // Only block if NOT Guest AND NOT Premium AND NOT Admin
     if (!isGuest && !isPrem && !isAdmin) {
         if(!confirm("⚠️ Free Version: Exam mode is limited.\nUpgrade for unlimited tests?")) return;
     }
@@ -626,8 +593,6 @@ function startTest() {
     
     showScreen('quiz-screen');
     document.getElementById('timer').classList.remove('hidden');
-    
-    // FIX: Show Sidebar Navigator on Desktop & Mobile
     document.getElementById('test-sidebar').classList.add('active');
     
     renderNavigator();
@@ -638,7 +603,7 @@ function startTest() {
 }
 
 // ======================================================
-// 8. QUIZ ENGINE (Fixed Sidebar Logic)
+// 8. QUIZ ENGINE
 // ======================================================
 
 function renderPage() {
@@ -668,7 +633,7 @@ function renderPage() {
     } else {
         document.getElementById('timer').classList.remove('hidden');
         flagBtn.classList.remove('hidden'); 
-        document.getElementById('test-sidebar').classList.add('active'); // Force sidebar
+        document.getElementById('test-sidebar').classList.add('active');
 
         const start = currentIndex;
         const end = Math.min(start + 5, filteredQuestions.length);
@@ -825,8 +790,6 @@ function submitTest() {
     clearInterval(testTimer);
     let score = 0;
     
-    // --- 1. DETERMINE EXAM SUBJECT ---
-    // If all questions are from one subject, use that name. Otherwise "Mixed".
     const uniqueSubjects = [...new Set(filteredQuestions.map(q => q.Subject))];
     const examSubject = uniqueSubjects.length === 1 ? uniqueSubjects[0] : "Mixed Subjects";
 
@@ -844,13 +807,12 @@ function submitTest() {
 
     const pct = Math.round((score/filteredQuestions.length)*100);
     
-    // --- 2. SAVE WITH SUBJECT TAG ---
     if(currentUser && !isGuest) {
         db.collection('users').doc(currentUser.uid).collection('results').add({
             date: new Date(), 
             score: pct, 
             total: filteredQuestions.length,
-            subject: examSubject // <--- Saving the subject here
+            subject: examSubject
         });
     }
 
@@ -867,7 +829,6 @@ async function redeemKey() {
     if (!codeInput) return alert("Please enter a code.");
 
     try {
-        // 1. Find the Code in Database
         const snapshot = await db.collection('activation_codes').where('code', '==', codeInput).where('status', '==', 'unused').get();
 
         if (snapshot.empty) return alert("❌ Invalid or used code.");
@@ -875,18 +836,15 @@ async function redeemKey() {
         const codeDoc = snapshot.docs[0];
         const codeData = codeDoc.data();
         
-        // 2. Get Duration (Default to 1 month if missing)
         const planKey = codeData.plan || '1_month';
         const duration = PLAN_DURATIONS[planKey] || 2592000000; 
 
-        // 3. Calculate Expiry
         let newExpiry;
         if (planKey === 'lifetime') newExpiry = new Date("2100-01-01");
         else newExpiry = new Date(Date.now() + duration);
 
         const batch = db.batch();
 
-        // 4. Update User
         const userRef = db.collection('users').doc(currentUser.uid);
         batch.update(userRef, {
             isPremium: true,
@@ -894,7 +852,6 @@ async function redeemKey() {
             expiryDate: newExpiry
         });
 
-        // 5. Mark Code as Used
         batch.update(codeDoc.ref, {
             status: 'used',
             usedBy: currentUser.uid,
@@ -903,29 +860,22 @@ async function redeemKey() {
 
         await batch.commit();
         
-        // Update Local Profile immediately
         userProfile.isPremium = true;
         userProfile.expiryDate = newExpiry;
         
         alert(`✅ Code Redeemed Successfully!\nExpires: ${newExpiry.toLocaleDateString()}`);
-        window.location.reload(); // Reload to refresh UI
+        window.location.reload(); 
 
     } catch (e) {
         alert("Error: " + e.message);
     }
 }
 
-// --- NEW FUNCTION: Handle Plan Selection ---
 function selectPlan(planValue, element) {
-    // 1. Remove 'selected' class from all other items
     document.querySelectorAll('.price-item').forEach(item => {
         item.classList.remove('selected');
     });
-
-    // 2. Add 'selected' class to the clicked item
     element.classList.add('selected');
-
-    // 3. Store the value in the hidden input
     document.getElementById('selected-plan-value').value = planValue;
 }
 
@@ -936,7 +886,7 @@ async function submitPaymentProof() {
     if(!file) return alert("❌ Please upload a screenshot of your payment.");
 
     let imgStr = null;
-    if(file.size > 2000000) return alert("Image too large (Max 2MB)"); // Increased limit to 2MB
+    if(file.size > 2000000) return alert("Image too large (Max 2MB)"); 
     
     const btn = event.target;
     const originalText = btn.innerText;
@@ -957,7 +907,7 @@ async function submitPaymentProof() {
             uid: currentUser.uid, 
             email: currentUser.email, 
             tid: autoTID, 
-            planRequested: selectedPlan, // Uses the clicked plan
+            planRequested: selectedPlan, 
             image: imgStr, 
             status: 'pending', 
             timestamp: new Date()
@@ -1000,11 +950,33 @@ function switchAdminTab(tab) {
     if(tab==='users') loadAllUsers();
 }
 
+async function loadAdminReports() {
+    const list = document.getElementById('admin-reports-list');
+    list.innerHTML = "Loading reports...";
+    const snap = await db.collection('reports').orderBy('timestamp', 'desc').limit(20).get();
+    
+    if (snap.empty) {
+        list.innerHTML = "<p style='padding:15px; text-align:center;'>No reports found.</p>";
+        return;
+    }
+    
+    let html = "";
+    snap.forEach(doc => {
+        const r = doc.data();
+        html += `<div class="report-card">
+            <strong>${r.questionText.substr(0, 50)}...</strong><br>
+            <span style="color:red; font-size:12px;">Reason: ${r.reportReason}</span><br>
+            <small>By: ${r.reportedBy}</small><br>
+            <button onclick="deleteReport('${doc.id}')" style="margin-top:5px; padding:2px 8px; font-size:10px;">Resolve/Delete</button>
+        </div>`;
+    });
+    list.innerHTML = html;
+}
+
 async function loadAllUsers() {
     const res = document.getElementById('admin-user-result');
     res.innerHTML = "Loading users...";
     
-    // Fetch users (Sort by Joined date if possible)
     let snap;
     try {
         snap = await db.collection('users').orderBy('joined', 'desc').limit(500).get();
@@ -1012,9 +984,8 @@ async function loadAllUsers() {
         snap = await db.collection('users').limit(500).get();
     }
     
-    // Grouping to handle duplicates
     const usersByEmail = {};
-    const noEmailAdmins = []; // Special list for broken admins
+    const noEmailAdmins = []; 
 
     let hiddenGuests = 0;
 
@@ -1022,15 +993,12 @@ async function loadAllUsers() {
         const u = doc.data();
         u.id = doc.id;
         
-        // 1. HIDE GUESTS
         if (u.role === 'guest') {
             hiddenGuests++;
             return; 
         }
 
-        // 2. HANDLE MISSING EMAILS
         if (!u.email || u.email === "undefined") {
-            // If it's an Admin/Premium user, show them anyway!
             if (u.role === 'admin' || u.isPremium) {
                 noEmailAdmins.push(u);
             }
@@ -1043,17 +1011,14 @@ async function loadAllUsers() {
     let html = "<div style='background:white; border-radius:12px; overflow:hidden;'>";
     let count = 0;
 
-    // Render Valid Email Users
     Object.keys(usersByEmail).forEach(email => {
         const accounts = usersByEmail[email];
-        // Sort: Admin > Premium > Student
         accounts.sort((a, b) => (a.role === 'admin' ? -1 : 1));
         
         html += renderUserRow(accounts[0]);
         count++;
     });
 
-    // Render Broken Admins (So you can see yourself if email is missing)
     noEmailAdmins.forEach(u => {
         const label = `<span style="color:red; font-weight:bold;">(Email Missing)</span>`;
         html += renderUserRow(u, label);
@@ -1069,17 +1034,13 @@ async function loadAllUsers() {
     </div>` + html + "</div>";
 }
 
-
-// Helper to render the row HTML
 function renderUserRow(u, extraLabel = "") {
     const isAdmin = u.role === 'admin';
     const isPrem = u.isPremium;
     const bgStyle = isAdmin ? "background:#fff7ed; border-left:4px solid #d97706;" : "border-bottom:1px solid #f1f5f9;";
     
-    // Formatting Dates safely
     let dateStr = "N/A";
     if(u.joined) {
-        // Handle various date formats
         const d = u.joined.seconds ? new Date(u.joined.seconds * 1000) : new Date(u.joined);
         if(!isNaN(d.getTime())) dateStr = d.toLocaleDateString();
     }
@@ -1163,68 +1124,38 @@ async function loadAdminPayments() {
 }
 
 async function approvePayment(docId, userId) {
-    // 1. THE CALCULATOR (Defined right here so it can't be missed)
-    const DURATION_MAP = {
-        '1_day': 86400000,
-        '1_week': 604800000,
-        '15_days': 1296000000,
-        '1_month': 2592000000,
-        '3_months': 7776000000,
-        '6_months': 15552000000,
-        '12_months': 31536000000,
-        'lifetime': 2524608000000 
-    };
-
-    // 2. Get the requested plan
-    const select = document.getElementById(`dur-${docId}`);
-    const planKey = select.value; // e.g., "1_month"
-    
-    // 3. Calculate the Expiry Date
-    const msToAdd = DURATION_MAP[planKey];
-    
-    if (!msToAdd) {
-        alert("❌ Error: Could not calculate duration for " + planKey);
-        return;
-    }
-
     const btn = event.target;
     btn.innerText = "Saving to DB...";
     btn.disabled = true;
 
     try {
-        let newExpiry;
+        const select = document.getElementById(`dur-${docId}`);
+        const planKey = select.value; 
+        const duration = PLAN_DURATIONS[planKey];
         
-        // Handle Lifetime vs Normal
-        if (planKey === 'lifetime') {
-            newExpiry = new Date("2100-01-01"); 
-        } else {
-            newExpiry = new Date(Date.now() + msToAdd);
-        }
+        if (!duration) throw new Error("Invalid Plan Duration");
 
-        // 4. FORCE SAVE TO DATABASE
+        let newExpiry = (planKey === 'lifetime') 
+            ? new Date("2100-01-01") 
+            : new Date(Date.now() + duration);
+
         const batch = db.batch();
 
-        // Update User Doc
         const userRef = db.collection('users').doc(userId);
         batch.update(userRef, { 
             isPremium: true, 
             plan: planKey,
-            expiryDate: newExpiry, // <--- THIS IS THE KEY FIELD
+            expiryDate: newExpiry, 
             updatedAt: new Date()
         });
 
-        // Update Request Doc
         const payRef = db.collection('payment_requests').doc(docId);
-        batch.update(payRef, { 
-            status: 'approved', 
-            approvedAt: new Date() 
-        });
+        batch.update(payRef, { status: 'approved', approvedAt: new Date() });
 
         await batch.commit();
 
         alert(`✅ Saved to Database!\n\nUser: ${userId}\nExpires: ${newExpiry.toLocaleDateString()}`);
-        
-        loadAdminPayments(); // Refresh list
+        loadAdminPayments(); 
 
     } catch (e) {
         console.error(e);
@@ -1233,6 +1164,7 @@ async function approvePayment(docId, userId) {
         btn.disabled = false;
     }
 }
+
 async function generateAdminKey() {
     const plan = document.getElementById('key-plan').value;
     const code = 'KEY-' + Math.random().toString(36).substr(2,6).toUpperCase();
@@ -1266,7 +1198,6 @@ async function adminLookupUser(targetId) {
     if(!doc.exists) { res.innerHTML = "Not found"; return; }
     const u = doc.data();
     
-    // Updated HTML with Dropdown and "Refresh-on-Click" logic
     res.innerHTML = `
     <div class="user-card">
         <h3>${u.email}</h3>
@@ -1303,34 +1234,23 @@ async function adminLookupUser(targetId) {
     </div>`;
 }
 
-// --- ADD THESE NEW FUNCTIONS RIGHT BELOW adminLookupUser ---
-
 async function adminGrantPremium(uid) {
     const select = document.getElementById(`admin-grant-plan-${uid}`);
     const planKey = select.value;
-    
-    // 1. THE CALCULATOR
-    const DURATION_MAP = {
-        '1_day': 86400000, '1_week': 604800000, '15_days': 1296000000,
-        '1_month': 2592000000, '3_months': 7776000000, '6_months': 15552000000,
-        '12_months': 31536000000, 'lifetime': 2524608000000
-    };
-    
-    if (!DURATION_MAP[planKey]) return alert("Invalid plan selected");
+    const duration = PLAN_DURATIONS[planKey];
 
+    if (!duration) return alert("Invalid plan selected");
     if(!confirm(`Grant '${planKey}' to this user?`)) return;
 
     try {
-        // 2. Calculate Date
         let newExpiry = (planKey === 'lifetime') 
             ? new Date("2100-01-01") 
-            : new Date(Date.now() + DURATION_MAP[planKey]);
+            : new Date(Date.now() + duration);
 
-        // 3. Save to Database
         await db.collection('users').doc(uid).update({
             isPremium: true,
             plan: planKey,
-            expiryDate: newExpiry, // <--- SAVING HERE
+            expiryDate: newExpiry, 
             updatedAt: new Date()
         });
 
@@ -1345,20 +1265,19 @@ async function adminGrantPremium(uid) {
 async function adminRevokePremium(uid) {
     await db.collection('users').doc(uid).update({ isPremium: false });
     alert("🚫 Revoked Premium");
-    adminLookupUser(uid); // <--- This refreshes the card
+    adminLookupUser(uid); 
 }
 
 async function adminToggleBan(uid, newStatus) {
     await db.collection('users').doc(uid).update({ disabled: newStatus });
     alert("Status Updated");
-    adminLookupUser(uid); // <--- This refreshes the card
+    adminLookupUser(uid); 
 }
 
 // ======================================================
-// 11. HELPERS & UTILITIES (Badges, Analytics, Screen Switcher)
+// 11. HELPERS & UTILITIES
 // ======================================================
 
-// --- FIX: SCREEN SWITCHER (Correctly hides everything) ---
 function showScreen(screenId) {
     const ids = [
         'auth-screen', 'dashboard-screen', 'quiz-screen', 'result-screen', 'admin-screen',
@@ -1404,12 +1323,12 @@ function switchPremTab(tab) {
     document.getElementById('tab-btn-'+tab).classList.add('active');
 }
 
+// --- PROFILE FUNCTION (ROBUST) ---
 async function openProfileModal() {
     if (!currentUser || isGuest) return alert("Please log in to edit profile.");
     
     document.getElementById('profile-modal').classList.remove('hidden');
     
-    // 1. Fetch Latest Data (Fast & Fresh)
     let freshData = {};
     try {
         const doc = await db.collection('users').doc(currentUser.uid).get();
@@ -1418,25 +1337,21 @@ async function openProfileModal() {
         freshData = userProfile || {}; 
     }
 
-    // 2. Email & Plan
     document.getElementById('profile-email').innerText = currentUser.email;
     const isPrem = freshData.isPremium === true; 
     document.getElementById('profile-plan').innerText = isPrem ? "PREMIUM 👑" : "Free Plan";
     
-    // 3. Joined Date (Standard Display)
     let joinedText = "N/A";
     if (freshData.joined) {
-        // Handle Firestore Timestamp or Date object
         const d = freshData.joined.seconds ? new Date(freshData.joined.seconds * 1000) : new Date(freshData.joined);
         if (!isNaN(d.getTime())) joinedText = d.toLocaleDateString();
     }
-    // Fallback to Auth Metadata if DB is empty
     if (joinedText === "N/A" && currentUser.metadata.creationTime) {
         joinedText = new Date(currentUser.metadata.creationTime).toLocaleDateString();
     }
     document.getElementById('profile-joined').innerText = joinedText;
 
-    // 4. EXPIRES ON (Clean Reader)
+    // EXPIRES ON LOGIC
     const expiryElem = document.getElementById('profile-expiry');
     let expiryText = "-";
     
@@ -1445,45 +1360,71 @@ async function openProfileModal() {
             const d = freshData.expiryDate.seconds ? new Date(freshData.expiryDate.seconds * 1000) : new Date(freshData.expiryDate);
             
             if (!isNaN(d.getTime())) {
-                // If year is past 2090, show Lifetime
                 if (d.getFullYear() > 2090) {
                     expiryText = "Lifetime";
-                    expiryElem.style.color = "#10b981"; // Green
+                    expiryElem.style.color = "#10b981"; 
                 } else {
                     expiryText = d.toLocaleDateString();
-                    expiryElem.style.color = "#d97706"; // Orange
+                    expiryElem.style.color = "#d97706"; 
                 }
             } else {
                 expiryText = "Active (Date Error)";
                 expiryElem.style.color = "#10b981";
             }
         } else {
-            // Premium is True, but no date found
             expiryText = "Lifetime / Admin"; 
             expiryElem.style.color = "#10b981";
         }
     } else {
         expiryText = "Not Active";
-        expiryElem.style.color = "#64748b"; // Grey
+        expiryElem.style.color = "#64748b"; 
     }
     
     expiryElem.innerText = expiryText;
     
-    // 5. Fill Inputs
     document.getElementById('edit-name').value = freshData.displayName || "";
     document.getElementById('edit-phone').value = freshData.phone || "";
     document.getElementById('edit-college').value = freshData.college || "";
     document.getElementById('edit-exam').value = freshData.targetExam || "FCPS-1";
 }
 
-// --- HELPER TO HANDLE ALL DATE FORMATS ---
+async function saveDetailedProfile() {
+    const name = document.getElementById('edit-name').value;
+    const phone = document.getElementById('edit-phone').value;
+    const college = document.getElementById('edit-college').value;
+    const exam = document.getElementById('edit-exam').value;
+
+    try {
+        if (currentUser.displayName !== name) {
+            await currentUser.updateProfile({ displayName: name });
+        }
+
+        await db.collection('users').doc(currentUser.uid).update({
+            displayName: name,
+            phone: phone,
+            college: college,
+            targetExam: exam
+        });
+
+        userProfile.displayName = name;
+        userProfile.phone = phone;
+        userProfile.college = college;
+        userProfile.targetExam = exam;
+        
+        document.getElementById('user-display').innerText = name || "User"; 
+        alert("✅ Profile Updated Successfully!");
+        document.getElementById('profile-modal').classList.add('hidden');
+
+    } catch (e) {
+        alert("Error saving profile: " + e.message);
+    }
+}
+
 function parseDateHelper(dateInput) {
     if (!dateInput) return new Date();
-    // Handle Firestore Timestamp
     if (dateInput.toDate) return dateInput.toDate(); 
     if (typeof dateInput.toMillis === 'function') return new Date(dateInput.toMillis());
     if (dateInput.seconds) return new Date(dateInput.seconds * 1000);
-    // Handle String/Number
     return new Date(dateInput);
 }
 
@@ -1492,7 +1433,6 @@ function formatDateHelper(dateInput) {
     return isNaN(d.getTime()) ? "N/A" : d.toLocaleDateString();
 }
 
-// --- FIX: RESTORE BADGE DESCRIPTIONS & TROPHIES ---
 function openBadges() {
     const modal = document.getElementById('badges-modal');
     const container = document.getElementById('badge-list');
@@ -1528,7 +1468,6 @@ function updateBadgeButton() {
     else document.getElementById('main-badge-btn').innerText = "🏆";
 }
 
-// --- FIX: ANALYTICS TABLE & COUNTS ---
 async function openAnalytics() {
     const modal = document.getElementById('analytics-modal');
     const container = document.getElementById('analytics-content');
@@ -1551,7 +1490,6 @@ async function openAnalytics() {
             </div>`;
         });
 
-        // --- NEW: FETCH EXAM HISTORY ---
         const historySnap = await db.collection('users').doc(currentUser.uid).collection('results').orderBy('date', 'desc').limit(10).get();
         
         html += "<h3 style='margin-top:25px; border-top:1px solid #eee; padding-top:15px;'>📜 Recent Exams</h3>";
@@ -1567,8 +1505,8 @@ async function openAnalytics() {
             historySnap.forEach(r => {
                 const d = r.data();
                 const dateStr = d.date ? new Date(d.date.seconds*1000).toLocaleDateString() : '-';
-                const subj = d.subject || "Mixed"; // Fallback for old data
-                const scoreColor = d.score >= 70 ? "#166534" : "#b91c1c"; // Green if pass, Red if fail
+                const subj = d.subject || "Mixed"; 
+                const scoreColor = d.score >= 70 ? "#166534" : "#b91c1c"; 
                 
                 html += `<tr>
                     <td style='border:1px solid #e2e8f0; padding:8px;'>${dateStr}</td>
@@ -1654,16 +1592,6 @@ function goHome() {
     loadUserData(); 
 }
 
-// Fallback for missing admin functions in case of load errors
-if (typeof loadAdminReports !== 'function') window.loadAdminReports = function(){};
-if (typeof loadAdminPayments !== 'function') window.loadAdminPayments = function(){};
-if (typeof loadAdminKeys !== 'function') window.loadAdminKeys = function(){};
-
-window.onload = () => {
-    if(localStorage.getItem('fcps-theme')==='dark') toggleTheme();
-}
-
-// --- 1. RESET PASSWORD FUNCTION ---
 function resetPassword() {
     const email = document.getElementById('email').value;
     if (!email) return alert("Please enter your email address in the box above first.");
@@ -1673,68 +1601,6 @@ function resetPassword() {
         .catch(e => alert("Error: " + e.message));
 }
 
-// --- 2. PROFILE FUNCTIONS ---
-
-// Open Modal & Load Data
-function openProfileModal() {
-    if (!currentUser || isGuest) return alert("Please log in to edit profile.");
-    
-    document.getElementById('profile-modal').classList.remove('hidden');
-    
-    // Load data from userProfile global variable
-    document.getElementById('profile-email').innerText = currentUser.email;
-    document.getElementById('profile-plan').innerText = userProfile.isPremium ? "PREMIUM 👑" : "Free Plan";
-    document.getElementById('profile-joined').innerText = userProfile.joined ? new Date(userProfile.joined.seconds * 1000).toLocaleDateString() : "N/A";
-    
-    // Fill Inputs
-    document.getElementById('edit-name').value = userProfile.displayName || "";
-    document.getElementById('edit-phone').value = userProfile.phone || "";
-    document.getElementById('edit-college').value = userProfile.college || "";
-    document.getElementById('edit-exam').value = userProfile.targetExam || "FCPS-1";
+window.onload = () => {
+    if(localStorage.getItem('fcps-theme')==='dark') toggleTheme();
 }
-
-// Save Data to Firebase
-async function saveDetailedProfile() {
-    const name = document.getElementById('edit-name').value;
-    const phone = document.getElementById('edit-phone').value;
-    const college = document.getElementById('edit-college').value;
-    const exam = document.getElementById('edit-exam').value;
-
-    try {
-        // Update Auth Profile (Display Name)
-        if (currentUser.displayName !== name) {
-            await currentUser.updateProfile({ displayName: name });
-        }
-
-        // Update Firestore Document
-        await db.collection('users').doc(currentUser.uid).update({
-            displayName: name,
-            phone: phone,
-            college: college,
-            targetExam: exam
-        });
-
-        // Update Local State
-        userProfile.displayName = name;
-        userProfile.phone = phone;
-        userProfile.college = college;
-        userProfile.targetExam = exam;
-        
-        document.getElementById('user-display').innerText = name || "User"; // Update header
-        alert("✅ Profile Updated Successfully!");
-        document.getElementById('profile-modal').classList.add('hidden');
-
-    } catch (e) {
-        alert("Error saving profile: " + e.message);
-    }
-}
-
-
-
-
-
-
-
-
-
-
