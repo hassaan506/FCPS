@@ -1218,14 +1218,14 @@ async function openProfileModal() {
     
     document.getElementById('profile-modal').classList.remove('hidden');
     
-    // 1. Fetch Latest Data Direct from DB (Ensures fresh data)
+    // 1. Fetch Latest Data
     let freshData = {};
     try {
         const doc = await db.collection('users').doc(currentUser.uid).get();
         if (doc.exists) freshData = doc.data();
     } catch (e) {
         console.error("Profile fetch error:", e);
-        freshData = userProfile || {}; // Fallback
+        freshData = userProfile || {}; 
     }
 
     // 2. Email & Plan
@@ -1233,14 +1233,21 @@ async function openProfileModal() {
     const isPrem = freshData.isPremium || false;
     document.getElementById('profile-plan').innerText = isPrem ? "PREMIUM 👑" : "Free Plan";
     
-    // 3. Joined Date Logic (Robust)
-    let joinedText = "N/A";
+    // 3. Joined Date (Auto-Fix if missing)
+    let joinedText = "Unknown";
     
-    // Check DB first, then Auth Metadata
+    // Priority 1: Database Field
     if (freshData.joined) {
         joinedText = formatDateHelper(freshData.joined);
-    } else if (currentUser.metadata && currentUser.metadata.creationTime) {
+    } 
+    // Priority 2: Firebase Auth Metadata (Creation Time)
+    else if (currentUser.metadata && currentUser.metadata.creationTime) {
         joinedText = new Date(currentUser.metadata.creationTime).toLocaleDateString();
+        
+        // OPTIONAL: Self-repair database in background
+        db.collection('users').doc(currentUser.uid).update({ 
+            joined: new Date(currentUser.metadata.creationTime) 
+        }).catch(err => console.log("Auto-repair joined date failed", err));
     }
     document.getElementById('profile-joined').innerText = joinedText;
 
@@ -1250,8 +1257,8 @@ async function openProfileModal() {
     
     if (isPrem) {
         if (freshData.expiryDate) {
-            // Check if it's Lifetime (Year 2090+)
             const dateObj = parseDateHelper(freshData.expiryDate);
+            // Check if Lifetime (Year > 2090)
             if (dateObj.getFullYear() > 2090) {
                 expiryText = "Lifetime";
                 expiryElem.style.color = "#10b981"; // Green
@@ -1260,10 +1267,12 @@ async function openProfileModal() {
                 expiryElem.style.color = "#d97706"; // Orange
             }
         } else {
+            // Premium is TRUE, but no date exists -> Must be Admin granted or Lifetime
             expiryText = "Lifetime / Admin";
-            expiryElem.style.color = "#10b981";
+            expiryElem.style.color = "#10b981"; 
         }
     } else {
+        expiryText = "Not Active";
         expiryElem.style.color = "#64748b"; // Grey
     }
     
@@ -1279,11 +1288,11 @@ async function openProfileModal() {
 // --- HELPER TO HANDLE ALL DATE FORMATS ---
 function parseDateHelper(dateInput) {
     if (!dateInput) return new Date();
-    // 1. Firestore Timestamp (has .toMillis)
+    // Handle Firestore Timestamp
+    if (dateInput.toDate) return dateInput.toDate(); 
     if (typeof dateInput.toMillis === 'function') return new Date(dateInput.toMillis());
-    // 2. Firestore Timestamp Object (has .seconds)
     if (dateInput.seconds) return new Date(dateInput.seconds * 1000);
-    // 3. Standard Date/String/Number
+    // Handle String/Number
     return new Date(dateInput);
 }
 
@@ -1291,6 +1300,7 @@ function formatDateHelper(dateInput) {
     const d = parseDateHelper(dateInput);
     return isNaN(d.getTime()) ? "N/A" : d.toLocaleDateString();
 }
+
 // --- FIX: RESTORE BADGE DESCRIPTIONS & TROPHIES ---
 function openBadges() {
     const modal = document.getElementById('badges-modal');
@@ -1527,5 +1537,6 @@ async function saveDetailedProfile() {
         alert("Error saving profile: " + e.message);
     }
 }
+
 
 
