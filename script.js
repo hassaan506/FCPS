@@ -133,8 +133,7 @@ async function checkLoginSecurity(user) {
 
     } catch (e) { 
         console.error("Auth Error:", e); 
-        // Fallback for network issues
-        loadUserData();
+        loadUserData(); // Fallback
         showScreen('dashboard-screen');
         loadQuestions();
     }
@@ -175,7 +174,6 @@ function logout() {
 
 // --- PREMIUM EXPIRY CHECK ---
 function checkPremiumExpiry() {
-    // If no profile or not premium, hide badge
     if (!userProfile || !userProfile.isPremium || !userProfile.expiryDate) {
         document.getElementById('premium-badge').classList.add('hidden');
         document.getElementById('get-premium-btn').classList.remove('hidden');
@@ -183,20 +181,15 @@ function checkPremiumExpiry() {
     }
     
     const now = new Date().getTime();
-    // Handle Firestore Timestamp vs Date Object
     const expiry = userProfile.expiryDate.toMillis ? userProfile.expiryDate.toMillis() : new Date(userProfile.expiryDate).getTime();
 
     if (now > expiry) {
-        // Expired: Downgrade User
-        console.log("Subscription Expired");
         db.collection('users').doc(currentUser.uid).update({ isPremium: false });
         userProfile.isPremium = false;
-        
         document.getElementById('premium-badge').classList.add('hidden');
         document.getElementById('get-premium-btn').classList.remove('hidden');
         alert("⚠️ Your Premium Subscription has expired.");
     } else {
-        // Active
         document.getElementById('premium-badge').classList.remove('hidden');
         document.getElementById('get-premium-btn').classList.add('hidden');
     }
@@ -227,23 +220,23 @@ async function loadUserData() {
 
         checkStreak(userData);
 
-        // Fetch Results for Avg Score
-        const resultsSnap = await db.collection('users').doc(currentUser.uid).collection('results').get();
-        let totalTests = 0, totalScore = 0;
-        resultsSnap.forEach(doc => { totalTests++; totalScore += doc.data().score; });
-        const avgScore = totalTests > 0 ? Math.round(totalScore / totalTests) : 0;
-        
+        // --- NEW: Calculate Total Correct from Stats ---
+        let totalCorrect = 0;
+        if(userData.stats) {
+            Object.values(userData.stats).forEach(s => totalCorrect += (s.correct || 0));
+        }
+
+        // --- FIX: Show Count instead of % on Dashboard ---
         if(statsBox) {
             statsBox.style.opacity = "1"; 
             statsBox.innerHTML = `
-                <div class="stat-row"><span class="stat-lbl">Test Average:</span> <span class="stat-val" style="color:${avgScore>=70?'#2ecc71':'#e74c3c'}">${avgScore}%</span></div>
-                <div class="stat-row"><span class="stat-lbl">Mistakes Pending:</span> <span class="stat-val" style="color:#e74c3c; font-weight:bold;">${userMistakes.length}</span></div>
-                <div class="stat-row" style="border:none;"><span class="stat-lbl">Practice Solved:</span> <span class="stat-val">${userSolvedIDs.length}</span></div>`;
+                <div class="stat-row"><span class="stat-lbl">✅ Correct:</span> <span class="stat-val" style="color:#2ecc71">${totalCorrect} / ${userSolvedIDs.length}</span></div>
+                <div class="stat-row"><span class="stat-lbl">❌ Mistakes:</span> <span class="stat-val" style="color:#e74c3c">${userMistakes.length}</span></div>
+                <div class="stat-row" style="border:none;"><span class="stat-lbl">⭐ Bookmarks:</span> <span class="stat-val">${userBookmarks.length}</span></div>`;
         }
 
-        if(typeof updateBadgeButton === 'function') updateBadgeButton(); 
+        updateBadgeButton(); 
 
-        // Refresh Progress Bars
         if (allQuestions.length > 0) processData(allQuestions, true);
 
     } catch (e) { console.error("Load Error:", e); }
@@ -305,9 +298,6 @@ function processData(data, reRenderOnly = false) {
 
             row._uid = generateStableID(qSignature);
             row.Question = qText; 
-            
-            // --- ROW LOCATOR (Admin Feature) ---
-            // Index 0 in code = Row 2 in Google Sheet (Header is Row 1)
             row.SheetRow = index + 2; 
 
             const subj = row.Subject ? row.Subject.trim() : "General";
@@ -319,7 +309,6 @@ function processData(data, reRenderOnly = false) {
         });
     }
 
-    // Build Maps for Menus
     const subjects = new Set();
     const map = {}; 
     allQuestions.forEach(q => {
@@ -331,7 +320,6 @@ function processData(data, reRenderOnly = false) {
     renderMenus(subjects, map); 
     renderTestFilters(subjects, map); 
     
-    // Update Admin Stats if visible
     if(document.getElementById('admin-total-q')) {
         document.getElementById('admin-total-q').innerText = allQuestions.length;
     }
@@ -384,7 +372,7 @@ function renderMenus(subjects, map) {
 
         const allBtn = document.createElement('div');
         allBtn.className = "practice-all-row";
-        allBtn.innerHTML = `Practice All ${subj}`;
+        allBtn.innerHTML = `<span>Practice All ${subj}</span> <span>⭐</span>`;
         allBtn.onclick = () => startPractice(subj, null);
         contentDiv.appendChild(allBtn);
 
@@ -426,6 +414,7 @@ function renderTestFilters(subjects, map) {
     const container = document.getElementById('filter-container');
     if (!container) return; 
     container.innerHTML = "";
+    
     const sortedSubjects = Array.from(subjects).sort();
 
     sortedSubjects.forEach(subj => {
@@ -537,10 +526,7 @@ function startPractice(subject, topic) {
 
 function startMistakePractice() {
     if (userMistakes.length === 0) return alert("No mistakes pending!");
-    
     filteredQuestions = allQuestions.filter(q => userMistakes.includes(q._uid));
-    
-    if (filteredQuestions.length === 0) return alert("Loading mistakes... Try again.");
     
     currentMode = 'practice';
     isMistakeReview = true;
@@ -599,7 +585,10 @@ function startTest() {
     
     showScreen('quiz-screen');
     document.getElementById('timer').classList.remove('hidden');
+    
+    // FIX: Show Sidebar Navigator on Desktop & Mobile
     document.getElementById('test-sidebar').classList.add('active');
+    
     renderNavigator();
 
     clearInterval(testTimer);
@@ -1026,11 +1015,22 @@ async function adminLookupUser(targetId) {
     if(!doc.exists) { res.innerHTML = "Not found"; return; }
     const u = doc.data();
     
+    // --- UPDATED ADMIN CARD WITH PREMIUM TOGGLE ---
     res.innerHTML = `
     <div class="user-card">
         <h3>${u.email}</h3>
-        <p>Premium: ${u.isPremium}</p>
-        <button onclick="db.collection('users').doc('${doc.id}').update({disabled:${!u.disabled}}).then(()=>alert('Done'))" style="background:${u.disabled?'green':'red'}; color:white;">${u.disabled?'Unban':'Ban'}</button>
+        <p>Premium: ${u.isPremium ? '✅ Active' : '❌ Free'}</p>
+        <p>Role: ${u.role}</p>
+        
+        <div style="display:flex; gap:10px; margin-top:10px;">
+            <button onclick="db.collection('users').doc('${doc.id}').update({disabled:${!u.disabled}}).then(()=>alert('Done'))" style="background:${u.disabled?'green':'red'}; color:white; flex:1;">
+                ${u.disabled?'Unban':'Ban'}
+            </button>
+            
+            <button onclick="db.collection('users').doc('${doc.id}').update({isPremium:${!u.isPremium}}).then(()=>alert('Status Updated'))" style="background:${u.isPremium?'#64748b':'#d97706'}; color:white; flex:1;">
+                ${u.isPremium ? 'Revoke Premium' : 'Grant Premium'}
+            </button>
+        </div>
     </div>`;
 }
 
