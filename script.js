@@ -999,7 +999,7 @@ async function loadAdminKeys() {
     list.innerHTML = html + "</table>";
 }
 
-aasync function adminLookupUser(targetId) {
+async function adminLookupUser(targetId) {
     const input = targetId || document.getElementById('admin-user-input').value;
     const res = document.getElementById('admin-user-result');
     res.innerHTML = "Searching...";
@@ -1301,6 +1301,7 @@ if (typeof loadAdminKeys !== 'function') window.loadAdminKeys = function(){};
 window.onload = () => {
     if(localStorage.getItem('fcps-theme')==='dark') toggleTheme();
 }
+
 
 
 
