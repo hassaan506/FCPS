@@ -1116,10 +1116,13 @@ function nextPage() { currentIndex++; renderPage(); }
 function prevPage() { currentIndex--; renderPage(); }
 
 function openPremiumModal() { document.getElementById('premium-modal').classList.remove('hidden'); }
-function switchPremTab(t) {
+function switchPremTab(tab) {
     document.getElementById('prem-content-code').classList.add('hidden');
     document.getElementById('prem-content-manual').classList.add('hidden');
-    document.getElementById('prem-content-'+t).classList.remove('hidden');
+    document.getElementById('tab-btn-code').classList.remove('active');
+    document.getElementById('tab-btn-manual').classList.remove('active');
+    document.getElementById('prem-content-'+tab).classList.remove('hidden');
+    document.getElementById('tab-btn-'+tab).classList.add('active');
 }
 
 function openProfileModal() { document.getElementById('profile-modal').classList.remove('hidden'); }
@@ -1301,6 +1304,7 @@ if (typeof loadAdminKeys !== 'function') window.loadAdminKeys = function(){};
 window.onload = () => {
     if(localStorage.getItem('fcps-theme')==='dark') toggleTheme();
 }
+
 
 
 
