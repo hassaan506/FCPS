@@ -863,32 +863,56 @@ function submitTest() {
 // ======================================================
 
 async function redeemKey() {
-    const code = document.getElementById('activation-code').value.trim();
-    if (!code) return alert("Please enter a key.");
+    const codeInput = document.getElementById('activation-code').value.trim();
+    if (!codeInput) return alert("Please enter a code.");
 
     try {
-        const snap = await db.collection('activation_keys').where('code', '==', code).where('isUsed', '==', false).get();
-        if (snap.empty) return alert("❌ Invalid or used key.");
+        // 1. Find the Code in Database
+        const snapshot = await db.collection('activation_codes').where('code', '==', codeInput).where('status', '==', 'unused').get();
+
+        if (snapshot.empty) return alert("❌ Invalid or used code.");
+
+        const codeDoc = snapshot.docs[0];
+        const codeData = codeDoc.data();
         
-        const keyDoc = snap.docs[0];
-        const keyData = keyDoc.data();
-        const duration = PLAN_DURATIONS[keyData.plan];
-        const newExpiry = new Date().getTime() + duration;
+        // 2. Get Duration (Default to 1 month if missing)
+        const planKey = codeData.plan || '1_month';
+        const duration = PLAN_DURATIONS[planKey] || 2592000000; 
+
+        // 3. Calculate Expiry
+        let newExpiry;
+        if (planKey === 'lifetime') newExpiry = new Date("2100-01-01");
+        else newExpiry = new Date(Date.now() + duration);
 
         const batch = db.batch();
-        batch.update(db.collection('users').doc(currentUser.uid), {
-            isPremium: true,
-            expiryDate: new Date(newExpiry)
-        });
-        batch.update(db.collection('activation_keys').doc(keyDoc.id), {
-            isUsed: true, usedBy: currentUser.email, usedAt: new Date()
-        });
-        
-        await batch.commit();
-        alert("🎉 Premium Activated!");
-        window.location.reload();
 
-    } catch (e) { alert("Error: " + e.message); }
+        // 4. Update User
+        const userRef = db.collection('users').doc(currentUser.uid);
+        batch.update(userRef, {
+            isPremium: true,
+            plan: planKey,
+            expiryDate: newExpiry
+        });
+
+        // 5. Mark Code as Used
+        batch.update(codeDoc.ref, {
+            status: 'used',
+            usedBy: currentUser.uid,
+            usedAt: new Date()
+        });
+
+        await batch.commit();
+        
+        // Update Local Profile immediately
+        userProfile.isPremium = true;
+        userProfile.expiryDate = newExpiry;
+        
+        alert(`✅ Code Redeemed Successfully!\nExpires: ${newExpiry.toLocaleDateString()}`);
+        window.location.reload(); // Reload to refresh UI
+
+    } catch (e) {
+        alert("Error: " + e.message);
+    }
 }
 
 // --- NEW FUNCTION: Handle Plan Selection ---
@@ -1139,44 +1163,50 @@ async function loadAdminPayments() {
 }
 
 async function approvePayment(docId, userId) {
-    // 1. Get the duration approved by Admin
+    // 1. Get the duration from the dropdown on the card
     const select = document.getElementById(`dur-${docId}`);
-    const planKey = select.value;
+    const planKey = select.value; // e.g., "1_month"
+    
+    // 2. Calculate Duration
     const duration = PLAN_DURATIONS[planKey];
-
-    if(!duration) return alert("Invalid duration selected");
+    
+    if(!duration) {
+        console.error("Missing Duration for:", planKey);
+        return alert("❌ Error: Plan duration not found. Check PLAN_DURATIONS code.");
+    }
 
     const btn = event.target;
-    btn.innerText = "Processing...";
+    btn.innerText = "Saving...";
     btn.disabled = true;
 
     try {
-        // 2. Calculate Expiry
+        // 3. Calculate Expiry Date
         let newExpiry;
         if (planKey === 'lifetime') {
-            newExpiry = new Date("2100-01-01");
+            newExpiry = new Date("2100-01-01"); // Far future
         } else {
             newExpiry = new Date(Date.now() + duration);
         }
 
         const batch = db.batch();
 
-        // 3. Update User Document
+        // 4. Update User: Set Premium AND Expiry Date
         const userRef = db.collection('users').doc(userId);
         batch.update(userRef, { 
             isPremium: true, 
             plan: planKey,
-            expiryDate: newExpiry 
+            expiryDate: newExpiry,
+            updatedAt: new Date()
         });
 
-        // 4. Update Payment Request Status
+        // 5. Close Request
         const payRef = db.collection('payment_requests').doc(docId);
         batch.update(payRef, { status: 'approved', approvedAt: new Date() });
 
         await batch.commit();
 
-        alert("✅ Request Approved & Premium Activated!");
-        loadAdminPayments(); // Refresh list
+        alert(`✅ Premium Activated!\nUser: ${userId}\nExpires: ${newExpiry.toLocaleDateString()}`);
+        loadAdminPayments(); 
 
     } catch (e) {
         alert("Error: " + e.message);
@@ -1683,6 +1713,7 @@ async function saveDetailedProfile() {
         alert("Error saving profile: " + e.message);
     }
 }
+
 
 
 
