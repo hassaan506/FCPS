@@ -1410,3 +1410,19 @@ tr:last-child td { border-bottom: none; }
     flex-shrink: 0; /* Don't shrink */
     text-align: center;
 }
+
+
+/* --- FORCE MODAL SCROLL FIXES --- */
+.modal-overlay .joinCard {
+    padding: 0 !important; /* Removes old padding that killed layout */
+    display: flex !important;
+    flex-direction: column !important;
+    max-height: 85vh !important;
+}
+
+.modal-body-scroll {
+    flex: 1 1 auto;   /* Grow and Shrink */
+    overflow-y: auto; /* Force Scrollbar */
+    min-height: 0;    /* Essential for nested flex scrolling */
+    padding: 10px 25px;
+}
