@@ -46,15 +46,16 @@ if (!currentDeviceId) {
     localStorage.setItem('fcps_device_id', currentDeviceId);
 }
 
-// --- FEATURE: PREMIUM PLANS (Milliseconds) ---
+// --- PREMIUM PLANS (Duration in Milliseconds) ---
 const PLAN_DURATIONS = {
     '1_day': 86400000,
     '1_week': 604800000,
+    '15_days': 1296000000,
     '1_month': 2592000000,
     '3_months': 7776000000,
     '6_months': 15552000000,
-    '1_year': 31536000000,
-    'lifetime': 2524608000000 // ~80 Years
+    '12_months': 31536000000,
+    'lifetime': 2524608000000
 };
 
 // ======================================================
@@ -1023,9 +1024,14 @@ aasync function adminLookupUser(targetId) {
             <label style="font-size:12px; font-weight:bold;">Manage Subscription:</label>
             <div style="display:flex; gap:5px; margin-top:5px;">
                 <select id="admin-grant-plan-${doc.id}" style="padding:5px; border-radius:5px; border:1px solid #ccc;">
-                    <option value="1_month">1 Month</option>
-                    <option value="6_months">6 Months</option>
-                    <option value="lifetime">Lifetime</option>
+                  <option value="1_day">1 Day</option>
+                  <option value="1_week">1 Week</option>
+                  <option value="15_days">15 Days</option>
+                  <option value="1_month">1 Month</option>
+                  <option value="3_months">3 Months</option>
+                  <option value="6_months">6 Months</option>
+                  <option value="12_months">12 Months</option>
+                  <option value="lifetime">Lifetime</option>
                 </select>
                 <button onclick="adminGrantPremium('${doc.id}')" style="background:#d97706; color:white; padding:5px 10px; margin:0; font-size:12px;">
                     Grant
@@ -1295,5 +1301,6 @@ if (typeof loadAdminKeys !== 'function') window.loadAdminKeys = function(){};
 window.onload = () => {
     if(localStorage.getItem('fcps-theme')==='dark') toggleTheme();
 }
+
 
 
