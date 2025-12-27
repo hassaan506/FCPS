@@ -1168,8 +1168,20 @@ details[open] .subject-summary::after {
     display: none !important;
 }
 
+/* ADMIN PANEL STYLES */
+.admin-tab {
+    text-align: left; background: transparent; color: var(--text-dark);
+    border: none; padding: 12px; border-radius: 8px; margin-top: 5px;
+}
+.admin-tab:hover { background: var(--input-bg); }
+.admin-tab.active { background: var(--primary); color: white; font-weight: 700; }
 
-
-
-
-
+.report-card {
+    background: white; border: 1px solid var(--border-color);
+    padding: 15px; border-radius: 12px; margin-bottom: 15px;
+    border-left: 4px solid #ef4444; box-shadow: var(--shadow-sm);
+}
+.report-meta { 
+    font-size: 11px; color: #64748b; margin-bottom: 8px; 
+    display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding-bottom:5px;
+}
