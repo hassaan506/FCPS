@@ -102,19 +102,33 @@ async function checkLoginSecurity(user) {
         const doc = await docRef.get();
 
         if (!doc.exists) {
-            // New User: Create Profile
+            // New User: Create Profile with 'joined' date
             await docRef.set({
                 email: user.email,
                 deviceId: currentDeviceId,
                 role: 'student',
                 isPremium: false,
-                joined: new Date(),
+                joined: new Date(), // <--- Sets current date for new users
                 solved: [], bookmarks: [], mistakes: [], stats: {}
             }, { merge: true });
+            
             loadUserData();
         } else {
             const data = doc.data();
             
+            // --- AUTO-FIX: If 'joined' date is missing, add it now ---
+            if (!data.joined) {
+                // Use the account creation time from Firebase Auth, or current time as fallback
+                const creationTime = user.metadata.creationTime ? new Date(user.metadata.creationTime) : new Date();
+                
+                // Update the database silently
+                await docRef.update({ joined: creationTime });
+                
+                // Update local variable so the profile shows it immediately
+                data.joined = creationTime; 
+            }
+            // ----------------------------------------------------------
+
             // 1. ADMIN BAN CHECK
             if (data.disabled) {
                 auth.signOut();
@@ -124,6 +138,7 @@ async function checkLoginSecurity(user) {
 
             // 2. DEVICE LOCK CHECK
             if (data.deviceId && data.deviceId !== currentDeviceId) {
+                // Optional: You can comment this out if you want to allow multi-device for now
                 auth.signOut();
                 alert("🚫 Security Alert: Account logged in on another device.\n\nPlease log out from the other device first.");
                 return;
@@ -1058,14 +1073,51 @@ async function loadAdminPayments() {
     list.innerHTML = html;
 }
 
-async function approvePayment(docId, uid) {
-    const dur = document.getElementById('dur-'+docId).value;
-    const expiry = new Date().getTime() + PLAN_DURATIONS[dur];
-    const batch = db.batch();
-    batch.update(db.collection('users').doc(uid), { isPremium: true, expiryDate: new Date(expiry) });
-    batch.update(db.collection('payment_requests').doc(docId), { status: 'approved' });
-    await batch.commit();
-    loadAdminPayments();
+async function approvePayment(docId, userId) {
+    // 1. Get the duration approved by Admin
+    const select = document.getElementById(`dur-${docId}`);
+    const planKey = select.value;
+    const duration = PLAN_DURATIONS[planKey];
+
+    if(!duration) return alert("Invalid duration selected");
+
+    const btn = event.target;
+    btn.innerText = "Processing...";
+    btn.disabled = true;
+
+    try {
+        // 2. Calculate Expiry
+        let newExpiry;
+        if (planKey === 'lifetime') {
+            newExpiry = new Date("2100-01-01");
+        } else {
+            newExpiry = new Date(Date.now() + duration);
+        }
+
+        const batch = db.batch();
+
+        // 3. Update User Document
+        const userRef = db.collection('users').doc(userId);
+        batch.update(userRef, { 
+            isPremium: true, 
+            plan: planKey,
+            expiryDate: newExpiry 
+        });
+
+        // 4. Update Payment Request Status
+        const payRef = db.collection('payment_requests').doc(docId);
+        batch.update(payRef, { status: 'approved', approvedAt: new Date() });
+
+        await batch.commit();
+
+        alert("✅ Request Approved & Premium Activated!");
+        loadAdminPayments(); // Refresh list
+
+    } catch (e) {
+        alert("Error: " + e.message);
+        btn.innerText = "Approve";
+        btn.disabled = false;
+    }
 }
 
 async function generateAdminKey() {
@@ -1141,14 +1193,43 @@ async function adminLookupUser(targetId) {
 // --- ADD THESE NEW FUNCTIONS RIGHT BELOW adminLookupUser ---
 
 async function adminGrantPremium(uid) {
-    const plan = document.getElementById('admin-grant-plan-'+uid).value;
-    // PLAN_DURATIONS must be defined at the top of your file
-    const duration = PLAN_DURATIONS[plan] || 2592000000; 
-    const expiry = new Date().getTime() + duration;
+    // 1. Get the selected duration from the dropdown
+    const select = document.getElementById(`admin-grant-plan-${uid}`);
+    const planKey = select.value; // e.g., '1_month', 'lifetime'
     
-    await db.collection('users').doc(uid).update({ isPremium: true, expiryDate: new Date(expiry) });
-    alert("✅ Granted " + plan);
-    adminLookupUser(uid); // <--- This refreshes the card without reloading page
+    // 2. Look up the milliseconds from your configuration
+    const duration = PLAN_DURATIONS[planKey];
+    
+    if (!duration) return alert("❌ Error: Invalid plan selected.");
+
+    const confirmAction = confirm(`Grant '${planKey}' to this user?`);
+    if (!confirmAction) return;
+
+    try {
+        // 3. Calculate the Expiry Date
+        // If it's lifetime, we set a date far in the future (Year 2100)
+        let newExpiry;
+        if (planKey === 'lifetime') {
+            newExpiry = new Date("2100-01-01"); 
+        } else {
+            newExpiry = new Date(Date.now() + duration);
+        }
+
+        // 4. SAVE TO DATABASE
+        await db.collection('users').doc(uid).update({
+            isPremium: true,
+            plan: planKey,          // Save the plan name
+            expiryDate: newExpiry,  // Save the calculated date
+            updatedAt: new Date()
+        });
+
+        alert("✅ Premium Granted Successfully!");
+        adminLookupUser(uid); // Refresh the admin view
+
+    } catch (e) {
+        console.error(e);
+        alert("Error: " + e.message);
+    }
 }
 
 async function adminRevokePremium(uid) {
@@ -1537,6 +1618,7 @@ async function saveDetailedProfile() {
         alert("Error saving profile: " + e.message);
     }
 }
+
 
 
 
