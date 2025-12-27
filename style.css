@@ -1390,3 +1390,42 @@ tr:last-child td { border-bottom: none; }
     line-height: 1.6;
     margin-bottom: 20px;
 }
+
+
+/* --- INTERACTIVE PRICING GRID --- */
+.price-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border: 2px solid #e2e8f0; /* Thicker border for visibility */
+    border-radius: 12px;
+    padding: 15px 10px;
+    cursor: pointer; /* Shows it's clickable */
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.price-item:hover {
+    border-color: #cbd5e1;
+    transform: translateY(-2px);
+}
+
+/* The style when a plan is clicked */
+.price-item.selected {
+    border-color: var(--primary) !important;
+    background-color: #eff6ff !important; /* Light Blue */
+    box-shadow: 0 4px 12px rgba(0, 114, 255, 0.2);
+}
+
+/* Highlight the price text */
+.price-item.selected .price-cost {
+    color: var(--primary);
+}
+
+/* Override for the Lifetime card special styling when selected */
+.price-item.selected[style*="d97706"] {
+    border-color: #d97706 !important;
+    background-color: #fffbeb !important;
+}
