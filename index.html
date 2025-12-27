@@ -16,7 +16,7 @@
 <div id="auth-screen" class="screen active">
     <div class="joinCard">
         <h1 class="gameTitle">EDEETOS</h1>
-        <p class="subTitle">Preparation</p>
+        <p class="subTitle">Go Beyond Yourself!</p>
         
         <div id="auth-form">
             <h2 id="auth-title">Log In</h2>
@@ -312,47 +312,70 @@
 </div>
     
    <div id="profile-modal" class="modal-overlay hidden">
-    <div class="joinCard" style="max-width:500px; text-align:left; position:relative;">
-        <button onclick="document.getElementById('profile-modal').classList.add('hidden')" style="position:absolute; right:20px; top:15px; background:none; border:none; font-size:20px; cursor:pointer;">✕</button>
+    <div class="joinCard" style="padding: 0 !important; overflow: hidden; display: flex; flex-direction: column; max-height: 85vh; width: 100%; max-width: 500px; background: white; border-radius: 20px;">
         
-        <h2 style="color:var(--primary); margin-bottom:5px;">👤 My Profile</h2>
-        <p style="font-size:12px; color:#666; margin-bottom:20px;">Manage your personal information.</p>
+        <div class="modal-header" style="flex-shrink: 0; padding: 20px 25px; border-bottom: 1px solid #f1f5f9; background: white; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <h2 style="color:var(--primary); font-size: 22px; display:flex; align-items:center; gap:8px; margin-bottom: 5px; margin-top: 0;">
+                    <span>👤 My Profile</span>
+                </h2>
+                <p style="font-size:13px; color:#666; margin:0;">Manage your personal information.</p>
+            </div>
+            <button onclick="document.getElementById('profile-modal').classList.add('hidden')" style="background:transparent; border:none; font-size:24px; color:#94a3b8; cursor:pointer; width:auto; margin:0; padding:0;">&times;</button>
+        </div>
 
-        <div style="max-height:60vh; overflow-y:auto; padding-right:5px;">
-            <div style="background:#f8fafc; padding:15px; border-radius:10px; margin-bottom:15px;">
-                <label style="font-size:11px; color:#64748b; display:block;">Email</label>
-                <div id="profile-email" style="font-weight:600; color:#333;">-</div>
+        <div class="modal-body-scroll" style="flex: 1; overflow-y: auto; min-height: 0; padding: 25px;">
+            
+            <div style="background:#f8fafc; padding:15px; border-radius:12px; margin-bottom:25px; border:1px solid #e2e8f0;">
+                <label style="font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:1px; font-weight:700; display:block; margin-bottom:10px;">Account Details</label>
                 
-                <div style="display:flex; justify-content:space-between; margin-top:10px;">
-                    <div>
-                        <label style="font-size:11px; color:#64748b; display:block;">Plan</label>
-                        <div id="profile-plan" style="font-weight:600; color:#d97706;">Free</div>
-                    </div>
-                    <div style="text-align:right;">
-                        <label style="font-size:11px; color:#64748b; display:block;">Member Since</label>
-                        <div id="profile-joined" style="font-weight:600;">-</div>
-                    </div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px; border-bottom:1px dashed #cbd5e1; padding-bottom:8px;">
+                    <span style="font-size:13px; color:#475569;">Email</span>
+                    <span id="profile-email" style="font-weight:600; color:#1e293b; font-size:13px;">-</span>
+                </div>
+                
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <span style="font-size:13px; color:#475569;">Plan</span>
+                    <span id="profile-plan" style="font-weight:700; color:#d97706; font-size:13px;">Free</span>
+                </div>
+                
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="font-size:13px; color:#475569;">Joined</span>
+                    <span id="profile-joined" style="font-weight:600; color:#64748b; font-size:13px;">-</span>
                 </div>
             </div>
 
-            <label style="font-size:12px; font-weight:bold;">Full Name</label>
-            <input type="text" id="edit-name" placeholder="Dr. Name">
+            <div style="display:flex; flex-direction:column; gap:15px;">
+                <div>
+                    <label style="font-size:13px; font-weight:600; color:#1e293b; display:block; margin-bottom:6px;">Full Name</label>
+                    <input type="text" id="edit-name" placeholder="Dr. Name" style="width:100%; padding:12px; border:1px solid #cbd5e1; border-radius:10px; font-size:14px; background:white;">
+                </div>
 
-            <label style="font-size:12px; font-weight:bold;">Phone Number</label>
-            <input type="tel" id="edit-phone" placeholder="0300-1234567">
+                <div>
+                    <label style="font-size:13px; font-weight:600; color:#1e293b; display:block; margin-bottom:6px;">Phone Number</label>
+                    <input type="tel" id="edit-phone" placeholder="0300-1234567" style="width:100%; padding:12px; border:1px solid #cbd5e1; border-radius:10px; font-size:14px; background:white;">
+                </div>
 
-            <label style="font-size:12px; font-weight:bold;">Medical College / Institution</label>
-            <input type="text" id="edit-college" placeholder="e.g. KEMU, DMC">
+                <div>
+                    <label style="font-size:13px; font-weight:600; color:#1e293b; display:block; margin-bottom:6px;">Medical Institution / Working Hospital</label>
+                    <input type="text" id="edit-college" placeholder="e.g. KEMU, DMC" style="width:100%; padding:12px; border:1px solid #cbd5e1; border-radius:10px; font-size:14px; background:white;">
+                </div>
 
-            <label style="font-size:12px; font-weight:bold;">Target Exam</label>
-            <select id="edit-exam" style="margin-bottom:20px;">
-                <option value="FCPS-1">FCPS Part 1</option>
-                <option value="MD/MS">MD / MS</option>
-                <option value="NEB">NEB / PMDC</option>
-                <option value="Other">Other</option>
-            </select>
+                <div>
+                    <label style="font-size:13px; font-weight:600; color:#1e293b; display:block; margin-bottom:6px;">Target Exam</label>
+                    <select id="edit-exam" style="width:100%; padding:12px; border:1px solid #cbd5e1; border-radius:10px; font-size:14px; background:white; cursor:pointer;">
+                        <option value="FCPS-1">FCPS Part 1</option>
+                        <option value="MD/MS">MD / MS</option>
+                        <option value="MBBS">MBBS</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div style="height:20px;"></div> </div>
 
-            <button class="primary" onclick="saveDetailedProfile()">💾 Save Changes</button>
+        <div class="modal-footer" style="flex-shrink: 0; padding: 20px 25px; border-top: 1px solid #f1f5f9; background: white;">
+            <button class="primary" onclick="saveDetailedProfile()" style="width:100%; margin:0; box-shadow: 0 4px 14px rgba(0, 114, 255, 0.3);">💾 Save Changes</button>
         </div>
     </div>
 </div>
@@ -376,6 +399,7 @@
     <script src="script.js"></script>
 </body>
 </html>
+
 
 
 
