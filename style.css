@@ -1287,3 +1287,26 @@ tr:last-child td { border-bottom: none; }
     border: 1px solid #d97706;
     margin-left: 5px;
 }
+
+/* --- ADD THIS TO BOTTOM OF STYLE.CSS --- */
+
+/* Badge Description Text */
+.badge-desc {
+    display: block;
+    font-size: 11px;
+    color: #64748b; /* Grey text */
+    margin-top: 4px;
+    line-height: 1.3;
+}
+
+/* Ensure unlocked badges look distinct */
+.badge-item.unlocked .badge-desc {
+    color: #b45309; /* Darker gold/brown for readability on gold bg */
+    font-weight: 500;
+}
+
+/* Fix Admin User Card Spacing */
+.user-card {
+    padding: 20px;
+    line-height: 1.6;
+}
