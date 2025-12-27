@@ -1310,3 +1310,83 @@ tr:last-child td { border-bottom: none; }
     padding: 20px;
     line-height: 1.6;
 }
+
+/* --- PREMIUM MODAL FIXES --- */
+
+/* 1. Force the Content Area to Scroll */
+.modal-body-scroll {
+    flex: 1;                /* Take up remaining height */
+    overflow-y: auto;       /* Enable Scroll */
+    padding: 0 25px;        /* Side padding */
+    margin-bottom: 10px;
+    min-height: 0;          /* Crucial for Flexbox scrolling */
+}
+
+/* 2. New Tab Switcher (Pill Style) */
+.prem-tabs {
+    display: flex;
+    background: #f1f5f9;
+    padding: 5px;
+    border-radius: 12px;
+    margin: 0 25px 20px 25px;
+}
+
+.prem-tab-btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.prem-tab-btn.active {
+    background: white;
+    color: #d97706; /* Gold/Orange */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+/* 3. Pricing Grid (2 Columns) */
+.pricing-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* 2 Columns */
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.price-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px;
+    cursor: default;
+    transition: 0.2s;
+}
+
+.price-item:hover {
+    border-color: #d97706;
+    background: #fffbeb;
+}
+
+.price-duration { font-size: 12px; color: #64748b; margin-bottom: 2px; }
+.price-cost { font-size: 14px; font-weight: 700; color: #1e293b; }
+
+/* 4. Bank Info Box */
+.bank-info-box {
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 10px;
+    padding: 15px;
+    font-size: 12px;
+    color: #475569;
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
