@@ -52,6 +52,7 @@
 
                 <button id="main-badge-btn" class="icon-btn" onclick="openBadges()" title="Achievements">🏆</button>
                 <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn">🌙</button>
+                <button id="admin-btn" class="icon-btn hidden" onclick="openAdminPanel()" title="Admin Dashboard" style="background:#ef4444; color:white; border:none;">🛡️</button>
                 <button onclick="logout()" class="logout-btn">Log Out</button>
             </div>
         </div> 
@@ -217,8 +218,39 @@
             <button class="primary" onclick="document.getElementById('badges-modal').classList.add('hidden')" style="margin-top:20px;">Close</button>
         </div>
     </div>
+
+    <div id="admin-screen" class="screen hidden">
+    <div class="topBar" style="background:#1e293b; border-bottom:1px solid #334155;">
+        <div style="color:white; font-weight:bold; font-size:18px;">🛡️ Admin Panel</div>
+        <button onclick="goHome()" class="secondary" style="width:auto; padding:8px 15px; background:rgba(255,255,255,0.1); color:white; border:none;">Exit</button>
+    </div>
+
+    <div class="gameContainer">
+        <div class="panel" style="text-align:left;">
+            <h3 style="margin-top:0;">Controls</h3>
+            <button class="admin-tab active" onclick="switchAdminTab('reports')">🚩 Reports & Locator</button>
+            <button class="admin-tab" onclick="switchAdminTab('users')">👥 User Manager</button>
+        </div>
+
+        <div class="panel" id="admin-content" style="text-align:left; min-height:500px;">
+            
+            <div id="tab-reports">
+                <h3>User Reports</h3>
+                <p style="font-size:13px; color:#64748b; margin-bottom:20px;">
+                    Use the <b>ROW #</b> to find and fix errors in your Google Sheet.
+                </p>
+                <div id="admin-reports-list">Loading...</div>
+            </div>
+
+            <div id="tab-users" class="hidden">
+                <h3>Lookup User</h3>
+                <input type="text" id="admin-user-id" placeholder="User UID (from Firebase Console)...">
+                <button class="primary" onclick="adminLookupUser()">Fetch Info</button>
+                <div id="admin-user-result" style="margin-top:20px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
     <script src="script.js"></script>
 </body>
 </html>
-
-
