@@ -1409,58 +1409,58 @@ async function openProfileModal() {
     
     document.getElementById('profile-modal').classList.remove('hidden');
     
-    // 1. Fetch Latest Data
+    // 1. Fetch Latest Data (Fast & Fresh)
     let freshData = {};
     try {
         const doc = await db.collection('users').doc(currentUser.uid).get();
         if (doc.exists) freshData = doc.data();
     } catch (e) {
-        console.error("Profile fetch error:", e);
         freshData = userProfile || {}; 
     }
 
     // 2. Email & Plan
     document.getElementById('profile-email').innerText = currentUser.email;
-    const isPrem = freshData.isPremium || false;
+    const isPrem = freshData.isPremium === true; 
     document.getElementById('profile-plan').innerText = isPrem ? "PREMIUM 👑" : "Free Plan";
     
-    // 3. Joined Date (Auto-Fix if missing)
-    let joinedText = "Unknown";
-    
-    // Priority 1: Database Field
+    // 3. Joined Date (Standard Display)
+    let joinedText = "N/A";
     if (freshData.joined) {
-        joinedText = formatDateHelper(freshData.joined);
-    } 
-    // Priority 2: Firebase Auth Metadata (Creation Time)
-    else if (currentUser.metadata && currentUser.metadata.creationTime) {
+        // Handle Firestore Timestamp or Date object
+        const d = freshData.joined.seconds ? new Date(freshData.joined.seconds * 1000) : new Date(freshData.joined);
+        if (!isNaN(d.getTime())) joinedText = d.toLocaleDateString();
+    }
+    // Fallback to Auth Metadata if DB is empty
+    if (joinedText === "N/A" && currentUser.metadata.creationTime) {
         joinedText = new Date(currentUser.metadata.creationTime).toLocaleDateString();
-        
-        // OPTIONAL: Self-repair database in background
-        db.collection('users').doc(currentUser.uid).update({ 
-            joined: new Date(currentUser.metadata.creationTime) 
-        }).catch(err => console.log("Auto-repair joined date failed", err));
     }
     document.getElementById('profile-joined').innerText = joinedText;
 
-    // 4. Expiry Date Logic
-    let expiryText = "-";
+    // 4. EXPIRES ON (Clean Reader)
     const expiryElem = document.getElementById('profile-expiry');
+    let expiryText = "-";
     
     if (isPrem) {
         if (freshData.expiryDate) {
-            const dateObj = parseDateHelper(freshData.expiryDate);
-            // Check if Lifetime (Year > 2090)
-            if (dateObj.getFullYear() > 2090) {
-                expiryText = "Lifetime";
-                expiryElem.style.color = "#10b981"; // Green
+            const d = freshData.expiryDate.seconds ? new Date(freshData.expiryDate.seconds * 1000) : new Date(freshData.expiryDate);
+            
+            if (!isNaN(d.getTime())) {
+                // If year is past 2090, show Lifetime
+                if (d.getFullYear() > 2090) {
+                    expiryText = "Lifetime";
+                    expiryElem.style.color = "#10b981"; // Green
+                } else {
+                    expiryText = d.toLocaleDateString();
+                    expiryElem.style.color = "#d97706"; // Orange
+                }
             } else {
-                expiryText = dateObj.toLocaleDateString();
-                expiryElem.style.color = "#d97706"; // Orange
+                expiryText = "Active (Date Error)";
+                expiryElem.style.color = "#10b981";
             }
         } else {
-            // Premium is TRUE, but no date exists -> Must be Admin granted or Lifetime
-            expiryText = "Lifetime / Admin";
-            expiryElem.style.color = "#10b981"; 
+            // Premium is True, but no date found
+            expiryText = "Lifetime / Admin"; 
+            expiryElem.style.color = "#10b981";
         }
     } else {
         expiryText = "Not Active";
@@ -1469,7 +1469,7 @@ async function openProfileModal() {
     
     expiryElem.innerText = expiryText;
     
-    // 5. Fill Editable Inputs
+    // 5. Fill Inputs
     document.getElementById('edit-name').value = freshData.displayName || "";
     document.getElementById('edit-phone').value = freshData.phone || "";
     document.getElementById('edit-college').value = freshData.college || "";
@@ -1728,6 +1728,7 @@ async function saveDetailedProfile() {
         alert("Error saving profile: " + e.message);
     }
 }
+
 
 
 
