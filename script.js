@@ -965,18 +965,28 @@ function switchAdminTab(tab) {
 async function loadAllUsers() {
     const res = document.getElementById('admin-user-result');
     res.innerHTML = "Loading...";
-    const snap = await db.collection('users').limit(20).get();
+    
+    const snap = await db.collection('users').limit(50).get();
+    
     let html = "<div style='background:white; border-radius:12px;'>";
+    
+    let count = 0;
     snap.forEach(doc => {
         const u = doc.data();
+        
+        if (!u.email || u.email === "undefined") return;
+        
+        count++;
         html += `<div class="user-list-item">
-            <div><b>${u.email}</b><br><small>${u.role}</small></div>
-            <button onclick="adminLookupUser('${doc.id}')" style="width:auto; padding:5px; font-size:10px;">Manage</button>
+            <div><b>${u.email}</b><br><small>${u.role} | ${u.isPremium ? 'Premium' : 'Free'}</small></div>
+            <button onclick="adminLookupUser('${doc.id}')" style="width:auto; padding:5px 10px; font-size:11px;">Manage</button>
         </div>`;
     });
+    
+    if(count === 0) html += "<div style='padding:15px;'>No valid users found.</div>";
+    
     res.innerHTML = html + "</div>";
 }
-
 async function loadAdminReports() {
     const list = document.getElementById('admin-reports-list');
     list.innerHTML = "Loading...";
@@ -1004,19 +1014,44 @@ function deleteReport(id) { db.collection('reports').doc(id).delete().then(()=>l
 async function loadAdminPayments() {
     const list = document.getElementById('admin-payments-list');
     list.innerHTML = "Loading...";
+    
     const snap = await db.collection('payment_requests').where('status','==','pending').get();
-    if(snap.empty) { list.innerHTML = "No pending payments."; return; }
+    
+    if(snap.empty) { 
+        list.innerHTML = "<div style='padding:20px; text-align:center; color:#666;'>No pending payment requests.</div>"; 
+        return; 
+    }
 
     let html = "";
     snap.forEach(doc => {
         const p = doc.data();
+        // Get the requested plan, format it nicely (e.g., "1_week" -> "1 Week")
+        const reqPlan = p.planRequested ? p.planRequested.replace('_', ' ').toUpperCase() : "UNKNOWN";
+        
         html += `<div class="report-card">
-            <div>${p.email} | TID: ${p.tid}</div>
-            ${p.image ? `<img src="${p.image}" style="max-width:100%; border-radius:5px; margin:5px 0;">` : ''}
-            <div style="display:flex; gap:5px; margin-top:5px;">
-                <select id="dur-${doc.id}"><option value="1_month">1 Month</option><option value="6_months">6 Months</option><option value="lifetime">Lifetime</option></select>
-                <button class="primary" onclick="approvePayment('${doc.id}','${p.uid}')" style="padding:5px;">Approve</button>
-                <button class="secondary" onclick="db.collection('payment_requests').doc('${doc.id}').update({status:'rejected'}).then(()=>loadAdminPayments())" style="padding:5px;">Reject</button>
+            <div style="margin-bottom:5px;"><strong>${p.email}</strong></div>
+            <div style="font-size:12px; color:#555; margin-bottom:10px;">
+                Requested: <span style="background:#e0f2fe; color:#0284c7; padding:2px 6px; border-radius:4px; font-weight:bold;">${reqPlan}</span>
+            </div>
+            
+            ${p.image ? `<a href="${p.image}" target="_blank"><img src="${p.image}" style="max-width:100%; border-radius:8px; border:1px solid #ddd; margin-bottom:10px;"></a>` : ''}
+            
+            <div style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #eee;">
+                <label style="font-size:11px; font-weight:bold; display:block; margin-bottom:5px;">Approve for Duration:</label>
+                <div style="display:flex; gap:5px;">
+                    <select id="dur-${doc.id}" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:6px; font-size:12px;">
+                        <option value="1_day" ${p.planRequested === '1_day' ? 'selected' : ''}>1 Day</option>
+                        <option value="1_week" ${p.planRequested === '1_week' ? 'selected' : ''}>1 Week</option>
+                        <option value="15_days" ${p.planRequested === '15_days' ? 'selected' : ''}>15 Days</option>
+                        <option value="1_month" ${p.planRequested === '1_month' ? 'selected' : ''}>1 Month</option>
+                        <option value="3_months" ${p.planRequested === '3_months' ? 'selected' : ''}>3 Months</option>
+                        <option value="6_months" ${p.planRequested === '6_months' ? 'selected' : ''}>6 Months</option>
+                        <option value="12_months" ${p.planRequested === '12_months' ? 'selected' : ''}>12 Months</option>
+                        <option value="lifetime" ${p.planRequested === 'lifetime' ? 'selected' : ''}>Lifetime</option>
+                    </select>
+                    <button class="primary" onclick="approvePayment('${doc.id}','${p.uid}')" style="margin:0; padding:0 15px; font-size:12px;">Approve</button>
+                </div>
+                <button class="secondary" onclick="db.collection('payment_requests').doc('${doc.id}').update({status:'rejected'}).then(()=>loadAdminPayments())" style="width:100%; margin-top:5px; padding:8px; font-size:12px; color:#ef4444; border-color:#fecaca;">Reject Request</button>
             </div>
         </div>`;
     });
@@ -1357,6 +1392,7 @@ if (typeof loadAdminKeys !== 'function') window.loadAdminKeys = function(){};
 window.onload = () => {
     if(localStorage.getItem('fcps-theme')==='dark') toggleTheme();
 }
+
 
 
 
