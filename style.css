@@ -1,1283 +1,223 @@
 /* -----------------------------------------------------------
-   STYLE.CSS - MEDICAL MASTERY (FULL PREMIUM VERSION)
+   STYLE.CSS - MEDICAL MASTERY (FINAL FIXED VERSION)
    ----------------------------------------------------------- */
 
 /* =========================================
-   1. VARIABLES & THEME SETUP
+   1. VARIABLES & THEME
    ========================================= */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
 :root {
-    /* Brand Colors */
     --primary: #0072ff;
-    --primary-dark: #0056b3;
     --primary-gradient: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%);
-    --secondary-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%); 
-    
-    /* Backgrounds */
     --bg-color: #f0f4f8;
     --card-bg: rgba(255, 255, 255, 0.95);
     --input-bg: #f8fafc;
-    --sidebar-bg: rgba(255, 255, 255, 0.98);
-    
-    /* Text */
     --text-dark: #1e293b;
     --text-light: #64748b;
-    --text-muted: #94a3b8;
-    
-    /* Borders & Shadows */
     --border-color: #e2e8f0;
-    --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    --shadow-blue: 0 10px 30px rgba(0, 114, 255, 0.2);
-    
-    /* Status Colors */
     --success: #10b981;
     --danger: #ef4444;
     --warning: #f59e0b;
 }
 
-/* DARK MODE OVERRIDES */
 [data-theme="dark"] {
     --bg-color: #0f172a;
     --card-bg: rgba(30, 41, 59, 0.95);
     --input-bg: #1e293b;
-    --sidebar-bg: rgba(30, 41, 59, 0.98);
     --text-dark: #f8fafc;
     --text-light: #cbd5e1;
-    --text-muted: #64748b;
     --border-color: #334155;
-    --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-    --shadow-blue: 0 10px 30px rgba(0, 114, 255, 0.1);
 }
 
-/* =========================================
-   2. GLOBAL RESET & BODY STYLES
-   ========================================= */
-* { 
-    box-sizing: border-box; 
-    margin: 0; 
-    padding: 0; 
-    font-family: 'Poppins', sans-serif; 
-    -webkit-tap-highlight-color: transparent; 
-}
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; -webkit-tap-highlight-color: transparent; }
+body { min-height: 100vh; background: var(--bg-color); color: var(--text-dark); line-height: 1.6; overflow-x: hidden; }
 
-body { 
-    min-height: 100vh; 
-    background: var(--bg-color);
-    color: var(--text-dark);
-    line-height: 1.6;
-    overflow-x: hidden; /* Prevents horizontal scroll */
-}
-
-/* THE BLUE HEADER CURVE */
+/* Blue Header Curve */
 body::before {
-    content: ''; 
-    position: fixed; 
-    top: 0; 
-    left: 0; 
-    width: 100%; 
-    height: 38vh; 
-    background: var(--primary-gradient);
-    border-radius: 0 0 50% 50% / 20px;
-    z-index: -1; 
-    box-shadow: var(--shadow-blue);
-    animation: fadeIn 1.2s ease-out;
+    content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 38vh;
+    background: var(--primary-gradient); border-radius: 0 0 50% 50% / 20px; 
+    z-index: -1; animation: fadeIn 1.2s ease-out;
 }
-
 
 /* =========================================
-   3. CRITICAL LAYOUT & DISPLAY LOGIC
+   2. GLOBAL LAYOUT & HIDING
    ========================================= */
+.hidden { display: none !important; }
+.screen { display: none; width: 100%; min-height: 100vh; }
 
-/* --- THE GLOBAL HIDER (Fixes the Popup Pile-up) --- */
-.hidden {
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-}
-
-/* Base Screen Style */
-.screen {
-    display: none; /* Hidden by default */
-    width: 100%;
-    min-height: 100vh;
-}
-
-/* 1. LOGIN SCREEN (Specific Fixes) */
+/* Active Screen Logic */
 #auth-screen.active {
-    display: flex !important;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    
-    /* Force Full Screen Coverage */
-    position: fixed; 
-    top: 0; 
-    left: 0;
-    width: 100% !important;
-    max-width: none !important;
-    height: 100vh;
-    z-index: 1000;
+    display: flex !important; flex-direction: column; justify-content: center; align-items: center;
+    position: fixed; top: 0; left: 0; width: 100%; height: 100vh; z-index: 1000;
+}
+#dashboard-screen.active, #quiz-screen.active, #result-screen.active, #admin-screen.active {
+    display: block !important; width: 100%; max-width: 1200px; margin: 0 auto; padding: 20px 0 60px 0;
 }
 
-/* 2. DASHBOARD & OTHER SCREENS (Normal Scroll) */
-/* --- UPDATED: ADDED #admin-screen.active HERE --- */
-#dashboard-screen.active, 
-#quiz-screen.active, 
-#result-screen.active,
-#admin-screen.active {
-    display: block !important;
-    width: 100%;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding-top: 20px;
-    padding-bottom: 40px;
-}
-
-
-/* =========================================
-   4. ANIMATIONS
-   ========================================= */
+/* Animations */
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes slideInRight { from { transform: translateX(50px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
-@keyframes burn { from { opacity: 0.7; transform: scale(1); filter: brightness(1); } to { opacity: 1; transform: scale(1.2); filter: brightness(1.3); } }
-@keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
 @keyframes successPop { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
-
-
-/* =========================================
-   5. COMPONENT STYLES (Cards, Inputs, Buttons)
-   ========================================= */
-
-/* Glassmorphism Cards */
-.joinCard, .panel, .test-question-block, .modal-overlay .joinCard { 
-    background: var(--card-bg); 
-    border-radius: 24px; 
-    box-shadow: var(--shadow-md); 
-    border: 1px solid rgba(255,255,255,0.6);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.panel:hover {
-    transform: translateY(-3px);
-    box-shadow: var(--shadow-lg);
-}
-
-/* LOGIN CARD SPECIFIC */
-.joinCard { 
-    text-align: center; 
-    padding: 50px 40px; 
-    width: 90%; 
-    max-width: 450px; 
-    margin: auto; 
-    animation: slideUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.gameTitle { 
-    font-size: 32px; 
-    font-weight: 800; 
-    color: var(--text-dark); 
-    margin-bottom: 5px; 
-    letter-spacing: -0.5px;
-}
-
-.subTitle { 
-    color: var(--text-light); 
-    margin-bottom: 35px; 
-    font-size: 13px; 
-    text-transform: uppercase; 
-    letter-spacing: 2px; 
-    font-weight: 600; 
-}
-
-/* INPUT FIELDS */
-input { 
-    width: 100%; 
-    padding: 18px; 
-    margin: 10px 0; 
-    border: 2px solid var(--border-color); 
-    border-radius: 16px; 
-    font-size: 15px; 
-    background: var(--input-bg); 
-    text-align: center; 
-    color: var(--text-dark);
-    transition: all 0.3s ease;
-}
-
-input:focus { 
-    border-color: var(--primary); 
-    background: #fff; 
-    outline: none; 
-    box-shadow: 0 0 0 4px rgba(0, 114, 255, 0.15);
-    transform: scale(1.01);
-}
-
-/* BUTTONS */
-button { 
-    width: 100%; 
-    padding: 18px; 
-    border: none; 
-    border-radius: 16px; 
-    font-size: 15px; 
-    font-weight: 600; 
-    cursor: pointer; 
-    margin-top: 15px;
-    letter-spacing: 0.5px;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.primary { 
-    background: var(--primary-gradient); 
-    color: white; 
-    box-shadow: 0 10px 20px -5px rgba(0, 114, 255, 0.4); 
-}
-.primary:hover { 
-    transform: translateY(-2px); 
-    box-shadow: 0 15px 30px -5px rgba(0, 114, 255, 0.5); 
-}
-.primary:active { transform: scale(0.98); }
-
-.secondary { 
-    background: white; 
-    color: var(--text-light); 
-    border: 2px solid var(--border-color); 
-}
-.secondary:hover { 
-    background: #f8fafc; 
-    color: var(--text-dark); 
-    border-color: #cbd5e0; 
-}
-
+@keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
 
 /* =========================================
-   6. DASHBOARD & MAIN UI (Grid Layout)
+   3. COMPONENTS
    ========================================= */
-
-/* DASHBOARD HEADER (TopBar) */
-.topBar { 
-    width: 100%; 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    margin-bottom: 30px; 
-    padding: 25px 35px; 
-    background: var(--card-bg); 
-    border-radius: 24px; 
-    box-shadow: var(--shadow-md); 
-    border: 1px solid rgba(255,255,255,0.6); 
-    animation: slideUp 0.5s ease-out;
-}
-
-.user-badge { display: flex; flex-direction: column; text-align: left; }
-.user-badge span { display: block; }
-
-.logout-btn { 
-    width: auto; 
-    padding: 10px 24px; 
-    font-size: 13px; 
-    background: #fee2e2; 
-    color: #ef4444; 
-    margin: 0; 
-    border-radius: 12px; 
-    border: 1px solid #fecaca;
-}
-.logout-btn:hover { background: #fecaca; transform: translateY(-1px); }
-
-/* DASHBOARD LAYOUT (CSS Grid) - APPLIES ONLY TO DASHBOARD */
-#dashboard-screen .gameContainer { 
-    width: 100%; 
-    display: grid; 
-    /* Col 1 is fixed 450px. Col 2 is 1fr (Takes all remaining space) */
-    grid-template-columns: 450px 1fr; 
-    gap: 30px; 
-    padding: 0 20px;
-    align-items: start;
-}
-
-/* --- LEFT COLUMN (Progress & Settings) --- */
-.panel { 
-    grid-column: 1; /* Force into First Column */
-    padding: 25px; 
-    text-align: center;
-    background: var(--card-bg); 
-    border: 1px solid var(--border-color); 
-    border-radius: 16px; 
-    box-shadow: var(--shadow-sm); 
+.joinCard, .panel, .test-question-block, .modal-overlay .joinCard, 
+.subject-dropdown-card, .report-card, .user-card { 
+    background: var(--card-bg); border-radius: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+    border: 1px solid rgba(255,255,255,0.6); backdrop-filter: blur(12px); 
     transition: transform 0.3s ease;
-    width: 100%; 
-    margin-bottom: 30px;
 }
 
-.panel h3 {
-   font-size: 19px; 
-   font-weight: 700; 
-   color: var(--text-dark); 
-   margin-bottom: 25px; 
-   display: flex; 
-   align-items: center; 
-   gap: 10px;
-   justify-content: center; 
-   border-bottom: 2px solid #e2e8f0;
-   padding-bottom: 15px;
-   margin-bottom: 20px;
-}
+.joinCard { text-align: center; padding: 40px; width: 90%; max-width: 450px; margin: auto; }
+.panel { padding: 25px; margin-bottom: 20px; text-align: center; }
+.gameTitle { font-size: 32px; font-weight: 800; margin-bottom: 5px; }
+.subTitle { color: var(--text-light); margin-bottom: 30px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; }
 
-/* --- RIGHT COLUMN (Study Session) --- */
-#study-panel {
-    grid-column: 2; /* Force into Second Column */
-    grid-row: 1 / span 10; 
-    width: 100% !important;
-    max-width: none !important;
-    height: 20.5cm !important;
-    overflow-y: auto !important;
-    margin: 0 !important;
+/* Inputs & Buttons */
+input, select { 
+    width: 100%; padding: 15px; margin: 10px 0; border: 2px solid var(--border-color); 
+    border-radius: 12px; background: var(--input-bg); color: var(--text-dark); text-align: center;
 }
-
-/* --- MOBILE FIX --- */
-@media screen and (max-width: 950px) {
-    #dashboard-screen .gameContainer {
-        grid-template-columns: 1fr; /* Single column on mobile */
-    }
-    .panel, #study-panel {
-        grid-column: 1; 
-        max-width: 450px !important;
-        margin-left: auto !important;
-        margin-right: auto !important;
-    }
-    #study-panel {
-        width: 100% !important;
-    }
+button { 
+    width: 100%; padding: 15px; border: none; border-radius: 12px; font-weight: 600; 
+    cursor: pointer; margin-top: 10px; transition: 0.2s;
 }
+.primary { background: var(--primary-gradient); color: white; box-shadow: 0 5px 15px rgba(0, 114, 255, 0.3); }
+.secondary { background: white; color: var(--text-light); border: 2px solid var(--border-color); }
+.secondary:hover { background: #f8fafc; color: var(--text-dark); border-color: #cbd5e0; }
 
 /* =========================================
-   7. STUDY MENU & INTERACTION
+   4. DASHBOARD
    ========================================= */
-
-/* TAB SWITCHER */
-.tabs { 
-    display: flex; 
-    background: var(--input-bg); 
-    padding: 6px; 
-    border-radius: 16px; 
-    margin-bottom: 25px; 
-    border: 1px solid var(--border-color);
+.topBar { 
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; 
+    padding: 20px; background: var(--card-bg); border-radius: 24px; 
 }
-.tab-btn { 
-    margin: 0 2px; 
-    background: transparent; 
-    color: var(--text-light); 
-    border-radius: 12px; 
-    padding: 12px; 
-    flex: 1; 
-    transition: all 0.3s ease;
+#dashboard-screen .gameContainer { 
+    display: grid; grid-template-columns: 400px 1fr; gap: 30px; padding: 0 20px; align-items: start;
 }
-.tab-btn.active { 
-    background: white; 
-    color: var(--primary); 
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08); 
-    font-weight: 700; 
-}
+.panel h3 { margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+#study-panel { grid-column: 2; height: 80vh; overflow-y: auto; }
 
-/* SCROLLABLE SUBJECT LIST */
-#dynamic-menus {
-    max-height: 500px; 
-    overflow-y: auto;
-    margin-top: 15px; 
-    padding-top: 15px; 
-    border-top: 2px solid var(--border-color); 
-    padding-right: 10px;
-    scroll-behavior: smooth;
-}
+/* Tabs & Menus */
+.tabs { display: flex; background: var(--input-bg); padding: 5px; border-radius: 12px; margin-bottom: 20px; }
+.tab-btn { flex: 1; padding: 10px; background: transparent; border-radius: 10px; color: var(--text-light); }
+.tab-btn.active { background: white; color: var(--primary); font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
 
-/* Custom Scrollbar Styling */
-#dynamic-menus::-webkit-scrollbar { width: 6px; }
-#dynamic-menus::-webkit-scrollbar-track { background: transparent; }
-#dynamic-menus::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-#dynamic-menus::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-
-/* =========================================
-   8. QUIZ INTERFACE & EXAM MODE
-   ========================================= */
-
-#quiz-screen .gameContainer { 
-    display: flex; 
-    flex-direction: column; 
-    max-width: 850px; 
-    margin: 0 auto; 
-}
-
-.quiz-header { 
-    width: 100%; 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    margin-bottom: 25px; 
-    background: var(--card-bg); 
-    padding: 15px 30px; 
-    border-radius: 20px; 
-    box-shadow: var(--shadow-md);
-}
-
-#timer { 
-    font-size: 20px; 
-    font-weight: 700; 
-    color: var(--primary); 
-    background: #ebf8ff; 
-    padding: 10px 20px; 
-    border-radius: 14px; 
-    border: 1px solid #bee3f8;
-}
-
-/* Question Box (Strong Animation Force) */
-.test-question-block { 
-    padding: 30px; 
-    text-align: left; 
-    position: relative; 
-    overflow: visible; 
-    
-    /* Layout & Border */
-    width: 100% !important; 
-    margin: 0 !important; 
-    border: 8px solid var(--primary); 
-    background: var(--card-bg); 
-    border-radius: 16px; 
-    box-shadow: var(--shadow-sm); 
-    margin-bottom: 25px !important;
-
-    /* --- ANIMATION --- */
-    animation: slideUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; 
-}
-
-.test-q-text { 
-    font-size: 1.4rem; 
-    font-weight: 600; 
-    line-height: 1.8; 
-    color: var(--text-dark); 
-    margin-bottom: 35px; 
-    text-align: justify; 
-}
-
-/* Quiz Options Container */
-.options-group { display: flex; flex-direction: column; gap: 15px; }
-
-/* --- OPTION BUTTON LAYOUT --- */
-.option-btn {
-    background: white;
-    border: 2px solid var(--border-color);
-    border-radius: 16px;
-    padding: 15px 20px;
-    margin: 0;
-    transition: all 0.2s;
-    font-size: 15px;
-    color: var(--text-dark);
-    text-align: left;
-    
-    /* FLEXBOX: Essential for Side-by-Side layout */
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 15px;
-    position: relative; 
-}
-
-/* Make sure text takes up all space except the eye */
-.opt-text {
-    flex: 1; /* Grow to fill space */
-    word-break: break-word; /* Prevent long words breaking layout */
-    pointer-events: none;
-}
-
-/* Hover Effect */
-.option-btn:hover:not(:disabled) {
-    border-color: var(--primary);
-    background: #f0f9ff;
-    transform: translateX(5px);
-    box-shadow: var(--shadow-sm);
-}
-
-/* The Eye Icon */
-.elim-eye {
-    font-size: 18px;
-    cursor: pointer;
-    opacity: 0.4; 
-    padding: 5px;
-    border-radius: 50%;
-    transition: opacity 0.2s;
-    flex-shrink: 0; /* Don't shrink the eye */
-    z-index: 10;
-}
-
-.option-btn:hover .elim-eye { opacity: 1; }
-.elim-eye:hover { background: rgba(0,0,0,0.1); }
-
-/* --- ELIMINATION STATE --- */
-.option-btn.eliminated {
-    opacity: 0.6;
-    background-color: #f1f5f9;
-    border-color: #cbd5e1;
-    color: #94a3b8;
-}
-
-/* Red Strikethrough */
-.option-btn.eliminated::after {
-    content: '';
-    position: absolute;
-    left: 15px;
-    right: 50px; /* Stop before the eye */
-    top: 50%;
-    height: 2px;
-    background-color: #ef4444;
-    transform: translateY(-50%);
-    pointer-events: none;
-}
-
-/* States (FIXED: Added Animations Back) */
-.option-btn.selected { 
-    background: #e3f2fd; 
-    border-color: var(--primary); 
-    color: #0056b3; 
-    font-weight: 600; 
-}
-
-.option-btn.correct { 
-    background: #d1fae5 !important; 
-    border-color: var(--success) !important; 
-    color: #065f46; 
-    font-weight: 700;
-    /* POP Animation */
-    animation: successPop 0.4s ease-out forwards; 
-}
-
-.option-btn.wrong { 
-    background: #fee2e2 !important; 
-    border-color: var(--danger) !important; 
-    color: #991b1b; 
-    font-weight: 700;
-    /* SHAKE Animation */
-    animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; 
-}
-
-/* Dark Mode */
-[data-theme="dark"] .option-btn { background: var(--input-bg); }
-[data-theme="dark"] .option-btn.eliminated { background: rgba(255,255,255,0.05); color: #64748b; }
-
-.quiz-footer { 
-    width: 100%; 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    margin-top: 30px; 
-}
-
-
-
-/* =========================================
-   9. POPUPS, MODALS & OVERLAYS (Mobile Fixed)
-   ========================================= */
-
-.modal-overlay {
-    position: fixed; 
-    top: 0; 
-    left: 0; 
-    width: 100%; 
-    height: 100%;
-    background: rgba(0, 0, 0, 0.7); 
-    backdrop-filter: blur(8px);
-    z-index: 9999; 
-    display: flex; 
-    justify-content: center; 
-    align-items: center; 
-    padding: 20px;
-    animation: fadeIn 0.3s ease-out;
-}
-
-.modal-overlay .joinCard {
-    max-height: 85vh; 
-    width: 95%; 
-    max-width: 600px; 
-    
-    display: flex; 
-    flex-direction: column; 
-    overflow: hidden; /* Prevents whole card from scrolling */
-    
-    margin: 0; 
-    text-align: left;
-    padding: 0; /* We move padding to children for better scroll control */
-}
-
-.modal-overlay .joinCard h2, 
-.modal-overlay .joinCard h3 {
-    padding: 25px 25px 10px 25px;
-    margin: 0;
-    flex-shrink: 0; /* Never shrink the header */
-}
-
-.dynamic-explanation {
-    background: #f8fafc; 
-    color: #475569; 
-    line-height: 1.8; 
-    white-space: pre-wrap; 
-    font-size: 15px;
-    border-top: 1px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
-    
-    flex: 1;           /* Take all available remaining height */
-    overflow-y: auto;  /* Scroll ONLY this part */
-    min-height: 0;     /* Critical for Flexbox scrolling */
-    
-    padding: 20px 25px; /* Internal padding */
-    margin: 0 !important; /* Reset margins */
-    max-height: none !important; /* Override any inline style */
-}
-
-.modal-overlay .joinCard > div:last-child,
-.modal-overlay .joinCard > div:nth-last-child(2) {
-    padding: 15px 25px 25px 25px;
-    flex-shrink: 0; /* Never shrink the buttons */
-    background: var(--card-bg);
-}
-
-#explanation-text {
-    /* Ensure the specific ID also follows the rules */
-    display: block;
-    width: 100%;
-}
-
-/* =========================================
-   10. EXTRAS (Sidebar, Badges, Search)
-   ========================================= */
-
-/* EXAM SIDEBAR */
-.test-sidebar {
-    position: fixed; 
-    right: 30px; 
-    top: 120px; 
-    width: 280px;
-    background: var(--card-bg); 
-    padding: 25px; 
-    border-radius: 20px;
-    box-shadow: var(--shadow-lg); 
-    border: 1px solid white;
-    max-height: 75vh; 
-    overflow-y: auto; 
-    z-index: 100; 
-    display: none; 
-    backdrop-filter: blur(20px);
-}
-.test-sidebar.active { display: block; animation: slideInRight 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); }
-
-.nav-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 15px; }
-.nav-btn {
-    width: 100%; aspect-ratio: 1; border: 1px solid var(--border-color);
-    background: #f8fafc; color: var(--text-light); border-radius: 10px;
-    font-size: 12px; font-weight: 600; display: flex;
-    justify-content: center; align-items: center; cursor: pointer;
-    transition: all 0.2s;
-}
-.nav-btn.current { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 4px 10px rgba(0, 114, 255, 0.3); }
-.nav-btn.answered { background: #e3f2fd; color: #0072ff; border-color: #90cdf4; }
-.nav-btn.flagged { border-color: var(--warning); color: var(--warning); background: #fffbeb; }
-
-/* BADGES & GAMIFICATION */
-.streak-container { display: flex; align-items: center; margin-right: 15px; font-weight: 700; color: var(--danger); font-size: 14px; }
-.streak-icon { font-size: 20px; margin-right: 5px; animation: burn 0.8s infinite alternate; }
-
-.icon-btn, .theme-toggle { 
-    background: transparent; border: none; font-size: 22px; cursor: pointer; margin-right: 15px; 
-    transition: transform 0.2s; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
-    border-radius: 50%;
-}
-.icon-btn:hover, .theme-toggle:hover { background: #f1f5f9; transform: scale(1.1); }
-
-.badge-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 20px; }
-.badge-item {
-    background: var(--input-bg);       /* Adapts to Dark Mode */
-    border: 1px solid var(--border-color);
-    border-radius: 16px;
-    padding: 15px;
-    text-align: center;
-    opacity: 0.5;
-    filter: grayscale(100%);
-    transition: all 0.3s;
-    color: var(--text-dark);           /* Ensures text is visible */
-}
-
-.badge-item.unlocked { 
-    opacity: 1; 
-    filter: grayscale(0%); 
-    border-color: #ffd700; 
-    background: #fffbeb;              /* Light Mode Gold */
-    transform: translateY(-5px); 
-    box-shadow: 0 5px 15px rgba(255, 215, 0, 0.2);
-    color: #b7791f;                   /* Dark Gold Text */
-}
-
-/* Fix for Dark Mode Unlocked Badges */
-[data-theme="dark"] .badge-item.unlocked {
-    background: rgba(255, 215, 0, 0.15); /* Dark transparent gold */
-    color: #ffd700;                      /* Bright Gold Text */
-    border-color: #ffd700;
-}
-
-/* The Icon inside the badge */
-.badge-icon {
-    font-size: 30px;
-    display: block;
-    margin-bottom: 5px;
-}
-/* SEARCH */
-.search-results-list {
-    position: absolute; top: 110%; left: 0; right: 0;
-    background: white; border: 1px solid #ccc; max-height: 250px;
-    overflow-y: auto; z-index: 1000; display: none;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-radius: 12px;
-}
-.search-item { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s; }
-.search-item:hover { background-color: #f0f9ff; color: var(--primary); }
-
-
-/* =========================================
-   11. MOBILE OPTIMIZATIONS
-   ========================================= */
-@media screen and (max-width: 600px) {
-    /* Login Fix */
-    .joinCard { width: 95%; padding: 30px 20px; }
-    .gameTitle { font-size: 26px; }
-    
-    /* Header Fixes */
-    .topBar {
-        flex-direction: column !important; align-items: center !important; height: auto !important; padding: 15px !important;
-    }
-    .user-badge { width: 100% !important; align-items: center !important; margin-bottom: 10px !important; }
-    .user-badge div { justify-content: center !important; }
-    
-    .topBar > div:last-child {
-        width: 100% !important; display: flex !important; flex-wrap: nowrap !important;
-        justify-content: center !important; align-items: center !important; gap: 5px !important;
-    }
-    
-    .streak-container { font-size: 12px !important; white-space: nowrap !important; margin-right: 5px !important; }
-    .icon-btn, .theme-toggle { font-size: 18px !important; width: 32px !important; height: 32px !important; margin-right: 5px !important; }
-    .logout-btn { width: 100% !important; margin-top: 15px !important; order: 99 !important; padding: 12px !important; }
-
-    /* Quiz Fixes */
-    .test-question-block { padding: 25px; border-left-width: 5px; }
-    .test-q-text { font-size: 1.1rem; line-height: 1.6; }
-    .option-btn { padding: 15px; font-size: 14px; }
-    
-    /* Hide Desktop Sidebar */
-    .test-sidebar { display: none !important; }
-}
-
-
-/* =========================================
-   12. ANALYTICS STYLES
-   ========================================= */
-.stat-item {
-    margin-bottom: 20px;
-}
-.stat-header {
-    display: flex; justify-content: space-between; font-weight: 600;
-    margin-bottom: 5px; font-size: 14px; color: var(--text-dark);
-}
-.progress-track {
-    width: 100%; height: 8px; background: #e2e8f0;
-    border-radius: 4px; overflow: hidden; margin-bottom: 5px;
-}
-.progress-fill {
-    height: 100%; border-radius: 4px; transition: width 1s ease-out;
-}
-.stat-meta {
-    font-size: 11px; color: var(--text-light); text-align: right;
-}
-
-/* =========================================
-   13. DARK MODE & LAYOUT FIXES
-   ========================================= */
-
-/* Fix 1: Force Topic Buttons to be Dark */
-.category-btn {
-    background-color: var(--input-bg) !important;
-    color: var(--text-dark) !important;
-    border-color: var(--border-color) !important;
-}
-
-/* Fix 2: Style the Exam Settings Box */
-#test-settings {
-    background: var(--card-bg);
-    padding: 20px;
-    border-radius: 16px;
-    margin-bottom: 20px;
-    border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-sm);
-}
-
-/* Fix 3: Tame the Long Subject List */
-.filter-container {
-    max-height: 250px;       /* Set a maximum height */
-    overflow-y: auto;        /* Add a scrollbar if it gets too long */
-    background: var(--input-bg);
-    padding: 15px;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    margin-top: 10px;
-    margin-bottom: 15px;
-}
-
-/* Make the checkboxes look better in the list */
-.filter-group { margin-bottom: 12px; }
-.filter-subject-label {
-    font-weight: 700; color: var(--primary);
-    display: block; margin-bottom: 5px; cursor: pointer;
-}
-.filter-topic-list {
-    margin-left: 20px; border-left: 2px solid var(--border-color); padding-left: 10px;
-}
-.filter-topic-label {
-    display: block; font-size: 13px; color: var(--text-dark);
-    margin-bottom: 4px; cursor: pointer;
-}
-
-/* =========================================
-   14. INPUTS & EXAM GRID
-   ========================================= */
-
-/* --- A. Fix the White Input Boxes --- */
-input[type="number"], 
-input[type="text"], 
-input[type="email"], 
-input[type="password"] {
-    background-color: var(--input-bg) !important;
-    color: var(--text-dark) !important;
-    border: 1px solid var(--border-color) !important;
-}
-
-/* --- B. Exam Mode: Grid Layout --- */
-.filter-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 12px;
-}
-
-.filter-group {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 10px;
-    height: 100%;
-}
-
-.filter-topic-list {
-    border-left: none; margin-left: 0; padding-left: 0; margin-top: 8px;
-}
-
-
-/* =========================================
-   18. DROPDOWN + TEXT GRID + PROGRESS BARS (FIXED)
-   ========================================= */
-
-/* 1. The Card */
-.subject-dropdown-card {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 16px;
-    margin-bottom: 15px;
-    overflow: hidden;
-    box-shadow: var(--shadow-sm);
-}
-
-/* 2. The Header */
-.subject-summary {
-    padding: 20px;
-    cursor: pointer;
-    list-style: none; 
-    position: relative;
-}
+#dynamic-menus { margin-top: 15px; }
+.subject-dropdown-card { margin-bottom: 15px; border: 1px solid var(--border-color); }
+.subject-summary { padding: 15px; cursor: pointer; list-style: none; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
 .subject-summary::-webkit-details-marker { display: none; }
 
-.subject-summary::after {
-    content: '▼';
-    position: absolute;
-    right: 20px;
-    top: 20px;
-    color: var(--text-light);
-    font-size: 12px;
+.topics-text-grid { display: flex; flex-wrap: wrap; gap: 10px; padding: 15px; background: var(--input-bg); }
+.topic-item-container { 
+    padding: 8px 12px; background: white; border-radius: 8px; font-size: 13px; 
+    cursor: pointer; border: 1px solid var(--border-color); display: flex; flex-direction: column;
 }
-details[open] .subject-summary::after {
-    transform: rotate(180deg);
-    color: var(--primary);
-}
-
-.summary-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
-.subj-name { font-weight: 700; font-size: 16px; color: var(--text-dark); }
-.subj-stats { font-size: 12px; color: var(--text-light); }
-
-.progress-bar-thin {
-    height: 4px;
-    background: #e2e8f0;
-    border-radius: 2px;
-    overflow: hidden;
-}
-.progress-bar-thin .fill {
-    height: 100%;
-    background: var(--success);
-}
-
-/* 3. The Content Box */
-.dropdown-content {
-    background: var(--input-bg); 
-    padding: 20px;
-    border-top: 1px solid var(--border-color);
-}
-
-/* 4. "Practice All" Button */
-.practice-all-row {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-weight: 700;
-    color: var(--primary);
-    padding: 12px;
-    background: white;
-    border: 2px solid var(--border-color);
-    border-radius: 12px;
-    margin-bottom: 20px;
-    cursor: pointer;
-}
-.practice-all-row:hover {
-    background: var(--primary);
-    color: white;
-}
-
-/* 5. THE TOPICS GRID */
-.topics-text-grid {
-    display: flex;
-    flex-wrap: wrap; 
-    gap: 15px 30px; 
-}
-
-/* Container for Text + Bar */
-.topic-item-container {
-    display: flex;
-    flex-direction: column;
-    cursor: pointer;
-    padding: 2px 5px; /* Added padding to make it clickable */
-}
-
-.topic-name {
-    font-size: 15px;
-    color: var(--text-dark);
-    margin-bottom: 4px; /* Space between text and bar */
-}
-
-/* THE MINI PROGRESS TRACK (High Visibility) */
-.topic-mini-track {
-    width: 100%;
-    min-width: 50px; /* Force minimum width */
-    height: 4px;     /* Made it thicker */
-    background-color: #cbd5e1 !important; /* Visible Grey */
-    border-radius: 2px;
-    overflow: hidden;
-    display: block; /* Force display */
-}
-
-/* THE MINI FILL (Green) */
-.topic-mini-fill {
-    height: 100%;
-    background-color: #10b981 !important; /* Bright Green */
-    border-radius: 2px;
-    display: block;
-}
-
-/* Hover Effects */
-.topic-item-container:hover .topic-name {
-    color: var(--primary);
-    font-weight: 600;
-}
-
+.topic-item-container:hover { border-color: var(--primary); color: var(--primary); }
+.topic-mini-track { width: 100%; height: 4px; background: #e2e8f0; margin-top: 5px; border-radius: 2px; }
+.topic-mini-fill { height: 100%; background: #10b981; border-radius: 2px; }
 
 /* =========================================
-   19. EXAM MODE SELECTION STYLES
+   5. QUIZ & EXAM MODE
    ========================================= */
+#quiz-screen .gameContainer { max-width: 800px; margin: 0 auto; }
+.quiz-header { 
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; 
+    background: var(--card-bg); padding: 15px; border-radius: 16px; 
+}
+#timer { font-weight: bold; color: var(--primary); background: #e0f2fe; padding: 8px 15px; border-radius: 8px; }
 
-/* The Select All Checkbox in Header */
-.select-all-label {
-    font-size: 12px;
-    background: white;
-    padding: 5px 10px;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 5px;
+.test-question-block { 
+    padding: 30px; text-align: left; border-left: 6px solid var(--primary); 
+    margin-bottom: 20px; animation: slideUp 0.4s ease;
 }
+.test-q-text { font-size: 1.2rem; font-weight: 600; margin-bottom: 20px; }
 
-/* Default State of Exam Item */
-.exam-selectable {
-    border: 1px solid transparent;
-    transition: all 0.2s;
-    cursor: pointer !important;  /* <--- Forces the Finger Hand */
-    user-select: none;           /* <--- Prevents blue text highlighting */
+.option-btn { 
+    background: white; border: 2px solid var(--border-color); border-radius: 12px; padding: 15px; 
+    margin-bottom: 10px; text-align: left; display: flex; justify-content: space-between; align-items: center;
 }
-/* HOVER State */
-.exam-selectable:hover {
-    background: rgba(0,0,0,0.05);
-}
+.option-btn:hover { border-color: var(--primary); background: #f0f9ff; }
+.option-btn.selected { background: #e0f2fe; border-color: var(--primary); color: #0284c7; font-weight: bold; }
+.option-btn.correct { background: #dcfce7 !important; border-color: #22c55e !important; color: #15803d; }
+.option-btn.wrong { background: #fee2e2 !important; border-color: #ef4444 !important; color: #b91c1c; }
+.elim-eye { opacity: 0.3; padding: 5px; cursor: pointer; }
+.elim-eye:hover { opacity: 1; }
+.option-btn.eliminated { opacity: 0.5; background: #f1f5f9; text-decoration: line-through; }
 
-/* SELECTED State (This is what happens when you click) */
-.exam-selectable.selected {
-    background: var(--primary) !important;
-    color: white !important;
-    font-weight: 600;
-    border-radius: 6px;
-    padding: 2px 8px; /* Add some padding so the background looks nice */
-    box-shadow: 0 2px 5px rgba(0, 114, 255, 0.3);
+/* --- FIXED NAVIGATOR (SIDEBAR) --- */
+.test-sidebar { 
+    position: fixed; right: 20px; top: 100px; width: 260px; background: var(--card-bg); 
+    padding: 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); 
+    max-height: 70vh; overflow-y: auto; z-index: 900; display: none; /* Hidden by default */
 }
+.test-sidebar.active { display: block; } /* JS toggles this */
 
-/* Dark Mode Adjustment for Select All */
-[data-theme="dark"] .select-all-label {
-    background: var(--input-bg);
-    color: var(--text-dark);
+.nav-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.nav-btn { 
+    aspect-ratio: 1; border: 1px solid var(--border-color); border-radius: 8px; 
+    display: flex; justify-content: center; align-items: center; font-size: 12px; 
+    font-weight: bold; cursor: pointer; background: white; color: var(--text-light);
 }
+.nav-btn.current { background: var(--primary); color: white; border-color: var(--primary); }
+.nav-btn.answered { background: #e0f2fe; color: #0284c7; border-color: #bae6fd; }
+.nav-btn.flagged { border-color: #f59e0b; color: #f59e0b; background: #fffbeb; }
 
 /* =========================================
-   20. PRACTICE NAVIGATOR (Bottom Scroll Bar)
+   6. ADMIN & PREMIUM
    ========================================= */
-
-#practice-nav-container {
-    display: flex;
-    gap: 8px;
-    padding: 15px 5px;
-    overflow-x: auto; /* Allows horizontal scrolling */
-    width: 100%;
-    margin-top: 20px;
-    border-top: 1px solid var(--border-color);
-    scrollbar-width: thin; /* Firefox thin scrollbar */
+.admin-tab { 
+    padding: 12px; border: 1px solid var(--border-color); background: white; 
+    border-radius: 8px; flex: 1; text-align: center; margin: 0 5px; cursor: pointer;
 }
+.admin-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
 
-/* The Number Buttons */
-.prac-nav-btn {
-    flex: 0 0 auto; /* Don't shrink */
-    width: 40px;
-    height: 40px;
-    border-radius: 50%; /* Circle */
-    border: 1px solid var(--border-color);
-    background: white;
-    color: var(--text-light);
-    font-size: 12px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    margin: 0;
-    cursor: pointer;
+.report-card, .user-card { 
+    background: white; border: 1px solid var(--border-color); border-radius: 12px; 
+    padding: 20px; margin-bottom: 15px; text-align: left; line-height: 1.6;
 }
-
-/* Active Question (Blue) */
-.prac-nav-btn.active {
-    background: var(--primary);
-    color: white;
-    border-color: var(--primary);
-    transform: scale(1.1);
-    box-shadow: 0 4px 10px rgba(0, 114, 255, 0.3);
-}
-
-/* Solved Question (Green) */
-.prac-nav-btn.solved {
-    background: #d1fae5;
-    color: #065f46;
-    border-color: #10b981;
-}
-
-/* Previous Mistake (Red) */
-.prac-nav-btn.wrong {
-    background: #fee2e2;
-    color: #991b1b;
-    border-color: #ef4444;
-}
-
-/* Dark Mode Fixes */
-[data-theme="dark"] .prac-nav-btn {
-    background: var(--input-bg);
-    color: var(--text-light);
-}
-[data-theme="dark"] .prac-nav-btn.active {
-    background: var(--primary);
-    color: white;
-}
-
-/* =========================================
-   22. QUIZ LAYOUT ISOLATION (The Final Fix)
-   ========================================= */
-
-/* This replaces .gameContainer ONLY for the Quiz screen */
-.quiz-container-unique {
-    display: flex;
-    flex-direction: column;       /* Stack Top-to-Bottom */
-    width: 100%;
-    max-width: 850px;             /* Standard reading width */
-    margin: 0 auto;               /* Center in the middle of screen */
-    padding: 0 20px;
-    box-sizing: border-box;
-    position: relative;
-}
-
-/* Ensure the content inside fills the width */
-.test-question-block {
-    width: 100% !important;
-    margin: 0 !important;
-}
-
-
-/* Explanation Modal CSS */
-#explanation-modal {
-    position: fixed;
-    top: 0; 
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(5px);
-    z-index: 10000; /* Ensure it's on top of everything */
-    
-    /* Center Content */
-    display: flex; 
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
-}
-
-/* When hidden, it must vanish completely */
-#explanation-modal.hidden {
-    display: none !important;
-}
-
-/* =========================================
-   23. ADMIN & PREMIUM FEATURES (NEW)
-   ========================================= */
-
-/* Admin Tabs */
-.admin-tab {
-    background: white;
-    border: 1px solid var(--border-color);
-    color: var(--text-light);
-    padding: 12px; /* Increased for better touch targets */
-    border-radius: 10px;
-    font-weight: 600;
-    cursor: pointer;
-    flex: 1; 
-    transition: all 0.2s ease;
-    text-align: center;
-    margin: 0 4px; /* Slight gap between tabs */
-}
-.admin-tab:hover { background: var(--input-bg); }
-.admin-tab.active {
-    background: var(--primary);
-    color: white;
-    border-color: var(--primary);
-    box-shadow: 0 4px 10px rgba(0, 114, 255, 0.3);
-}
-
-/* Premium Modal Tabs */
-.active-prem-tab {
-    background: #d97706 !important; /* Gold/Orange */
-    color: white !important;
-    border-color: #d97706 !important;
-}
-
-/* Admin Cards (Reports, Payments, Users) - FIXED SPACING */
-.report-card, .user-card {
-    background: white;
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 20px; /* <--- FIXED: More breathing room */
-    margin-bottom: 20px;
-    text-align: left;
-    box-shadow: var(--shadow-sm);
-    position: relative;
-    line-height: 1.6; /* <--- FIXED: Text isn't squashed */
-}
-
 .report-card { border-left: 5px solid #ef4444; }
 .user-card { border-left: 5px solid #0072ff; }
 
-/* User List Item (For the new User List Feature) */
-.user-list-item {
-    padding: 15px;
-    border-bottom: 1px solid #f1f5f9;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: white;
+.user-list-item { 
+    padding: 12px; border-bottom: 1px solid #f1f5f9; display: flex; 
+    justify-content: space-between; align-items: center; 
 }
 .user-list-item:last-child { border-bottom: none; }
-.user-list-item:hover { background: #f8fafc; }
 
-/* Row Locator Box */
-.locator-box {
-    background: #f0f9ff;
-    border: 2px dashed #bae6fd;
-    border-radius: 8px;
-    padding: 15px;
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    margin: 15px 0;
+/* =========================================
+   7. EXTRAS & MODALS
+   ========================================= */
+.modal-overlay { 
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); 
+    z-index: 2000; display: flex; justify-content: center; align-items: center; padding: 20px; 
+}
+.badge-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 20px; }
+.badge-item { padding: 15px; border: 1px solid var(--border-color); border-radius: 12px; opacity: 0.5; filter: grayscale(1); }
+.badge-item.unlocked { opacity: 1; filter: none; border-color: #f59e0b; background: #fffbeb; }
+.badge-desc { font-size: 10px; color: #64748b; margin-top: 5px; display: block; line-height: 1.2; }
+
+/* =========================================
+   8. MOBILE RESPONSIVENESS (FIXED)
+   ========================================= */
+@media screen and (max-width: 950px) {
+    #dashboard-screen .gameContainer { grid-template-columns: 1fr; }
+    #study-panel { grid-column: 1; height: auto; max-height: 600px; }
 }
 
-/* Admin Tables (Keys List) */
-table {
-    width: 100%;
-    border-collapse: separate; 
-    border-spacing: 0;
-    font-size: 13px;
-    margin-top: 10px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    overflow: hidden;
-}
-th {
-    background: var(--input-bg);
-    font-weight: 700;
-    color: var(--text-dark);
-    padding: 12px;
-    border-bottom: 1px solid var(--border-color);
-    text-align: left;
-}
-td {
-    padding: 12px;
-    border-bottom: 1px solid var(--border-color);
-    text-align: left;
-    background: white;
-}
-tr:last-child td { border-bottom: none; }
-
-/* Premium Badge */
-#premium-badge {
-    background: #ffd700;
-    color: #b7791f;
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-weight: bold;
-    border: 1px solid #d97706;
-    margin-left: 5px;
+@media screen and (max-width: 600px) {
+    .topBar { flex-direction: column; align-items: center; }
+    .user-badge { width: 100%; text-align: center; margin-bottom: 10px; }
+    
+    /* NAVIGATOR FIX FOR MOBILE */
+    .test-sidebar { 
+        position: relative; /* Not fixed anymore */
+        top: auto; right: auto; width: 100%; 
+        max-height: 200px; margin-top: 20px; 
+        order: 10; /* Move to bottom of flex container */
+    }
 }
