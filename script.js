@@ -1213,13 +1213,46 @@ function switchPremTab(tab) {
     document.getElementById('tab-btn-'+tab).classList.add('active');
 }
 
-function openProfileModal() { document.getElementById('profile-modal').classList.remove('hidden'); }
-function saveProfile() {
-    const name = document.getElementById('new-display-name').value;
-    currentUser.updateProfile({ displayName: name }).then(() => {
-        document.getElementById('user-display').innerText = name;
-        document.getElementById('profile-modal').classList.add('hidden');
-    });
+function openProfileModal() {
+    if (!currentUser || isGuest) return alert("Please log in to edit profile.");
+    
+    document.getElementById('profile-modal').classList.remove('hidden');
+    
+    // 1. Basic Info
+    document.getElementById('profile-email').innerText = currentUser.email;
+    document.getElementById('profile-plan').innerText = userProfile.isPremium ? "PREMIUM 👑" : "Free Plan";
+    
+    // 2. Joined Date Logic (With Backup)
+    let joinedText = "N/A";
+    if (userProfile.joined) {
+        // Try Firestore Timestamp or standard Date
+        const ms = userProfile.joined.seconds ? userProfile.joined.seconds * 1000 : new Date(userProfile.joined).getTime();
+        joinedText = new Date(ms).toLocaleDateString();
+    } else if (currentUser.metadata.creationTime) {
+        // Backup: Use Firebase Auth Creation Time
+        joinedText = new Date(currentUser.metadata.creationTime).toLocaleDateString();
+    }
+    document.getElementById('profile-joined').innerText = joinedText;
+
+    // 3. Expiry Date Logic
+    let expiryText = "-";
+    if (userProfile.isPremium) {
+        if (userProfile.expiryDate) {
+            const ms = userProfile.expiryDate.seconds ? userProfile.expiryDate.seconds * 1000 : new Date(userProfile.expiryDate).getTime();
+            if (ms > 4000000000000) expiryText = "Lifetime"; 
+            else expiryText = new Date(ms).toLocaleDateString();
+        } else {
+            // Premium active but no date found (Assume Lifetime or Admin Grant)
+            expiryText = "Lifetime / Admin";
+        }
+    }
+    document.getElementById('profile-expiry').innerText = expiryText;
+    
+    // 4. Fill Editable Inputs
+    document.getElementById('edit-name').value = userProfile.displayName || "";
+    document.getElementById('edit-phone').value = userProfile.phone || "";
+    document.getElementById('edit-college').value = userProfile.college || "";
+    document.getElementById('edit-exam').value = userProfile.targetExam || "FCPS-1";
 }
 
 // --- FIX: RESTORE BADGE DESCRIPTIONS & TROPHIES ---
@@ -1458,3 +1491,4 @@ async function saveDetailedProfile() {
         alert("Error saving profile: " + e.message);
     }
 }
+
