@@ -64,15 +64,32 @@ const PLAN_DURATIONS = {
 
 auth.onAuthStateChanged(async (user) => {
     if (user) {
+        // User LOGGED IN
+        console.log("✅ User detected:", user.email);
         currentUser = user;
         isGuest = false;
-        console.log("✅ User detected:", user.email);
+        
+        // Hide Auth, Show Dashboard
+        document.getElementById('auth-screen').classList.add('hidden');
+        document.getElementById('auth-screen').classList.remove('active');
+        
+        // Run security check (this will eventually show the dashboard)
         await checkLoginSecurity(user);
+        
     } else {
+        // User LOGGED OUT
         if (!isGuest) {
             console.log("🔒 No user signed in.");
             currentUser = null;
             userProfile = null;
+            
+            // CRITICAL FIX: Hide Dashboard & Modals explicitly
+            document.getElementById('dashboard-screen').classList.add('hidden');
+            document.getElementById('dashboard-screen').classList.remove('active');
+            
+            document.getElementById('premium-modal').classList.add('hidden'); // Hide modal
+            
+            // Show Login
             showScreen('auth-screen');
         }
     }
@@ -1340,6 +1357,7 @@ if (typeof loadAdminKeys !== 'function') window.loadAdminKeys = function(){};
 window.onload = () => {
     if(localStorage.getItem('fcps-theme')==='dark') toggleTheme();
 }
+
 
 
 
