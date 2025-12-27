@@ -1311,121 +1311,102 @@ tr:last-child td { border-bottom: none; }
     line-height: 1.6;
 }
 
-/* --- PREMIUM MODAL FIXES --- */
+/* =========================================
+   FIXED PREMIUM MODAL & SCROLLING
+   ========================================= */
 
-/* 1. Force the Content Area to Scroll */
-.modal-body-scroll {
-    flex: 1;                /* Take up remaining height */
-    overflow-y: auto;       /* Enable Scroll */
-    padding: 0 25px;        /* Side padding */
-    margin-bottom: 10px;
-    min-height: 0;          /* Crucial for Flexbox scrolling */
+/* 1. The Overlay (Background Dimmer) */
+.modal-overlay {
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85); /* Darker background to hide dashboard */
+    backdrop-filter: blur(5px);
+    z-index: 2000; /* Higher than everything else */
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    padding: 20px;
+    opacity: 1;
+    visibility: visible;
+    transition: all 0.3s ease;
 }
 
-/* 2. New Tab Switcher (Pill Style) */
-.prem-tabs {
+/* Hide utility */
+.modal-overlay.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* 2. The Card Itself (Size & Layout Fix) */
+.modal-overlay .joinCard {
+    width: 100%;
+    max-width: 450px; /* <--- FIXES THE WIDE STRETCHING */
+    max-height: 85vh; /* Leaves room at top/bottom */
+    background: white;
+    border-radius: 20px;
     display: flex;
-    background: #f1f5f9;
-    padding: 5px;
-    border-radius: 12px;
-    margin: 0 25px 20px 25px;
+    flex-direction: column; /* Stack header, body, footer */
+    position: relative;
+    overflow: hidden; /* Contains the scroll inside */
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    margin: 0 auto; /* Center horizontal */
 }
 
-.prem-tab-btn {
-    flex: 1;
-    padding: 10px;
-    border: none;
-    background: transparent;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 13px;
-    color: #64748b;
+/* 3. The Scrollable Area */
+.modal-body-scroll {
+    flex: 1;              /* Takes all available space */
+    overflow-y: auto;     /* <--- ENABLES SCROLLING */
+    padding: 10px 25px;
+    -webkit-overflow-scrolling: touch; /* Smooth scroll on mobile */
+}
+
+/* 4. Pricing Grid (2 Columns - Looks Clean) */
+.pricing-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* 2 items per row */
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.price-item {
+    background: white;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
     transition: all 0.2s;
 }
 
-.prem-tab-btn.active {
-    background: white;
-    color: #d97706; /* Gold/Orange */
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-}
+.price-item:hover { border-color: #cbd5e1; transform: translateY(-2px); }
 
-/* 3. Pricing Grid (2 Columns) */
-.pricing-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr; /* 2 Columns */
-    gap: 10px;
-    margin-bottom: 20px;
-}
-
-.price-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 10px;
-    cursor: default;
-    transition: 0.2s;
-}
-
-.price-item:hover {
-    border-color: #d97706;
-    background: #fffbeb;
-}
-
-.price-duration { font-size: 12px; color: #64748b; margin-bottom: 2px; }
-.price-cost { font-size: 14px; font-weight: 700; color: #1e293b; }
-
-/* 4. Bank Info Box */
-.bank-info-box {
-    background: #f8fafc;
-    border: 1px dashed #cbd5e1;
-    border-radius: 10px;
-    padding: 15px;
-    font-size: 12px;
-    color: #475569;
-    line-height: 1.6;
-    margin-bottom: 20px;
-}
-
-
-/* --- INTERACTIVE PRICING GRID --- */
-.price-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: white;
-    border: 2px solid #e2e8f0; /* Thicker border for visibility */
-    border-radius: 12px;
-    padding: 15px 10px;
-    cursor: pointer; /* Shows it's clickable */
-    transition: all 0.2s ease;
-    position: relative;
-}
-
-.price-item:hover {
-    border-color: #cbd5e1;
-    transform: translateY(-2px);
-}
-
-/* The style when a plan is clicked */
+/* Selected State */
 .price-item.selected {
-    border-color: var(--primary) !important;
-    background-color: #eff6ff !important; /* Light Blue */
-    box-shadow: 0 4px 12px rgba(0, 114, 255, 0.2);
+    border-color: #0072ff !important;
+    background-color: #eff6ff !important;
+    box-shadow: 0 4px 6px rgba(0, 114, 255, 0.2);
+}
+.price-item.selected span { color: #0072ff; font-weight: bold; }
+
+/* 5. Header Styling */
+.modal-header {
+    padding: 20px 25px;
+    background: white;
+    border-bottom: 1px solid #f1f5f9;
+    flex-shrink: 0; /* Don't shrink when scrolling */
 }
 
-/* Highlight the price text */
-.price-item.selected .price-cost {
-    color: var(--primary);
-}
-
-/* Override for the Lifetime card special styling when selected */
-.price-item.selected[style*="d97706"] {
-    border-color: #d97706 !important;
-    background-color: #fffbeb !important;
+.modal-footer {
+    padding: 15px 25px;
+    background: white;
+    border-top: 1px solid #f1f5f9;
+    flex-shrink: 0; /* Don't shrink */
+    text-align: center;
 }
