@@ -1163,58 +1163,76 @@ async function loadAdminPayments() {
 }
 
 async function approvePayment(docId, userId) {
-    // 1. Get the duration from the dropdown on the card
+    // 1. THE CALCULATOR (Defined right here so it can't be missed)
+    const DURATION_MAP = {
+        '1_day': 86400000,
+        '1_week': 604800000,
+        '15_days': 1296000000,
+        '1_month': 2592000000,
+        '3_months': 7776000000,
+        '6_months': 15552000000,
+        '12_months': 31536000000,
+        'lifetime': 2524608000000 
+    };
+
+    // 2. Get the requested plan
     const select = document.getElementById(`dur-${docId}`);
     const planKey = select.value; // e.g., "1_month"
     
-    // 2. Calculate Duration
-    const duration = PLAN_DURATIONS[planKey];
+    // 3. Calculate the Expiry Date
+    const msToAdd = DURATION_MAP[planKey];
     
-    if(!duration) {
-        console.error("Missing Duration for:", planKey);
-        return alert("❌ Error: Plan duration not found. Check PLAN_DURATIONS code.");
+    if (!msToAdd) {
+        alert("❌ Error: Could not calculate duration for " + planKey);
+        return;
     }
 
     const btn = event.target;
-    btn.innerText = "Saving...";
+    btn.innerText = "Saving to DB...";
     btn.disabled = true;
 
     try {
-        // 3. Calculate Expiry Date
         let newExpiry;
+        
+        // Handle Lifetime vs Normal
         if (planKey === 'lifetime') {
-            newExpiry = new Date("2100-01-01"); // Far future
+            newExpiry = new Date("2100-01-01"); 
         } else {
-            newExpiry = new Date(Date.now() + duration);
+            newExpiry = new Date(Date.now() + msToAdd);
         }
 
+        // 4. FORCE SAVE TO DATABASE
         const batch = db.batch();
 
-        // 4. Update User: Set Premium AND Expiry Date
+        // Update User Doc
         const userRef = db.collection('users').doc(userId);
         batch.update(userRef, { 
             isPremium: true, 
             plan: planKey,
-            expiryDate: newExpiry,
+            expiryDate: newExpiry, // <--- THIS IS THE KEY FIELD
             updatedAt: new Date()
         });
 
-        // 5. Close Request
+        // Update Request Doc
         const payRef = db.collection('payment_requests').doc(docId);
-        batch.update(payRef, { status: 'approved', approvedAt: new Date() });
+        batch.update(payRef, { 
+            status: 'approved', 
+            approvedAt: new Date() 
+        });
 
         await batch.commit();
 
-        alert(`✅ Premium Activated!\nUser: ${userId}\nExpires: ${newExpiry.toLocaleDateString()}`);
-        loadAdminPayments(); 
+        alert(`✅ Saved to Database!\n\nUser: ${userId}\nExpires: ${newExpiry.toLocaleDateString()}`);
+        
+        loadAdminPayments(); // Refresh list
 
     } catch (e) {
-        alert("Error: " + e.message);
+        console.error(e);
+        alert("Database Save Failed: " + e.message);
         btn.innerText = "Approve";
         btn.disabled = false;
     }
 }
-
 async function generateAdminKey() {
     const plan = document.getElementById('key-plan').value;
     const code = 'KEY-' + Math.random().toString(36).substr(2,6).toUpperCase();
@@ -1288,41 +1306,38 @@ async function adminLookupUser(targetId) {
 // --- ADD THESE NEW FUNCTIONS RIGHT BELOW adminLookupUser ---
 
 async function adminGrantPremium(uid) {
-    // 1. Get the selected duration from the dropdown
     const select = document.getElementById(`admin-grant-plan-${uid}`);
-    const planKey = select.value; // e.g., '1_month', 'lifetime'
+    const planKey = select.value;
     
-    // 2. Look up the milliseconds from your configuration
-    const duration = PLAN_DURATIONS[planKey];
+    // 1. THE CALCULATOR
+    const DURATION_MAP = {
+        '1_day': 86400000, '1_week': 604800000, '15_days': 1296000000,
+        '1_month': 2592000000, '3_months': 7776000000, '6_months': 15552000000,
+        '12_months': 31536000000, 'lifetime': 2524608000000
+    };
     
-    if (!duration) return alert("❌ Error: Invalid plan selected.");
+    if (!DURATION_MAP[planKey]) return alert("Invalid plan selected");
 
-    const confirmAction = confirm(`Grant '${planKey}' to this user?`);
-    if (!confirmAction) return;
+    if(!confirm(`Grant '${planKey}' to this user?`)) return;
 
     try {
-        // 3. Calculate the Expiry Date
-        // If it's lifetime, we set a date far in the future (Year 2100)
-        let newExpiry;
-        if (planKey === 'lifetime') {
-            newExpiry = new Date("2100-01-01"); 
-        } else {
-            newExpiry = new Date(Date.now() + duration);
-        }
+        // 2. Calculate Date
+        let newExpiry = (planKey === 'lifetime') 
+            ? new Date("2100-01-01") 
+            : new Date(Date.now() + DURATION_MAP[planKey]);
 
-        // 4. SAVE TO DATABASE
+        // 3. Save to Database
         await db.collection('users').doc(uid).update({
             isPremium: true,
-            plan: planKey,          // Save the plan name
-            expiryDate: newExpiry,  // Save the calculated date
+            plan: planKey,
+            expiryDate: newExpiry, // <--- SAVING HERE
             updatedAt: new Date()
         });
 
-        alert("✅ Premium Granted Successfully!");
-        adminLookupUser(uid); // Refresh the admin view
+        alert("✅ Premium Saved to Database!");
+        adminLookupUser(uid); 
 
     } catch (e) {
-        console.error(e);
         alert("Error: " + e.message);
     }
 }
@@ -1713,6 +1728,7 @@ async function saveDetailedProfile() {
         alert("Error saving profile: " + e.message);
     }
 }
+
 
 
 
