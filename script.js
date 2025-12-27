@@ -979,51 +979,96 @@ function switchAdminTab(tab) {
 
 async function loadAllUsers() {
     const res = document.getElementById('admin-user-result');
-    res.innerHTML = "Loading...";
+    res.innerHTML = "Loading users...";
     
-    const snap = await db.collection('users').limit(50).get();
+    // Fetch all users
+    const snap = await db.collection('users').get();
     
-    let html = "<div style='background:white; border-radius:12px;'>";
-    
-    let count = 0;
+    // 1. Group Users by Email to Handle Duplicates
+    const usersByEmail = {};
+    const usersNoEmail = [];
+
     snap.forEach(doc => {
         const u = doc.data();
+        u.id = doc.id; // Store ID for buttons
         
-        if (!u.email || u.email === "undefined") return;
+        if (!u.email || u.email === "undefined") {
+            usersNoEmail.push(u); // Keep users with broken emails
+        } else {
+            if (!usersByEmail[u.email]) usersByEmail[u.email] = [];
+            usersByEmail[u.email].push(u);
+        }
+    });
+
+    let html = "<div style='background:white; border-radius:12px; overflow:hidden;'>";
+    let count = 0;
+
+    // 2. Process Grouped Emails (Pick the 'Best' account to show)
+    Object.keys(usersByEmail).forEach(email => {
+        const accounts = usersByEmail[email];
         
+        // LOGIC: If duplicates exist, pick the one that is Admin > Premium > Latest
+        // This hides the 'ghost' accounts from the list
+        accounts.sort((a, b) => {
+            if (a.role === 'admin') return -1;
+            if (b.role === 'admin') return 1;
+            if (a.isPremium) return -1;
+            if (b.isPremium) return 1;
+            return 0;
+        });
+
+        const bestUser = accounts[0]; // The winner
+        const duplicateCount = accounts.length > 1 ? `<span style="background:#fee2e2; color:#b91c1c; padding:2px 6px; border-radius:10px; font-size:10px; margin-left:5px;">${accounts.length} Duplicates</span>` : "";
+
+        html += renderUserRow(bestUser, duplicateCount);
         count++;
-        html += `<div class="user-list-item">
-            <div><b>${u.email}</b><br><small>${u.role} | ${u.isPremium ? 'Premium' : 'Free'}</small></div>
-            <button onclick="adminLookupUser('${doc.id}')" style="width:auto; padding:5px 10px; font-size:11px;">Manage</button>
-        </div>`;
     });
-    
-    if(count === 0) html += "<div style='padding:15px;'>No valid users found.</div>";
-    
-    res.innerHTML = html + "</div>";
-}
-async function loadAdminReports() {
-    const list = document.getElementById('admin-reports-list');
-    list.innerHTML = "Loading...";
-    const snap = await db.collection('reports').orderBy('timestamp', 'desc').limit(20).get();
-    if(snap.empty) { list.innerHTML = "No reports."; return; }
 
-    let html = "";
-    snap.forEach(doc => {
-        const r = doc.data();
-        const q = allQuestions.find(q => q._uid === r.questionID);
-        const row = q ? q.SheetRow : "Deleted";
-        html += `<div class="report-card">
-            <div style="font-size:11px; color:gray;">${r.reportedBy} • Row ${row}</div>
-            <div style="color:red; font-weight:bold;">${r.reportReason}</div>
-            <div style="font-size:12px;">"${r.questionText.substring(0,60)}..."</div>
-            <div class="locator-box">📍 Sheet Row: <b>${row}</b></div>
-            <button class="secondary" onclick="deleteReport('${doc.id}')" style="margin-top:5px; padding:5px;">Resolve</button>
-        </div>`;
+    // 3. Process Users Without Emails (Likely your hidden Admin)
+    usersNoEmail.forEach(u => {
+        const label = `<span style="color:red; font-weight:bold;">(No Email)</span> <span style="font-size:10px; color:#999;">ID: ${u.id.substr(0,5)}...</span>`;
+        html += renderUserRow(u, label);
+        count++;
     });
-    list.innerHTML = html;
+
+    if(count === 0) html += "<div style='padding:15px;'>No users found.</div>";
+    
+    res.innerHTML = `<div style="padding:10px; color:#666; font-size:12px; border-bottom:1px solid #eee;">Total Unique Users: ${count}</div>` + html + "</div>";
 }
 
+// Helper to render the row HTML
+function renderUserRow(u, extraLabel = "") {
+    const isAdmin = u.role === 'admin';
+    const isPrem = u.isPremium;
+    const bgStyle = isAdmin ? "background:#fff7ed; border-left:4px solid #d97706;" : "border-bottom:1px solid #f1f5f9;";
+    
+    // Formatting Dates safely
+    let dateStr = "N/A";
+    if(u.joined) {
+        // Handle various date formats
+        const d = u.joined.seconds ? new Date(u.joined.seconds * 1000) : new Date(u.joined);
+        if(!isNaN(d.getTime())) dateStr = d.toLocaleDateString();
+    }
+
+    return `
+    <div class="user-list-item" style="padding:12px; display:flex; justify-content:space-between; align-items:center; ${bgStyle}">
+        <div>
+            <div style="font-weight:bold; color:#1e293b;">
+                ${u.email || "Unknown User"} 
+                ${isAdmin ? '⭐' : ''}
+                ${extraLabel}
+            </div>
+            <div style="font-size:11px; color:#64748b; margin-top:2px;">
+                ${isAdmin ? '<b>Admin</b>' : 'Student'} | 
+                ${isPrem ? '<b style="color:#10b981">Premium</b>' : 'Free'} | 
+                Joined: ${dateStr}
+            </div>
+        </div>
+        <button onclick="adminLookupUser('${u.id}')" style="border:1px solid #cbd5e1; background:white; color:#333; padding:5px 12px; border-radius:6px; cursor:pointer; font-size:12px;">
+            Manage
+        </button>
+    </div>`;
+}
 function deleteReport(id) { db.collection('reports').doc(id).delete().then(()=>loadAdminReports()); }
 
 async function loadAdminPayments() {
@@ -1618,6 +1663,7 @@ async function saveDetailedProfile() {
         alert("Error saving profile: " + e.message);
     }
 }
+
 
 
 
