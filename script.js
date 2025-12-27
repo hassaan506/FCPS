@@ -863,7 +863,7 @@ async function redeemKey() {
         userProfile.isPremium = true;
         userProfile.expiryDate = newExpiry;
         
-        alert(`✅ Code Redeemed Successfully!\nExpires: ${newExpiry.toLocaleDateString()}`);
+        alert(`✅ Code Redeemed Successfully!\nExpires: ${newExpiry.formatDateHelper(d)}`);
         window.location.reload(); 
 
     } catch (e) {
@@ -1154,7 +1154,7 @@ async function approvePayment(docId, userId) {
 
         await batch.commit();
 
-        alert(`✅ Saved to Database!\n\nUser: ${userId}\nExpires: ${newExpiry.toLocaleDateString()}`);
+        alert(`✅ Saved to Database!\n\nUser: ${userId}\nExpires: ${newExpiry.formatDateHelper(d)}`);
         loadAdminPayments(); 
 
     } catch (e) {
@@ -1344,10 +1344,10 @@ async function openProfileModal() {
     let joinedText = "N/A";
     if (freshData.joined) {
         const d = freshData.joined.seconds ? new Date(freshData.joined.seconds * 1000) : new Date(freshData.joined);
-        if (!isNaN(d.getTime())) joinedText = d.toLocaleDateString();
+        if (!isNaN(d.getTime())) joinedText = d.formatDateHelper(d);
     }
     if (joinedText === "N/A" && currentUser.metadata.creationTime) {
-        joinedText = new Date(currentUser.metadata.creationTime).toLocaleDateString();
+        joinedText = new Date(currentUser.metadata.creationTime).formatDateHelper(d);
     }
     document.getElementById('profile-joined').innerText = joinedText;
 
@@ -1512,7 +1512,7 @@ async function openAnalytics() {
             
             historySnap.forEach(r => {
                 const d = r.data();
-                const dateStr = d.date ? new Date(d.date.seconds*1000).toLocaleDateString() : '-';
+                const dateStr = d.date ? new Date(d.date.seconds*1000).formatDateHelper(d) : '-';
                 const subj = d.subject || "Mixed"; 
                 const scoreColor = d.score >= 70 ? "#166534" : "#b91c1c"; 
                 
@@ -1612,4 +1612,5 @@ function resetPassword() {
 window.onload = () => {
     if(localStorage.getItem('fcps-theme')==='dark') toggleTheme();
 }
+
 
