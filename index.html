@@ -263,18 +263,46 @@
                 <button class="primary" onclick="redeemKey()">Unlock Now</button>
             </div>
 
-            <div id="prem-content-manual" class="hidden">
-                <div style="background:#f8fafc; padding:10px; border-radius:8px; font-size:12px; color:#333; margin-bottom:10px; border:1px solid #ddd;">
-                    <b>EasyPaisa / JazzCash / Bank:</b><br>
-                    Bank: Meezan Bank<br>
-                    Account: 0101-XXXXXXXXX<br>
-                    Title: Dr Shaggy<br>
-                </div>
-                <input type="text" id="pay-tid" placeholder="Transaction ID (Required)">
-                <label style="font-size:12px; display:block; margin:5px 0;">Upload Screenshot:</label>
-                <input type="file" id="pay-proof" accept="image/*" style="font-size:12px;">
-                <button class="primary" onclick="submitPaymentProof()">Submit Request</button>
-            </div>
+            <div id="prem-content-manual">
+    
+    <div style="background:#f8fafc; padding:12px; border-radius:8px; font-size:12px; color:#333; margin-bottom:15px; border:1px solid #e2e8f0; line-height:1.6;">
+        <strong>💸 Payment Methods:</strong><br>
+        EasyPaisa / JazzCash: <b>03343412168</b><br>
+        <hr style="margin:5px 0; border:0; border-top:1px dashed #ccc;">
+        Bank: <b>Meezan Bank</b><br>
+        Account: <b>01860104738754</b><br>
+        Title: <b>Hassaan Shahid</b>
+    </div>
+
+    <label style="font-size:12px; font-weight:bold; color:#0072ff; display:block; margin-bottom:5px;">1. Check Prices:</label>
+    <div class="pricing-grid" style="grid-template-columns: repeat(4, 1fr); gap:5px;">
+        <div class="price-item"><span>1 Day</span> <b>Rs. 50</b></div>
+        <div class="price-item"><span>1 Week</span> <b>Rs. 200</b></div>
+        <div class="price-item"><span>15 Days</span> <b>Rs. 300</b></div>
+        <div class="price-item"><span>1 Month</span> <b>Rs. 500</b></div>
+        <div class="price-item"><span>3 Months</span> <b>Rs. 1,200</b></div>
+        <div class="price-item"><span>6 Months</span> <b>Rs. 2,000</b></div>
+        <div class="price-item"><span>12 Months</span> <b>Rs. 3,500</b></div>
+        <div class="price-item"><span>Lifetime</span> <b>Rs. 5,000</b></div>
+    </div>
+
+    <label style="font-size:12px; font-weight:bold; display:block; margin-top:15px; margin-bottom:5px;">2. Select Plan Paid For:</label>
+    <select id="pay-plan-select" style="width:100%; padding:10px; border-radius:8px; border:1px solid #ccc; background:white;">
+        <option value="1_day">1 Day (Rs. 50)</option>
+        <option value="1_week">1 Week (Rs. 200)</option>
+        <option value="15_days">15 Days (Rs. 300)</option>
+        <option value="1_month">1 Month (Rs. 500)</option>
+        <option value="3_months">3 Months (Rs. 1,200)</option>
+        <option value="6_months">6 Months (Rs. 2,000)</option>
+        <option value="12_months">12 Months (Rs. 3,500)</option>
+        <option value="lifetime">Lifetime (Rs. 5,000)</option>
+    </select>
+
+    <label style="font-size:12px; font-weight:bold; display:block; margin-top:15px; margin-bottom:5px;">3. Upload Screenshot:</label>
+    <input type="file" id="pay-proof" accept="image/*" style="font-size:12px; border:1px dashed #ccc; padding:10px; width:100%;">
+
+    <button class="primary" onclick="submitPaymentProof()" style="margin-top:20px; background:#10b981;">✅ Submit Proof</button>
+</div>
 
             <button onclick="document.getElementById('premium-modal').classList.add('hidden')" style="margin-top:15px; background:transparent; color:#666; padding:10px; width:100%;">Close</button>
         </div>
@@ -310,3 +338,4 @@
     <script src="script.js"></script>
 </body>
 </html>
+
