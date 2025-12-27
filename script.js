@@ -1095,16 +1095,26 @@ async function loadAdminPayments() {
     let html = "";
     snap.forEach(doc => {
         const p = doc.data();
-        // Get the requested plan, format it nicely (e.g., "1_week" -> "1 Week")
         const reqPlan = p.planRequested ? p.planRequested.replace('_', ' ').toUpperCase() : "UNKNOWN";
         
         html += `<div class="report-card">
-            <div style="margin-bottom:5px;"><strong>${p.email}</strong></div>
-            <div style="font-size:12px; color:#555; margin-bottom:10px;">
-                Requested: <span style="background:#e0f2fe; color:#0284c7; padding:2px 6px; border-radius:4px; font-weight:bold;">${reqPlan}</span>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+                <div>
+                    <strong>${p.email}</strong>
+                    <div style="font-size:12px; color:#555; margin-top:2px;">
+                        Requested: <span style="background:#e0f2fe; color:#0284c7; padding:2px 6px; border-radius:4px; font-weight:bold;">${reqPlan}</span>
+                    </div>
+                </div>
             </div>
             
-            ${p.image ? `<a href="${p.image}" target="_blank"><img src="${p.image}" style="max-width:100%; border-radius:8px; border:1px solid #ddd; margin-bottom:10px;"></a>` : ''}
+            ${p.image ? `
+                <div style="margin-bottom:15px;">
+                    <a href="${p.image}" target="_blank" style="text-decoration:none; display:inline-block;">
+                        <img src="${p.image}" style="height:100px; width:auto; max-width:100%; border-radius:8px; border:1px solid #cbd5e1; object-fit:cover; display:block;">
+                        <div style="font-size:11px; color:#0072ff; margin-top:4px; font-weight:600;">🔍 Click to View Full Receipt</div>
+                    </a>
+                </div>` 
+            : '<div style="font-size:11px; color:red; margin-bottom:10px;">(No Screenshot Uploaded)</div>'}
             
             <div style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #eee;">
                 <label style="font-size:11px; font-weight:bold; display:block; margin-bottom:5px;">Approve for Duration:</label>
@@ -1673,6 +1683,7 @@ async function saveDetailedProfile() {
         alert("Error saving profile: " + e.message);
     }
 }
+
 
 
 
