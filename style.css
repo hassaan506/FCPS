@@ -1426,3 +1426,33 @@ tr:last-child td { border-bottom: none; }
     min-height: 0;    /* Essential for nested flex scrolling */
     padding: 10px 25px;
 }
+
+
+/* --- FINAL SCROLL FIX --- */
+
+/* 1. Reset the card layout just for the Premium Modal */
+#premium-modal .joinCard {
+    display: flex !important;
+    flex-direction: column !important;
+    max-height: 85vh !important; /* Forces a maximum height */
+    overflow: hidden !important; /* Keeps header/footer fixed */
+    padding: 0 !important;       /* Removes padding that squishes content */
+}
+
+/* 2. Force the middle section to scroll */
+#premium-modal .modal-body-scroll {
+    flex-grow: 1 !important;
+    overflow-y: auto !important;  /* Force Vertical Scroll */
+    min-height: 0 !important;     /* Critical for Flexbox scrolling */
+    padding: 15px 25px !important;
+    height: auto !important;
+    display: block !important;
+}
+
+/* 3. Ensure Header and Footer stay fixed */
+#premium-modal .modal-header,
+#premium-modal .modal-footer {
+    flex-shrink: 0 !important;    /* Never shrink these */
+    background: white !important;
+    z-index: 10 !important;
+}
