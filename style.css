@@ -1179,13 +1179,14 @@ details[open] .subject-summary::after {
     background: white;
     border: 1px solid var(--border-color);
     color: var(--text-light);
-    padding: 10px;
+    padding: 12px; /* Increased for better touch targets */
     border-radius: 10px;
     font-weight: 600;
     cursor: pointer;
-    flex: 1; /* For flex layout in admin header */
+    flex: 1; 
     transition: all 0.2s ease;
     text-align: center;
+    margin: 0 4px; /* Slight gap between tabs */
 }
 .admin-tab:hover { background: var(--input-bg); }
 .admin-tab.active {
@@ -1202,50 +1203,72 @@ details[open] .subject-summary::after {
     border-color: #d97706 !important;
 }
 
-/* Admin Cards (Reports, Payments, Users) */
+/* Admin Cards (Reports, Payments, Users) - FIXED SPACING */
 .report-card, .user-card {
-    background: var(--card-bg);
+    background: white;
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    padding: 15px;
-    margin-bottom: 15px;
+    padding: 20px; /* <--- FIXED: More breathing room */
+    margin-bottom: 20px;
     text-align: left;
     box-shadow: var(--shadow-sm);
     position: relative;
+    line-height: 1.6; /* <--- FIXED: Text isn't squashed */
 }
 
-.report-card { border-left: 4px solid #ef4444; }
-.user-card { border-left: 4px solid #0072ff; }
+.report-card { border-left: 5px solid #ef4444; }
+.user-card { border-left: 5px solid #0072ff; }
+
+/* User List Item (For the new User List Feature) */
+.user-list-item {
+    padding: 15px;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+}
+.user-list-item:last-child { border-bottom: none; }
+.user-list-item:hover { background: #f8fafc; }
 
 /* Row Locator Box */
 .locator-box {
     background: #f0f9ff;
     border: 2px dashed #bae6fd;
     border-radius: 8px;
-    padding: 12px;
+    padding: 15px;
     display: flex;
     align-items: center;
     gap: 15px;
-    margin: 10px 0;
+    margin: 15px 0;
 }
 
 /* Admin Tables (Keys List) */
 table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate; 
+    border-spacing: 0;
     font-size: 13px;
     margin-top: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
 }
 th {
     background: var(--input-bg);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--text-dark);
-}
-td, th {
-    padding: 10px;
-    border: 1px solid var(--border-color);
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
     text-align: left;
 }
+td {
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+    background: white;
+}
+tr:last-child td { border-bottom: none; }
 
 /* Premium Badge */
 #premium-badge {
