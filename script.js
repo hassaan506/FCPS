@@ -902,12 +902,55 @@ function openAdminPanel() {
 
 function switchAdminTab(tab) {
     document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
-    event.target.classList.add('active');
+    if(event) event.target.classList.add('active');
+    
+    // Hide all tab contents
     ['reports', 'payments', 'keys', 'users'].forEach(t => document.getElementById('tab-'+t).classList.add('hidden'));
+    
+    // Show selected
     document.getElementById('tab-'+tab).classList.remove('hidden');
+    
     if(tab==='reports') loadAdminReports();
     if(tab==='payments') loadAdminPayments();
     if(tab==='keys') loadAdminKeys();
+    if(tab==='users') loadAllUsers(); // <--- NEW: Load list automatically
+}
+
+// 2. ADD THIS NEW FUNCTION
+async function loadAllUsers() {
+    const res = document.getElementById('admin-user-result');
+    res.innerHTML = "🔄 Loading user list...";
+    
+    try {
+        // Fetch last 20 users
+        const snap = await db.collection('users').orderBy('joined', 'desc').limit(20).get();
+        
+        let html = "<div style='background:white; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;'>";
+        
+        snap.forEach(doc => {
+            const u = doc.data();
+            const joined = u.joined ? new Date(u.joined.seconds*1000).toLocaleDateString() : '?';
+            const isPrem = u.isPremium ? '<span style="color:#d97706; font-weight:bold;">PRO</span>' : 'Free';
+            
+            html += `
+                <div class="user-list-item">
+                    <div>
+                        <div style="font-weight:bold; font-size:14px;">${u.email}</div>
+                        <div style="font-size:11px; color:#64748b;">Joined: ${joined} | Role: ${u.role || 'Student'}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size:13px;">${isPrem}</div>
+                        <button onclick="adminLookupUser('${doc.id}')" style="padding:4px 8px; font-size:10px; width:auto; margin-top:5px;">Manage</button>
+                    </div>
+                </div>`;
+        });
+        html += "</div>";
+        res.innerHTML = html;
+        
+    } catch(e) {
+        // Fallback if 'joined' index is missing
+        res.innerHTML = "<p><i>(Index building...)</i> Use search box for now.</p>";
+    }
 }
 
 async function loadAdminReports() {
@@ -985,16 +1028,43 @@ async function loadAdminKeys() {
     list.innerHTML = html + "</table>";
 }
 
-async function adminLookupUser() {
-    const input = document.getElementById('admin-user-input').value;
+async function adminLookupUser(targetId) {
+    // Use passed ID or input value
+    const input = targetId || document.getElementById('admin-user-input').value;
     const res = document.getElementById('admin-user-result');
+    if(!input) return;
+
     res.innerHTML = "Searching...";
     
     let doc = await db.collection('users').doc(input).get();
     if(!doc.exists) {
+        // Try searching by email
         const s = await db.collection('users').where('email','==',input).limit(1).get();
         if(!s.empty) doc = s.docs[0];
     }
+
+    if(!doc.exists) { res.innerHTML = "Not found"; return; }
+    const u = doc.data();
+    
+    // Show Detailed Card
+    res.innerHTML = `
+    <div class="user-card">
+        <h3>👤 ${u.email}</h3>
+        <p><b>UID:</b> ${doc.id}</p>
+        <p><b>Status:</b> ${u.isPremium ? '✅ Premium' : 'Free'}</p>
+        <p><b>Solved:</b> ${u.solved ? u.solved.length : 0} | <b>Mistakes:</b> ${u.mistakes ? u.mistakes.length : 0}</p>
+        
+        <div style="display:flex; gap:10px; margin-top:15px;">
+            <button onclick="adminToggleBan('${doc.id}', ${!u.disabled})" style="background:${u.disabled?'#10b981':'#ef4444'}; color:white;">
+                ${u.disabled ? '✅ Unban User' : '🚫 Ban User'}
+            </button>
+            <button onclick="adminResetUser('${doc.id}')" style="background:#f59e0b; color:white;">
+                ⚠️ Reset Progress
+            </button>
+        </div>
+        <button onclick="loadAllUsers()" style="margin-top:10px; background:#64748b; color:white;">⬅ Back to List</button>
+    </div>`;
+}
 
     if(!doc.exists) { res.innerHTML = "Not found"; return; }
     const u = doc.data();
@@ -1058,26 +1128,86 @@ function saveProfile() {
     });
 }
 
+async function openAnalytics() {
+    const modal = document.getElementById('analytics-modal');
+    const container = document.getElementById('analytics-content');
+    
+    // 1. Show Modal Immediately
+    modal.classList.remove('hidden');
+    container.innerHTML = "<p style='text-align:center;'>🔄 Loading data...</p>";
+
+    if (!currentUser) return;
+
+    try {
+        const doc = await db.collection('users').doc(currentUser.uid).get();
+        const stats = doc.data().stats || {};
+        const subjects = Object.keys(stats);
+
+        if (subjects.length === 0) {
+            container.innerHTML = "<p style='text-align:center; padding:20px;'>No data yet. Solve some questions!</p>";
+            return;
+        }
+
+        let html = "";
+        subjects.forEach(key => {
+            const s = stats[key];
+            const name = key.replace(/_/g, ' ');
+            const pct = Math.round((s.correct / s.total) * 100) || 0;
+            
+            // Color bar
+            let color = '#ef4444'; // Red
+            if(pct > 50) color = '#f59e0b'; // Orange
+            if(pct > 75) color = '#2ecc71'; // Green
+
+            html += `
+                <div style="margin-bottom:15px;">
+                    <div style="display:flex; justify-content:space-between; font-size:14px; font-weight:600; margin-bottom:5px;">
+                        <span>${name}</span>
+                        <span>${pct}%</span>
+                    </div>
+                    <div style="width:100%; background:#e2e8f0; height:8px; border-radius:4px; overflow:hidden;">
+                        <div style="width:${pct}%; background:${color}; height:100%;"></div>
+                    </div>
+                    <div style="text-align:right; font-size:11px; color:#64748b; margin-top:2px;">
+                        ${s.correct}/${s.total} Correct
+                    </div>
+                </div>`;
+        });
+        container.innerHTML = html;
+
+    } catch (e) {
+        container.innerHTML = "Error: " + e.message;
+    }
+}
+
 function openBadges() {
     const modal = document.getElementById('badges-modal');
     const container = document.getElementById('badge-list');
     modal.classList.remove('hidden');
     
+    const totalSolved = userSolvedIDs.length;
+    
     const badges = [
-        { limit: 10, icon: "👶", name: "Novice" },
-        { limit: 100, icon: "🥉", name: "Bronze" },
-        { limit: 500, icon: "🥈", name: "Silver" },
-        { limit: 1000, icon: "🥇", name: "Gold" }
+        { limit: 10, icon: "👶", name: "Novice", desc: "Solve 10" },
+        { limit: 100, icon: "🥉", name: "Bronze", desc: "Solve 100" },
+        { limit: 500, icon: "🥈", name: "Silver", desc: "Solve 500" },
+        { limit: 1000, icon: "🥇", name: "Gold", desc: "Solve 1000" },
+        { limit: 2000, icon: "💎", name: "Diamond", desc: "Solve 2000" }, /* Restored */
+        { limit: 5000, icon: "👑", name: "Master", desc: "Solve 5000" }   /* Restored */
     ];
 
     let html = "";
     badges.forEach(b => {
-        const isUnlocked = userSolvedIDs.length >= b.limit;
-        html += `<div class="badge-item ${isUnlocked?'unlocked':''}"><span class="badge-icon">${b.icon}</span><span class="badge-name">${b.name}</span></div>`;
+        const isUnlocked = totalSolved >= b.limit;
+        html += `
+            <div class="badge-item ${isUnlocked ? 'unlocked' : ''}">
+                <div style="font-size:30px;">${b.icon}</div>
+                <div style="font-weight:bold;">${b.name}</div>
+                <div style="font-size:11px; color:#666;">${b.desc}</div>
+            </div>`;
     });
     container.innerHTML = html;
 }
-
 function updateBadgeButton() {
     // Basic icon update logic
     if(userSolvedIDs.length > 1000) document.getElementById('main-badge-btn').innerText = "🥇";
@@ -1175,3 +1305,4 @@ function toggleAuthMode() {
         link.innerText = "Create New ID";
     }
 }
+
