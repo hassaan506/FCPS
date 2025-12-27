@@ -13,33 +13,37 @@
 </head>
 <body>
 
-    <div id="auth-screen" class="screen active">
-        <div class="joinCard">
-            <h1 class="gameTitle" id="auth-title">FCPS PREP</h1>
-            <p class="subTitle" id="auth-subtitle">Mastery Portal</p>
-            
+<div id="auth-screen" class="screen active">
+    <div class="joinCard">
+        <h1 class="gameTitle">EDEETOS</h1>
+        <p class="subTitle">Preparation</p>
+        
+        <div id="auth-form">
+            <h2 id="auth-title">Log In</h2>
             <input type="email" id="email" placeholder="Email Address">
             <input type="password" id="password" placeholder="Password">
             
-            <div id="auth-btn-container" style="margin-top:10px;">
+            <div id="auth-btn-container">
                 <button class="primary" onclick="login()">Log In</button>
             </div>
             
-            <div style="margin-top:15px; font-size:14px; color:#718096;">
-                <span id="auth-toggle-text">New here?</span>
-                <span onclick="window.toggleAuthMode()" id="auth-toggle-link" style="color:#0072ff; cursor:pointer; font-weight:bold; text-decoration:underline; margin-left:5px;">
-                    Create New ID
-                </span>
-            </div>
-
-            <div style="margin-top:20px; border-top:1px solid #eee; padding-top:15px;">
-                <button onclick="guestLogin()" class="secondary" style="font-size:13px; color:#666;">👤 Continue as Guest (Trial)</button>
-            </div>
-
-            <p id="auth-msg" style="margin-top:15px; color:#e74c3c; font-size:13px; min-height:18px;"></p>
+            <p style="margin-top:15px; font-size:12px;">
+                <span id="auth-toggle-msg">New here?</span> 
+                <span id="auth-toggle-link" onclick="toggleAuthMode()" style="color:var(--primary); cursor:pointer; font-weight:bold;">Create New ID</span>
+            </p>
+            
+            <p onclick="resetPassword()" style="margin-top:10px; font-size:12px; color:#64748b; cursor:pointer; text-decoration:underline;">
+                Forgot Password?
+            </p>
+            
+            <p id="auth-msg" style="color:red; font-size:12px; margin-top:10px;"></p>
         </div>
-    </div> 
-
+        
+        <div style="margin-top:30px; border-top:1px solid #eee; padding-top:20px;">
+            <button class="secondary" onclick="guestLogin()">👤 Continue as Guest</button>
+        </div>
+    </div>
+</div>
     <div id="dashboard-screen" class="screen hidden">       
         <div class="topBar">
             <div class="user-badge">
@@ -307,16 +311,51 @@
     </div>
 </div>
     
-    <div id="profile-modal" class="modal-overlay hidden">
-        <div class="joinCard" style="max-width: 400px; text-align: center;">
-            <h2 style="color:#333; margin-bottom:10px;">Edit Profile</h2>
-            <input type="text" id="new-display-name" placeholder="e.g. Dr. Shaggy">
-            <div style="display:flex; gap:10px; margin-top:10px;">
-                <button class="secondary" onclick="document.getElementById('profile-modal').classList.add('hidden')">Cancel</button>
-                <button class="primary" onclick="saveProfile()">Save Name</button>
+   <div id="profile-modal" class="modal-overlay hidden">
+    <div class="joinCard" style="max-width:500px; text-align:left; position:relative;">
+        <button onclick="document.getElementById('profile-modal').classList.add('hidden')" style="position:absolute; right:20px; top:15px; background:none; border:none; font-size:20px; cursor:pointer;">✕</button>
+        
+        <h2 style="color:var(--primary); margin-bottom:5px;">👤 My Profile</h2>
+        <p style="font-size:12px; color:#666; margin-bottom:20px;">Manage your personal information.</p>
+
+        <div style="max-height:60vh; overflow-y:auto; padding-right:5px;">
+            <div style="background:#f8fafc; padding:15px; border-radius:10px; margin-bottom:15px;">
+                <label style="font-size:11px; color:#64748b; display:block;">Email</label>
+                <div id="profile-email" style="font-weight:600; color:#333;">-</div>
+                
+                <div style="display:flex; justify-content:space-between; margin-top:10px;">
+                    <div>
+                        <label style="font-size:11px; color:#64748b; display:block;">Plan</label>
+                        <div id="profile-plan" style="font-weight:600; color:#d97706;">Free</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <label style="font-size:11px; color:#64748b; display:block;">Member Since</label>
+                        <div id="profile-joined" style="font-weight:600;">-</div>
+                    </div>
+                </div>
             </div>
+
+            <label style="font-size:12px; font-weight:bold;">Full Name</label>
+            <input type="text" id="edit-name" placeholder="Dr. Name">
+
+            <label style="font-size:12px; font-weight:bold;">Phone Number</label>
+            <input type="tel" id="edit-phone" placeholder="0300-1234567">
+
+            <label style="font-size:12px; font-weight:bold;">Medical College / Institution</label>
+            <input type="text" id="edit-college" placeholder="e.g. KEMU, DMC">
+
+            <label style="font-size:12px; font-weight:bold;">Target Exam</label>
+            <select id="edit-exam" style="margin-bottom:20px;">
+                <option value="FCPS-1">FCPS Part 1</option>
+                <option value="MD/MS">MD / MS</option>
+                <option value="NEB">NEB / PMDC</option>
+                <option value="Other">Other</option>
+            </select>
+
+            <button class="primary" onclick="saveDetailedProfile()">💾 Save Changes</button>
         </div>
     </div>
+</div>
 
     <div id="analytics-modal" class="modal-overlay hidden">
         <div class="joinCard" style="max-width: 600px; text-align: left; width: 95%;">
@@ -337,6 +376,7 @@
     <script src="script.js"></script>
 </body>
 </html>
+
 
 
 
