@@ -860,27 +860,63 @@ async function redeemKey() {
     } catch (e) { alert("Error: " + e.message); }
 }
 
+// --- NEW FUNCTION: Handle Plan Selection ---
+function selectPlan(planValue, element) {
+    // 1. Remove 'selected' class from all other items
+    document.querySelectorAll('.price-item').forEach(item => {
+        item.classList.remove('selected');
+    });
+
+    // 2. Add 'selected' class to the clicked item
+    element.classList.add('selected');
+
+    // 3. Store the value in the hidden input
+    document.getElementById('selected-plan-value').value = planValue;
+}
+
 async function submitPaymentProof() {
-    const tid = document.getElementById('pay-tid').value;
+    const selectedPlan = document.getElementById('selected-plan-value').value;
     const file = document.getElementById('pay-proof').files[0];
-    if(!tid) return alert("Transaction ID required");
+    if(!selectedPlan) return alert("❌ Please select a plan from the list above.");
+    if(!file) return alert("❌ Please upload a screenshot of your payment.");
 
     let imgStr = null;
-    if(file) {
-        if(file.size > 500000) return alert("Image too large (Max 500KB)");
-        imgStr = await new Promise(r => {
+    if(file.size > 2000000) return alert("Image too large (Max 2MB)"); // Increased limit to 2MB
+    
+    const btn = event.target;
+    const originalText = btn.innerText;
+    btn.innerText = "Uploading...";
+    btn.disabled = true;
+
+    try {
+        imgStr = await new Promise((resolve, reject) => {
             let fr = new FileReader();
-            fr.onload = () => r(fr.result);
+            fr.onload = () => resolve(fr.result);
+            fr.onerror = reject;
             fr.readAsDataURL(file);
         });
-    }
 
-    db.collection('payment_requests').add({
-        uid: currentUser.uid, email: currentUser.email, tid: tid, image: imgStr, status: 'pending', timestamp: new Date()
-    }).then(() => {
-        alert("✅ Request Sent!");
+        const autoTID = "MANUAL_" + Math.random().toString(36).substr(2, 6).toUpperCase();
+
+        await db.collection('payment_requests').add({
+            uid: currentUser.uid, 
+            email: currentUser.email, 
+            tid: autoTID, 
+            planRequested: selectedPlan, // Uses the clicked plan
+            image: imgStr, 
+            status: 'pending', 
+            timestamp: new Date()
+        });
+
+        alert("✅ Request Sent! Please wait for admin approval.");
         document.getElementById('premium-modal').classList.add('hidden');
-    });
+
+    } catch (e) {
+        alert("Error: " + e.message);
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
 }
 
 // --- ADMIN DASHBOARD ---
@@ -1304,6 +1340,7 @@ if (typeof loadAdminKeys !== 'function') window.loadAdminKeys = function(){};
 window.onload = () => {
     if(localStorage.getItem('fcps-theme')==='dark') toggleTheme();
 }
+
 
 
 
