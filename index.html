@@ -248,82 +248,87 @@
         </div>
     </div>
 
-    <div id="prem-content-manual">
-    
-    <label style="font-size:13px; font-weight:700; color:#1e293b; display:block; margin-bottom:10px;">1. Select Plan:</label>
-    
-    <div class="pricing-grid">
-        <div class="price-item" onclick="selectPlan('1_day', this)">
-            <span class="price-duration">1 Day</span> 
-            <span class="price-cost">Rs. 50</span>
+    <div id="premium-modal" class="modal-overlay hidden">
+    <div class="joinCard">
+        
+        <div class="modal-header">
+            <h2 style="color:#d97706; font-size: 22px; display:flex; align-items:center; gap:8px; margin-bottom: 5px;">
+                <span>✨ Unlock Premium</span>
+            </h2>
+            <p style="font-size:13px; color:#666; margin:0;">Select a plan to start your journey.</p>
         </div>
-        <div class="price-item" onclick="selectPlan('1_week', this)">
-            <span class="price-duration">1 Week</span> 
-            <span class="price-cost">Rs. 200</span>
-        </div>
-        <div class="price-item" onclick="selectPlan('15_days', this)">
-            <span class="price-duration">15 Days</span> 
-            <span class="price-cost">Rs. 300</span>
-        </div>
-        <div class="price-item" onclick="selectPlan('1_month', this)">
-            <span class="price-duration">1 Month</span> 
-            <span class="price-cost">Rs. 500</span>
-        </div>
-        <div class="price-item" onclick="selectPlan('3_months', this)">
-            <span class="price-duration">3 Months</span> 
-            <span class="price-cost">Rs. 1,200</span>
-        </div>
-        <div class="price-item" onclick="selectPlan('6_months', this)">
-            <span class="price-duration">6 Months</span> 
-            <span class="price-cost">Rs. 2,000</span>
-        </div>
-        <div class="price-item" onclick="selectPlan('12_months', this)">
-            <span class="price-duration">12 Months</span> 
-            <span class="price-cost">Rs. 3,500</span>
-        </div>
-        <div class="price-item" onclick="selectPlan('lifetime', this)" style="border-color:#d97706; background:#fffbeb;">
-            <span class="price-duration" style="color:#d97706;">Lifetime</span> 
-            <span class="price-cost" style="color:#b45309;">Rs. 5,000</span>
-        </div>
-    </div>
 
-    <div class="bank-info-box" style="margin-top:20px;">
-        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-            <span>EasyPaisa / JazzCash:</span>
-            <strong style="color:#1e293b; font-size:13px;">03343412168</strong>
-        </div>
-        <div style="width:100%; height:1px; background:#e2e8f0; margin:8px 0;"></div>
-        <div style="margin-bottom:2px;">Bank: <b>Meezan Bank</b></div>
-        <div style="margin-bottom:2px;">Account: <b>01860104738754</b></div>
-        <div>Title: <b>Hassaan Shahid</b></div>
-    </div>
-
-    <label style="font-size:13px; font-weight:700; color:#1e293b; display:block; margin-bottom:8px; margin-top:20px;">2. Upload Payment Proof:</label>
-    
-    <input type="file" id="pay-proof" accept="image/*" style="font-size:12px; width:100%; padding:12px; border:1px dashed #cbd5e1; border-radius:10px; background:#f8fafc;">
-
-    <input type="hidden" id="selected-plan-value" value="">
-
-    <button class="primary" onclick="submitPaymentProof()" style="margin-top:20px; background:#10b981; width:100%; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">✅ Submit Request</button>
-</div>
-
-            <div id="prem-content-code" class="hidden">
-                <div style="text-align:center; padding:20px 0;">
-                    <p style="font-size:13px; color:#666; margin-bottom:15px;">Enter the activation key provided by the admin.</p>
-                    <input type="text" id="activation-code" placeholder="KEY-XXXX-XXXX" style="font-size:18px; font-weight:bold; letter-spacing:2px; text-transform:uppercase; text-align:center; padding:15px;">
-                    <button class="primary" onclick="redeemKey()" style="margin-top:20px;">Unlock Now</button>
-                </div>
+        <div class="modal-body-scroll">
+            
+            <div class="prem-tabs" style="display:flex; background:#f1f5f9; padding:4px; border-radius:10px; margin: 15px 0;">
+                <button onclick="switchPremTab('manual')" class="prem-tab-btn active" id="tab-btn-manual" style="flex:1; border:none; padding:10px; border-radius:8px; cursor:pointer;">Upload Proof</button>
+                <button onclick="switchPremTab('code')" class="prem-tab-btn" id="tab-btn-code" style="flex:1; border:none; padding:10px; border-radius:8px; cursor:pointer;">Redeem Code</button>
             </div>
 
-            <div style="height:20px;"></div>
+            <div id="prem-content-manual">
+                <label style="font-size:13px; font-weight:700; color:#1e293b; display:block; margin-bottom:10px;">1. Select Plan:</label>
+                
+                <div class="pricing-grid">
+                    <div class="price-item" onclick="selectPlan('1_day', this)">
+                        <span style="font-size:12px; color:#64748b">1 Day</span> 
+                        <span style="font-size:14px; font-weight:700">Rs. 50</span>
+                    </div>
+                    <div class="price-item" onclick="selectPlan('1_week', this)">
+                        <span style="font-size:12px; color:#64748b">1 Week</span> 
+                        <span style="font-size:14px; font-weight:700">Rs. 200</span>
+                    </div>
+                    <div class="price-item" onclick="selectPlan('15_days', this)">
+                        <span style="font-size:12px; color:#64748b">15 Days</span> 
+                        <span style="font-size:14px; font-weight:700">Rs. 300</span>
+                    </div>
+                    <div class="price-item" onclick="selectPlan('1_month', this)">
+                        <span style="font-size:12px; color:#64748b">1 Month</span> 
+                        <span style="font-size:14px; font-weight:700">Rs. 500</span>
+                    </div>
+                    <div class="price-item" onclick="selectPlan('3_months', this)">
+                        <span style="font-size:12px; color:#64748b">3 Months</span> 
+                        <span style="font-size:14px; font-weight:700">Rs. 1,200</span>
+                    </div>
+                    <div class="price-item" onclick="selectPlan('6_months', this)">
+                        <span style="font-size:12px; color:#64748b">6 Months</span> 
+                        <span style="font-size:14px; font-weight:700">Rs. 2,000</span>
+                    </div>
+                    <div class="price-item" onclick="selectPlan('12_months', this)">
+                        <span style="font-size:12px; color:#64748b">12 Months</span> 
+                        <span style="font-size:14px; font-weight:700">Rs. 3,500</span>
+                    </div>
+                    <div class="price-item" onclick="selectPlan('lifetime', this)" style="border-color:#d97706; background:#fffbeb;">
+                        <span style="font-size:12px; color:#d97706">Lifetime</span> 
+                        <span style="font-size:14px; font-weight:700; color:#b45309">Rs. 5,000</span>
+                    </div>
+                </div>
+
+                <div class="bank-info-box" style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:10px; padding:15px; font-size:12px; margin-top:20px;">
+                    <div style="margin-bottom:5px;">EasyPaisa / JazzCash: <b>03343412168</b></div>
+                    <hr style="border:0; border-top:1px solid #e2e8f0; margin:8px 0;">
+                    <div>Bank: <b>Meezan Bank</b></div>
+                    <div>Account: <b>01860104738754</b></div>
+                    <div>Title: <b>Hassaan Shahid</b></div>
+                </div>
+
+                <label style="font-size:13px; font-weight:700; color:#1e293b; display:block; margin:20px 0 8px 0;">2. Upload Proof:</label>
+                <input type="file" id="pay-proof" accept="image/*" style="font-size:12px; width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:8px;">
+                <input type="hidden" id="selected-plan-value" value=""> <button class="primary" onclick="submitPaymentProof()" style="margin-top:20px; width:100%;">✅ Submit Request</button>
+            </div>
+
+            <div id="prem-content-code" class="hidden" style="text-align:center; padding:40px 0;">
+                <input type="text" id="activation-code" placeholder="KEY-XXXX-XXXX" style="width:100%; padding:15px; font-size:16px; text-align:center; border:2px solid #e2e8f0; border-radius:10px; margin-bottom:15px; text-transform:uppercase;">
+                <button class="primary" onclick="redeemKey()" style="width:100%;">Unlock Now</button>
+            </div>
         </div>
 
-        <div style="padding: 10px 25px 25px 25px; border-top: 1px solid #f1f5f9; text-align:center; background:white;">
-            <button onclick="document.getElementById('premium-modal').classList.add('hidden')" style="background:transparent; color:#94a3b8; font-size:13px; padding:10px; margin:0; width:auto; font-weight:normal;">Close</button>
+        <div class="modal-footer">
+            <button onclick="document.getElementById('premium-modal').classList.add('hidden')" style="background:transparent; color:#94a3b8; width:auto; margin:0; font-weight:normal; font-size:13px;">Close</button>
         </div>
     </div>
 </div>
 
+    
     <div id="profile-modal" class="modal-overlay hidden">
         <div class="joinCard" style="max-width: 400px; text-align: center;">
             <h2 style="color:#333; margin-bottom:10px;">Edit Profile</h2>
@@ -354,6 +359,7 @@
     <script src="script.js"></script>
 </body>
 </html>
+
 
 
 
