@@ -791,48 +791,38 @@ function updateTimer() {
 function submitTest() {
     clearInterval(testTimer);
     let score = 0;
-    let wrongList = [];
     
+    // --- 1. DETERMINE EXAM SUBJECT ---
+    // If all questions are from one subject, use that name. Otherwise "Mixed".
+    const uniqueSubjects = [...new Set(filteredQuestions.map(q => q.Subject))];
+    const examSubject = uniqueSubjects.length === 1 ? uniqueSubjects[0] : "Mixed Subjects";
+
     filteredQuestions.forEach(q => {
         const user = testAnswers[q._uid];
         const correct = getCorrectLetter(q);
         const correctText = getOptionText(q, correct);
-
         if(user === correctText) {
             score++;
             if(currentUser && !isGuest) {
                 db.collection('users').doc(currentUser.uid).update({ solved: firebase.firestore.FieldValue.arrayUnion(q._uid) });
-            }
-        } else {
-            wrongList.push({q, user, correct: correctText});
-            if(currentUser && !isGuest && !userMistakes.includes(q._uid)) {
-                db.collection('users').doc(currentUser.uid).update({ mistakes: firebase.firestore.FieldValue.arrayUnion(q._uid) });
             }
         }
     });
 
     const pct = Math.round((score/filteredQuestions.length)*100);
     
+    // --- 2. SAVE WITH SUBJECT TAG ---
     if(currentUser && !isGuest) {
         db.collection('users').doc(currentUser.uid).collection('results').add({
-            date: new Date(), score: pct, total: filteredQuestions.length
+            date: new Date(), 
+            score: pct, 
+            total: filteredQuestions.length,
+            subject: examSubject // <--- Saving the subject here
         });
     }
 
     showScreen('result-screen');
     document.getElementById('final-score').innerText = `${pct}% (${score}/${filteredQuestions.length})`;
-    
-    const list = document.getElementById('review-list');
-    list.innerHTML = "";
-    wrongList.forEach(item => {
-        list.innerHTML += `
-            <div style="background:white; padding:15px; margin-bottom:10px; border-left:4px solid #ef4444; border-radius:5px;">
-                <b>${item.q.Question}</b><br>
-                <span style="color:#ef4444">You: ${item.user||'-'}</span> | 
-                <span style="color:#22c55e">Correct: ${item.correct}</span>
-                <div style="background:#f9f9f9; padding:10px; margin-top:5px; font-size:0.9em;">${item.q.Explanation || ''}</div>
-            </div>`;
-    });
 }
 
 // ======================================================
@@ -1021,23 +1011,44 @@ async function adminLookupUser(targetId) {
     if(!doc.exists) { res.innerHTML = "Not found"; return; }
     const u = doc.data();
     
-    // --- UPDATED ADMIN CARD WITH PREMIUM TOGGLE ---
+    // --- UPDATED CARD WITH PREMIUM DROPDOWN ---
     res.innerHTML = `
     <div class="user-card">
         <h3>${u.email}</h3>
         <p>Premium: ${u.isPremium ? '✅ Active' : '❌ Free'}</p>
         <p>Role: ${u.role}</p>
         
-        <div style="display:flex; gap:10px; margin-top:10px;">
+        <div style="margin-top:10px; padding-top:10px; border-top:1px solid #eee;">
+            <label style="font-size:12px; font-weight:bold;">Manage Subscription:</label>
+            <div style="display:flex; gap:5px; margin-top:5px;">
+                <select id="admin-grant-plan-${doc.id}" style="padding:5px; border-radius:5px; border:1px solid #ccc;">
+                    <option value="1_month">1 Month</option>
+                    <option value="6_months">6 Months</option>
+                    <option value="lifetime">Lifetime</option>
+                </select>
+                <button onclick="adminGrantPremium('${doc.id}')" style="background:#d97706; color:white; padding:5px 10px; margin:0; font-size:12px;">
+                    Grant
+                </button>
+            </div>
+        </div>
+        
+        <div style="display:flex; gap:10px; margin-top:15px;">
             <button onclick="db.collection('users').doc('${doc.id}').update({disabled:${!u.disabled}}).then(()=>alert('Done'))" style="background:${u.disabled?'green':'red'}; color:white; flex:1;">
-                ${u.disabled?'Unban':'Ban'}
+                ${u.disabled?'Unban':'Ban User'}
             </button>
-            
-            <button onclick="db.collection('users').doc('${doc.id}').update({isPremium:${!u.isPremium}}).then(()=>alert('Status Updated'))" style="background:${u.isPremium?'#64748b':'#d97706'}; color:white; flex:1;">
-                ${u.isPremium ? 'Revoke Premium' : 'Grant Premium'}
+            <button onclick="db.collection('users').doc('${doc.id}').update({isPremium:false}).then(()=>alert('Revoked'))" style="background:#64748b; color:white; flex:1;">
+                Revoke Premium
             </button>
         </div>
     </div>`;
+}
+
+async function adminGrantPremium(uid) {
+    const plan = document.getElementById('admin-grant-plan-'+uid).value;
+    const expiry = new Date().getTime() + PLAN_DURATIONS[plan];
+    await db.collection('users').doc(uid).update({ isPremium: true, expiryDate: new Date(expiry) });
+    alert("✅ Granted " + plan);
+    adminLookupUser(uid); // Refresh card
 }
 
 // ======================================================
@@ -1142,7 +1153,6 @@ async function openAnalytics() {
     if(!currentUser || isGuest) { container.innerHTML = "Sign in to see stats."; return; }
     
     try {
-        // 1. Stats
         const doc = await db.collection('users').doc(currentUser.uid).get();
         const stats = doc.data().stats || {};
         
@@ -1156,23 +1166,36 @@ async function openAnalytics() {
             </div>`;
         });
 
-        // 2. Exam History (New Table)
-        const historySnap = await db.collection('users').doc(currentUser.uid).collection('results').orderBy('date', 'desc').limit(5).get();
+        // --- NEW: FETCH EXAM HISTORY ---
+        const historySnap = await db.collection('users').doc(currentUser.uid).collection('results').orderBy('date', 'desc').limit(10).get();
         
-        html += "<h3 style='margin-top:20px;'>📜 Recent Exams</h3>";
-        if(historySnap.empty) html += "<p>No exams taken.</p>";
+        html += "<h3 style='margin-top:25px; border-top:1px solid #eee; padding-top:15px;'>📜 Recent Exams</h3>";
+        if(historySnap.empty) html += "<p style='color:#666;'>No exams taken yet.</p>";
         else {
-            html += "<table style='width:100%; border-collapse:collapse; margin-top:10px;'><tr><th>Date</th><th>Score</th></tr>";
+            html += `<table style='width:100%; border-collapse:collapse; font-size:13px; margin-top:10px;'>
+                <tr style='background:#f8fafc; text-align:left;'>
+                    <th style='padding:8px; border:1px solid #e2e8f0;'>Date</th>
+                    <th style='padding:8px; border:1px solid #e2e8f0;'>Subject</th>
+                    <th style='padding:8px; border:1px solid #e2e8f0;'>Score</th>
+                </tr>`;
+            
             historySnap.forEach(r => {
                 const d = r.data();
                 const dateStr = d.date ? new Date(d.date.seconds*1000).toLocaleDateString() : '-';
-                html += `<tr><td style='border:1px solid #eee; padding:5px;'>${dateStr}</td><td style='border:1px solid #eee; padding:5px;'>${d.score}% (${d.total} Qs)</td></tr>`;
+                const subj = d.subject || "Mixed"; // Fallback for old data
+                const scoreColor = d.score >= 70 ? "#166534" : "#b91c1c"; // Green if pass, Red if fail
+                
+                html += `<tr>
+                    <td style='border:1px solid #e2e8f0; padding:8px;'>${dateStr}</td>
+                    <td style='border:1px solid #e2e8f0; padding:8px;'>${subj}</td>
+                    <td style='border:1px solid #e2e8f0; padding:8px; font-weight:bold; color:${scoreColor};'>${d.score}%</td>
+                </tr>`;
             });
             html += "</table>";
         }
         
         container.innerHTML = html || "No data yet.";
-    } catch(e) { container.innerHTML = "Error: Please check if you updated the Firebase Rules (Step 1)."; }
+    } catch(e) { container.innerHTML = "Error loading analytics: " + e.message; }
 }
 
 function toggleTheme() {
@@ -1254,3 +1277,4 @@ if (typeof loadAdminKeys !== 'function') window.loadAdminKeys = function(){};
 window.onload = () => {
     if(localStorage.getItem('fcps-theme')==='dark') toggleTheme();
 }
+
