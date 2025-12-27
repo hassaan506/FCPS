@@ -204,23 +204,33 @@
             </div>
 
             <div id="tab-keys" class="hidden">
-                <h3>Generate Activation Key</h3>
-                <div style="display:flex; gap:10px; margin-bottom:20px;">
-                    <select id="key-plan" style="padding:10px; border-radius:8px; background:white; border:1px solid #ccc;">
-                        <option value="1_month">1 Month</option>
-                        <option value="3_months">3 Months</option>
-                        <option value="6_months">6 Months</option>
-                        <option value="1_year">1 Year</option>
-                        <option value="lifetime">Lifetime</option>
-                    </select>
-                    <button class="primary" onclick="generateAdminKey()" style="width:auto; margin:0;">Generate</button>
-                </div>
-                <div id="generated-key-display" style="margin-bottom:20px; font-weight:bold; color:#0284c7; font-size:18px;"></div>
-                
-                <h4>Active Keys (Last 10)</h4>
-                <div id="admin-keys-list"></div>
-            </div>
+    <div style="background:#f8fafc; padding:15px; border-radius:10px; border:1px solid #e2e8f0; margin-bottom:20px;">
+        <h3 style="margin-top:0;">🔑 Generate New Key</h3>
+        
+        <div style="display:flex; gap:10px;">
+            <select id="key-plan" style="flex:1; padding:10px; border:1px solid #ccc; border-radius:6px;">
+                <option value="1_day">1 Day</option>
+                <option value="1_week">1 Week</option>
+                <option value="15_days">15 Days</option>
+                <option value="1_month">1 Month</option>
+                <option value="3_months">3 Months</option>
+                <option value="6_months">6 Months</option>
+                <option value="12_months">12 Months</option>
+                <option value="lifetime">Lifetime</option>
+            </select>
+            
+            <button class="primary" onclick="generateAdminKey()" style="margin:0;">Generate</button>
+        </div>
 
+        <div style="margin-top:15px; text-align:center;">
+            <div style="font-size:12px; color:#666;">New Key:</div>
+            <div id="generated-key-display" style="font-size:24px; font-weight:bold; color:#2563eb; letter-spacing:2px; margin-top:5px;">-</div>
+        </div>
+    </div>
+
+    <div id="admin-keys-list"></div>
+</div>
+            
             <div id="tab-users" class="hidden">
                 <h3>User Manager</h3>
                 <div style="display:flex; gap:10px; margin-bottom:20px;">
@@ -404,6 +414,7 @@
     <script src="script.js"></script>
 </body>
 </html>
+
 
 
 
