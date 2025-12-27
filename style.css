@@ -1,5 +1,5 @@
 /* -----------------------------------------------------------
-   STYLE.CSS - MEDICAL MASTERY (FULL PREMIUM VERSION)
+   STYLE.CSS - MEDICAL MASTERY (FINAL FIXED VERSION)
    ----------------------------------------------------------- */
 
 /* =========================================
@@ -126,7 +126,6 @@ body::before {
 }
 
 /* 2. DASHBOARD & OTHER SCREENS (Normal Scroll) */
-/* --- UPDATED: Added #admin-screen.active here --- */
 #dashboard-screen.active, 
 #quiz-screen.active, 
 #result-screen.active,
@@ -200,7 +199,7 @@ body::before {
 }
 
 /* INPUT FIELDS */
-input, select { /* Added select for Admin dropdowns */
+input, select { 
     width: 100%; 
     padding: 18px; 
     margin: 10px 0; 
@@ -438,7 +437,7 @@ button {
     border: 1px solid #bee3f8;
 }
 
-/* Question Box (Strong Animation Force) */
+/* Question Box (Updated for Thinner Border) */
 .test-question-block { 
     padding: 30px; 
     text-align: left; 
@@ -448,7 +447,7 @@ button {
     /* Layout & Border */
     width: 100% !important; 
     margin: 0 !important; 
-    border: 8px solid var(--primary); 
+    border: 2px solid var(--primary); /* <--- FIXED: THINNER BORDER */
     background: var(--card-bg); 
     border-radius: 16px; 
     box-shadow: var(--shadow-sm); 
@@ -699,10 +698,9 @@ button {
 }
 .icon-btn:hover, .theme-toggle:hover { background: #f1f5f9; transform: scale(1.1); }
 
-/* Badge Grid - Updated */
 .badge-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 20px; }
 .badge-item {
-    background: var(--input-bg);       
+    background: var(--input-bg);       /* Adapts to Dark Mode */
     border: 1px solid var(--border-color);
     border-radius: 16px;
     padding: 15px;
@@ -710,40 +708,32 @@ button {
     opacity: 0.5;
     filter: grayscale(100%);
     transition: all 0.3s;
-    color: var(--text-dark);
+    color: var(--text-dark);           /* Ensures text is visible */
 }
 
 .badge-item.unlocked { 
     opacity: 1; 
     filter: grayscale(0%); 
     border-color: #ffd700; 
-    background: #fffbeb;              
+    background: #fffbeb;              /* Light Mode Gold */
     transform: translateY(-5px); 
     box-shadow: 0 5px 15px rgba(255, 215, 0, 0.2);
-    color: #b7791f;                   
+    color: #b7791f;                   /* Dark Gold Text */
 }
 
+/* Fix for Dark Mode Unlocked Badges */
 [data-theme="dark"] .badge-item.unlocked {
-    background: rgba(255, 215, 0, 0.15); 
-    color: #ffd700;                      
+    background: rgba(255, 215, 0, 0.15); /* Dark transparent gold */
+    color: #ffd700;                      /* Bright Gold Text */
     border-color: #ffd700;
 }
 
+/* The Icon inside the badge */
 .badge-icon {
     font-size: 30px;
     display: block;
     margin-bottom: 5px;
 }
-
-/* Badge Description */
-.badge-desc {
-    font-size: 10px;
-    color: var(--text-light);
-    margin-top: 5px;
-    display: block;
-    line-height: 1.2;
-}
-
 /* SEARCH */
 .search-results-list {
     position: absolute; top: 110%; left: 0; right: 0;
@@ -756,7 +746,7 @@ button {
 
 
 /* =========================================
-   11. MOBILE OPTIMIZATIONS (FIXED NAVIGATOR)
+   11. MOBILE OPTIMIZATIONS
    ========================================= */
 @media screen and (max-width: 600px) {
     /* Login Fix */
@@ -1187,7 +1177,7 @@ details[open] .subject-summary::after {
 }
 
 /* =========================================
-   23. ADMIN & PREMIUM FEATURES (NEW & FIXED)
+   23. ADMIN & PREMIUM FEATURES (NEW)
    ========================================= */
 
 /* Admin Tabs */
@@ -1195,14 +1185,14 @@ details[open] .subject-summary::after {
     background: white;
     border: 1px solid var(--border-color);
     color: var(--text-light);
-    padding: 12px;
+    padding: 12px; /* Increased for better touch targets */
     border-radius: 10px;
     font-weight: 600;
     cursor: pointer;
     flex: 1; 
     transition: all 0.2s ease;
     text-align: center;
-    margin: 0 4px;
+    margin: 0 4px; /* Slight gap between tabs */
 }
 .admin-tab:hover { background: var(--input-bg); }
 .admin-tab.active {
@@ -1219,17 +1209,17 @@ details[open] .subject-summary::after {
     border-color: #d97706 !important;
 }
 
-/* Admin Cards (Reports, Payments, Users) */
+/* Admin Cards (Reports, Payments, Users) - FIXED SPACING */
 .report-card, .user-card {
     background: white;
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    padding: 20px; /* Padding Increased */
+    padding: 20px; /* <--- FIXED: More breathing room */
     margin-bottom: 20px;
     text-align: left;
     box-shadow: var(--shadow-sm);
     position: relative;
-    line-height: 1.6;
+    line-height: 1.6; /* <--- FIXED: Text isn't squashed */
 }
 
 .report-card { border-left: 5px solid #ef4444; }
@@ -1259,7 +1249,7 @@ details[open] .subject-summary::after {
     margin: 15px 0;
 }
 
-/* Admin Tables (Keys List & Exam History) */
+/* Admin Tables (Keys List) */
 table {
     width: 100%;
     border-collapse: separate; 
