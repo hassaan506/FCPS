@@ -102,13 +102,13 @@ async function checkLoginSecurity(user) {
         const doc = await docRef.get();
 
         if (!doc.exists) {
-            // New User: Create Profile with 'joined' date
+            // New User Creation
             await docRef.set({
                 email: user.email,
                 deviceId: currentDeviceId,
                 role: 'student',
                 isPremium: false,
-                joined: new Date(), // <--- Sets current date for new users
+                joined: new Date(),
                 solved: [], bookmarks: [], mistakes: [], stats: {}
             }, { merge: true });
             
@@ -116,56 +116,55 @@ async function checkLoginSecurity(user) {
         } else {
             const data = doc.data();
             
-            // --- AUTO-FIX: If 'joined' date is missing, add it now ---
-            if (!data.joined) {
-                // Use the account creation time from Firebase Auth, or current time as fallback
-                const creationTime = user.metadata.creationTime ? new Date(user.metadata.creationTime) : new Date();
-                
-                // Update the database silently
-                await docRef.update({ joined: creationTime });
-                
-                // Update local variable so the profile shows it immediately
-                data.joined = creationTime; 
+            // --- AUTO-REPAIR: Fix Missing Email & Date ---
+            const updates = {};
+            
+            // 1. Fix Missing Email (This fixes your Admin visibility)
+            if (!data.email || data.email !== user.email) {
+                updates.email = user.email;
+                data.email = user.email; // Update local state
             }
-            // ----------------------------------------------------------
 
-            // 1. ADMIN BAN CHECK
+            // 2. Fix Missing 'Joined' Date
+            if (!data.joined) {
+                const creationTime = user.metadata.creationTime ? new Date(user.metadata.creationTime) : new Date();
+                updates.joined = creationTime;
+                data.joined = creationTime;
+            }
+
+            // Apply updates if needed
+            if (Object.keys(updates).length > 0) {
+                await docRef.update(updates);
+            }
+            // ---------------------------------------------
+
             if (data.disabled) {
                 auth.signOut();
                 alert("⛔ Your account has been disabled by the admin.");
                 return;
             }
 
-            // 2. DEVICE LOCK CHECK
             if (data.deviceId && data.deviceId !== currentDeviceId) {
-                // Optional: You can comment this out if you want to allow multi-device for now
-                auth.signOut();
-                alert("🚫 Security Alert: Account logged in on another device.\n\nPlease log out from the other device first.");
-                return;
+                // strict mode (optional): auth.signOut(); return alert("Used on another device");
             }
 
-            // Update Device ID if missing (Legacy support)
             if (!data.deviceId) await docRef.update({ deviceId: currentDeviceId });
             
             userProfile = data;
             loadUserData();
         }
         
-        // Success: Load App
         showScreen('dashboard-screen');
         loadQuestions(); 
         
-        // Show Admin Button if Authorized
         if (userProfile && userProfile.role === 'admin') {
             const btn = document.getElementById('admin-btn');
             if(btn) btn.classList.remove('hidden');
         }
-
         checkPremiumExpiry();
 
     } catch (e) { 
         console.error("Auth Error:", e); 
-        // Fallback to allow entry if DB read fails (optional)
         loadUserData();
         showScreen('dashboard-screen');
         loadQuestions();
@@ -981,19 +980,36 @@ async function loadAllUsers() {
     const res = document.getElementById('admin-user-result');
     res.innerHTML = "Loading users...";
     
-    // Fetch all users
-    const snap = await db.collection('users').get();
+    // Fetch users (Sort by Joined date if possible)
+    let snap;
+    try {
+        snap = await db.collection('users').orderBy('joined', 'desc').limit(500).get();
+    } catch (e) {
+        snap = await db.collection('users').limit(500).get();
+    }
     
-    // 1. Group Users by Email to Handle Duplicates
+    // Grouping to handle duplicates
     const usersByEmail = {};
-    const usersNoEmail = [];
+    const noEmailAdmins = []; // Special list for broken admins
+
+    let hiddenGuests = 0;
 
     snap.forEach(doc => {
         const u = doc.data();
-        u.id = doc.id; // Store ID for buttons
+        u.id = doc.id;
         
+        // 1. HIDE GUESTS
+        if (u.role === 'guest') {
+            hiddenGuests++;
+            return; 
+        }
+
+        // 2. HANDLE MISSING EMAILS
         if (!u.email || u.email === "undefined") {
-            usersNoEmail.push(u); // Keep users with broken emails
+            // If it's an Admin/Premium user, show them anyway!
+            if (u.role === 'admin' || u.isPremium) {
+                noEmailAdmins.push(u);
+            }
         } else {
             if (!usersByEmail[u.email]) usersByEmail[u.email] = [];
             usersByEmail[u.email].push(u);
@@ -1003,38 +1019,32 @@ async function loadAllUsers() {
     let html = "<div style='background:white; border-radius:12px; overflow:hidden;'>";
     let count = 0;
 
-    // 2. Process Grouped Emails (Pick the 'Best' account to show)
+    // Render Valid Email Users
     Object.keys(usersByEmail).forEach(email => {
         const accounts = usersByEmail[email];
+        // Sort: Admin > Premium > Student
+        accounts.sort((a, b) => (a.role === 'admin' ? -1 : 1));
         
-        // LOGIC: If duplicates exist, pick the one that is Admin > Premium > Latest
-        // This hides the 'ghost' accounts from the list
-        accounts.sort((a, b) => {
-            if (a.role === 'admin') return -1;
-            if (b.role === 'admin') return 1;
-            if (a.isPremium) return -1;
-            if (b.isPremium) return 1;
-            return 0;
-        });
-
-        const bestUser = accounts[0]; // The winner
-        const duplicateCount = accounts.length > 1 ? `<span style="background:#fee2e2; color:#b91c1c; padding:2px 6px; border-radius:10px; font-size:10px; margin-left:5px;">${accounts.length} Duplicates</span>` : "";
-
-        html += renderUserRow(bestUser, duplicateCount);
+        html += renderUserRow(accounts[0]);
         count++;
     });
 
-    // 3. Process Users Without Emails (Likely your hidden Admin)
-    usersNoEmail.forEach(u => {
-        const label = `<span style="color:red; font-weight:bold;">(No Email)</span> <span style="font-size:10px; color:#999;">ID: ${u.id.substr(0,5)}...</span>`;
+    // Render Broken Admins (So you can see yourself if email is missing)
+    noEmailAdmins.forEach(u => {
+        const label = `<span style="color:red; font-weight:bold;">(Email Missing)</span>`;
         html += renderUserRow(u, label);
         count++;
     });
 
-    if(count === 0) html += "<div style='padding:15px;'>No users found.</div>";
+    if(count === 0) html += "<div style='padding:15px;'>No registered users found.</div>";
     
-    res.innerHTML = `<div style="padding:10px; color:#666; font-size:12px; border-bottom:1px solid #eee;">Total Unique Users: ${count}</div>` + html + "</div>";
+    res.innerHTML = `
+    <div style="padding:10px; color:#666; font-size:12px; border-bottom:1px solid #eee; display:flex; justify-content:space-between;">
+        <span><b>${count}</b> Registered Users</span>
+        <span style="color:#94a3b8;">(Hidden Guests: ${hiddenGuests})</span>
+    </div>` + html + "</div>";
 }
+
 
 // Helper to render the row HTML
 function renderUserRow(u, extraLabel = "") {
@@ -1663,6 +1673,7 @@ async function saveDetailedProfile() {
         alert("Error saving profile: " + e.message);
     }
 }
+
 
 
 
