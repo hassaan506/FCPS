@@ -1556,10 +1556,21 @@ function formatDateHelper(dateInput) {
 }
 
 function openBadges() {
-    const modal = document.getElementById('badges-modal');
-    const container = document.getElementById('badge-list');
+    // 1. Target the NEW Modal ID (from the HTML I gave you)
+    const modal = document.getElementById('achievement-modal'); 
+    
+    // 2. Target the Grid Container inside that modal
+    const container = modal.querySelector('.ach-grid'); 
+
+    if (!modal || !container) {
+        console.error("Error: Could not find 'achievement-modal' or '.ach-grid'. Did you paste the new HTML?");
+        return;
+    }
+
+    // 3. Show the modal
     modal.classList.remove('hidden');
     
+    // 4. Your Badge Data
     const badges = [
         { limit: 10, icon: "👶", name: "Novice", desc: "Solve 10 Questions" },
         { limit: 100, icon: "🥉", name: "Bronze", desc: "Solve 100 Questions" },
@@ -1569,18 +1580,37 @@ function openBadges() {
         { limit: 5000, icon: "👑", name: "Master", desc: "Solve 5000 Questions" }
     ];
 
+    // 5. Generate the NEW HTML Structure
     let html = "";
+    
     badges.forEach(b => {
-        const isUnlocked = userSolvedIDs.length >= b.limit;
-        html += `<div class="badge-item ${isUnlocked?'unlocked':''}">
-            <div class="badge-icon">${b.icon}</div>
-            <div class="badge-name">${b.name}</div>
-            <div class="badge-desc" style="font-size:10px; color:#666;">${b.desc}</div>
+        // Check if unlocked (Safely handle if userSolvedIDs is missing)
+        const solvedCount = (typeof userSolvedIDs !== 'undefined') ? userSolvedIDs.length : 0;
+        const isUnlocked = solvedCount >= b.limit;
+
+        // Determine Styles (Locked vs Unlocked)
+        const statusClass = isUnlocked ? 'unlocked' : 'locked';
+        
+        // Determine Icon (Checkmark vs Lock)
+        const statusIcon = isUnlocked 
+            ? `<div class="ach-check">✓</div>` 
+            : `<div class="ach-lock">🔒</div>`;
+
+        // Build the Card HTML
+        html += `
+        <div class="ach-item ${statusClass}">
+            <div class="ach-icon-box">${b.icon}</div>
+            <div class="ach-info">
+                <h3>${b.name}</h3>
+                <span>${b.desc}</span>
+            </div>
+            ${statusIcon}
         </div>`;
     });
+
+    // 6. Inject into the grid
     container.innerHTML = html;
 }
-
 function updateBadgeButton() {
     if(userSolvedIDs.length > 5000) document.getElementById('main-badge-btn').innerText = "👑";
     else if(userSolvedIDs.length > 2000) document.getElementById('main-badge-btn').innerText = "💎";
@@ -1726,4 +1756,5 @@ function resetPassword() {
 window.onload = () => {
     if(localStorage.getItem('fcps-theme')==='dark') toggleTheme();
 }
+
 
