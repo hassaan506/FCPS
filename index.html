@@ -70,7 +70,81 @@
                 <button onclick="logout()" class="logout-btn">Log Out</button>
             </div>
         </div> 
+<div id="achievement-modal" class="modal-overlay hidden">
+    <div class="achievements-card">
+        
+        <div class="ach-header">
+            <div class="ach-trophy-wrapper">
+                <span class="main-trophy">🏆</span>
+                <div class="trophy-glow"></div>
+            </div>
+            <h2>Your Journey</h2>
+            <p>Track your progress and unlock mastery.</p>
+        </div>
 
+        <div class="ach-grid">
+            
+            <div class="ach-item unlocked">
+                <div class="ach-icon-box">👶</div>
+                <div class="ach-info">
+                    <h3>Novice</h3>
+                    <span>Solve 10 Questions</span>
+                </div>
+                <div class="ach-check">✓</div>
+            </div>
+
+            <div class="ach-item locked">
+                <div class="ach-icon-box">🥉</div>
+                <div class="ach-info">
+                    <h3>Bronze</h3>
+                    <span>Solve 100 Questions</span>
+                </div>
+                <div class="ach-lock">🔒</div>
+            </div>
+
+            <div class="ach-item locked">
+                <div class="ach-icon-box">🥈</div>
+                <div class="ach-info">
+                    <h3>Silver</h3>
+                    <span>Solve 500 Questions</span>
+                </div>
+                <div class="ach-lock">🔒</div>
+            </div>
+
+            <div class="ach-item locked">
+                <div class="ach-icon-box">🥇</div>
+                <div class="ach-info">
+                    <h3>Gold</h3>
+                    <span>Solve 1000 Questions</span>
+                </div>
+                <div class="ach-lock">🔒</div>
+            </div>
+
+            <div class="ach-item locked">
+                <div class="ach-icon-box">💎</div>
+                <div class="ach-info">
+                    <h3>Diamond</h3>
+                    <span>Solve 2000 Questions</span>
+                </div>
+                <div class="ach-lock">🔒</div>
+            </div>
+
+            <div class="ach-item locked">
+                <div class="ach-icon-box">👑</div>
+                <div class="ach-info">
+                    <h3>Master</h3>
+                    <span>Solve 5000 Questions</span>
+                </div>
+                <div class="ach-lock">🔒</div>
+            </div>
+
+        </div>
+
+        <div class="ach-footer">
+            <button class="primary" onclick="document.getElementById('achievement-modal').classList.add('hidden')">Close</button>
+        </div>
+    </div>
+</div>
         <div class="gameContainer">
             
             <div style="display:flex; flex-direction:column; gap:25px;">
@@ -431,3 +505,4 @@
     <script src="script.js"></script>
 </body>
 </html>
+
