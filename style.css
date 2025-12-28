@@ -630,9 +630,9 @@ button {
     border-top: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
     
-    flex: 1;           /* Take all available remaining height */
-    overflow-y: auto;  /* Scroll ONLY this part */
-    min-height: 0;     /* Critical for Flexbox scrolling */
+    flex: 1;            /* Take all available remaining height */
+    overflow-y: auto;   /* Scroll ONLY this part */
+    min-height: 0;      /* Critical for Flexbox scrolling */
     
     padding: 20px 25px; /* Internal padding */
     margin: 0 !important; /* Reset margins */
@@ -700,7 +700,7 @@ button {
 
 .badge-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 20px; }
 .badge-item {
-    background: var(--input-bg);       /* Adapts to Dark Mode */
+    background: var(--input-bg);        /* Adapts to Dark Mode */
     border: 1px solid var(--border-color);
     border-radius: 16px;
     padding: 15px;
@@ -708,23 +708,23 @@ button {
     opacity: 0.5;
     filter: grayscale(100%);
     transition: all 0.3s;
-    color: var(--text-dark);           /* Ensures text is visible */
+    color: var(--text-dark);            /* Ensures text is visible */
 }
 
 .badge-item.unlocked { 
     opacity: 1; 
     filter: grayscale(0%); 
     border-color: #ffd700; 
-    background: #fffbeb;              /* Light Mode Gold */
+    background: #fffbeb;               /* Light Mode Gold */
     transform: translateY(-5px); 
     box-shadow: 0 5px 15px rgba(255, 215, 0, 0.2);
-    color: #b7791f;                   /* Dark Gold Text */
+    color: #b7791f;                    /* Dark Gold Text */
 }
 
 /* Fix for Dark Mode Unlocked Badges */
 [data-theme="dark"] .badge-item.unlocked {
     background: rgba(255, 215, 0, 0.15); /* Dark transparent gold */
-    color: #ffd700;                      /* Bright Gold Text */
+    color: #ffd700;                       /* Bright Gold Text */
     border-color: #ffd700;
 }
 
@@ -1470,67 +1470,71 @@ tr:last-child td { border-bottom: none; }
 }
 
 
-/* --- MOBILE AUTH FIXES --- */
+/* =========================================
+   FINAL MOBILE AUTH FIX (Applies to .joinCard)
+   ========================================= */
 
-/* 1. Ensure the Auth Screen Container covers the whole phone */
-#auth-screen {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    height: 100vh; /* Full viewport height */
-    position: fixed;
+/* 1. Fix the Main Container to allow scrolling & clicking */
+#auth-screen.active {
+    position: fixed !important;
     top: 0;
     left: 0;
-    z-index: 9999; /* Force it on top of everything */
-    background: #f1f5f9; /* Fallback color */
-    padding: 20px; /* Prevent edges touching */
-    box-sizing: border-box;
-    overflow-y: auto; /* Allow scrolling if keyboard pops up */
-}
-
-/* 2. Fix the Login Box Size for Mobile */
-.auth-container {
-    background: white;
-    padding: 30px;
-    border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    width: 100% !important;
+    height: 100% !important;
+    background: #f0f4f8 !important; /* Cover background so clicks don't fall through */
+    z-index: 2147483647 !important; /* Max Z-Index to stay on top */
     
-    /* CRITICAL MOBILE WIDTHS */
-    width: 100%;           
-    max-width: 400px;      /* Stops it getting huge on Desktop */
-    min-width: 280px;      /* Stops it getting too thin on tiny phones */
+    /* Flexbox Center */
+    display: flex !important;
+    align-items: center;       
+    justify-content: center;   
     
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
+    overflow-y: auto !important; /* Enable scrolling */
+    padding: 20px 0; 
+    pointer-events: auto !important; /* Force clickable */
 }
 
-/* 3. Make Inputs Tap-Friendly (Bigger on Phone) */
-.auth-container input {
-    width: 100%;
-    padding: 12px 15px; /* Larger touch area */
-    font-size: 16px;    /* Prevents iPhone zoom on focus */
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    box-sizing: border-box; /* Keeps padding inside width */
+/* 2. Fix the Card Size & Margin */
+.joinCard {
+    /* Reset margins for mobile flex scrolling */
+    margin: auto !important; 
+    
+    /* Sizing */
+    width: 90% !important;
+    max-width: 400px !important;
+    min-width: 280px !important;
+    
+    /* Padding */
+    padding: 30px 20px !important;
+    
+    position: relative !important;
+    z-index: 2147483648 !important; /* Higher than container */
+    pointer-events: auto !important;
 }
 
-/* 4. Fix Buttons for Thumb Use */
-.auth-container button {
-    width: 100%;
-    padding: 14px;
-    font-size: 16px;
-    border-radius: 8px;
-    cursor: pointer;
-    margin-top: 5px;
-    touch-action: manipulation; /* Improves tap response */
+/* 3. Make Inputs Bigger (Easier to tap) */
+#auth-form input {
+    font-size: 16px !important; /* Stops iPhone Zoom */
+    padding: 14px !important;
+    margin-bottom: 12px !important;
 }
 
-/* 5. Space out the 'Guest' button so it's not hidden */
-#guest-btn {
-    margin-top: 15px;
-    background: transparent;
-    color: #64748b;
-    border: 1px solid #cbd5e1;
+/* 4. Fix Buttons (Touch Friendly) */
+#auth-btn-container button, 
+button.secondary {
+    padding: 15px !important;
+    font-size: 16px !important;
+    min-height: 50px; /* Ensure minimum tap height */
+    touch-action: manipulation; /* Faster tap response */
+    margin-top: 10px;
+    cursor: pointer !important;
+    pointer-events: auto !important;
+}
+
+/* 5. Ensure Links are Clickable */
+#auth-toggle-link, p[onclick] {
+    padding: 10px; /* Increase click area for text links */
+    display: inline-block;
+    cursor: pointer !important;
+    pointer-events: auto !important;
 }
