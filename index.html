@@ -215,8 +215,8 @@
     <button onclick="goHome()" class="secondary" style="width:auto; padding:8px 20px;">Exit Session</button>
     
     <div style="display:flex; gap:10px; align-items:center;">
-        <button onclick="reportCurrentQuestion()" class="secondary" style="width:auto; padding:8px 15px; color:#ef4444; border-color:#fca5a5; display:flex; align-items:center; gap:5px;">
-            <span>🚩</span> <span style="font-size:12px; font-weight:600;">Report</span>
+        <button onclick="reportCurrentQuestion()" style="background:transparent; border:1px solid #fca5a5; color:#ef4444; font-size:12px; font-weight:600; padding:6px 12px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:5px;">
+            <span>🚩</span> Report
         </button>
 
         <button id="flag-btn" class="flag-btn hidden" onclick="toggleFlag()">
@@ -225,7 +225,7 @@
         <div id="timer" class="hidden">00:00</div>
     </div>
 </div>
-            <div id="test-sidebar" class="test-sidebar">
+    <div id="test-sidebar" class="test-sidebar">
                 <h4 style="font-size:14px; color:#333; font-weight:700; border-bottom:1px solid #eee; padding-bottom:10px;">Question Navigator</h4>
                 <div id="nav-grid" class="nav-grid"></div>
             </div>
@@ -538,6 +538,7 @@
     <script src="script.js"></script>
 </body>
 </html>
+
 
 
 
