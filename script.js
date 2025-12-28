@@ -714,10 +714,32 @@ function createQuestionCard(q, index, showNumber = true) {
     block.className = "test-question-block";
     block.id = `q-card-${index}`;
 
+    // --- NEW: Header Row (Text + Report Button) ---
+    const headerRow = document.createElement('div');
+    headerRow.style.cssText = "display:flex; justify-content:space-between; align-items:flex-start; gap:15px; margin-bottom:20px;";
+    
+    // 1. Question Text
     const qText = document.createElement('div');
     qText.className = "test-q-text";
+    qText.style.marginBottom = "0"; // Remove bottom margin so it aligns with button
     qText.innerHTML = `${showNumber ? (index + 1) + ". " : ""}${q.Question || "Missing Text"}`;
-    block.appendChild(qText);
+    
+    // 2. Report Button (The Flag)
+    const reportBtn = document.createElement('button');
+    reportBtn.innerHTML = "🚩 Report";
+    reportBtn.title = "Report a mistake";
+    // Inline styles for a small, subtle button
+    reportBtn.style.cssText = "background:transparent; border:1px solid #fca5a5; color:#ef4444; font-size:11px; font-weight:600; cursor:pointer; padding:4px 8px; border-radius:6px; flex-shrink:0; height:fit-content; margin-top:5px;";
+    
+    reportBtn.onclick = (e) => {
+        e.stopPropagation(); // Prevent accidental clicks
+        openReportModal(q._uid);
+    };
+
+    headerRow.appendChild(qText);
+    headerRow.appendChild(reportBtn);
+    block.appendChild(headerRow);
+    // ----------------------------------------------
 
     const optionsDiv = document.createElement('div');
     optionsDiv.className = "options-group";
@@ -758,7 +780,6 @@ function createQuestionCard(q, index, showNumber = true) {
     block.appendChild(optionsDiv);
     return block;
 }
-
 function checkAnswer(selectedOption, btnElement, q) {
     if (currentMode === 'test') {
         testAnswers[q._uid] = selectedOption;
@@ -1909,6 +1930,40 @@ function renderNavigator() {
 }
 
 function toggleReportForm() { document.getElementById('report-form').classList.toggle('hidden'); }
+// Opens the new independent report modal
+function openReportModal(qId) {
+    document.getElementById('report-q-id').value = qId;
+    document.getElementById('report-text').value = ""; // Clear previous text
+    document.getElementById('report-modal').classList.remove('hidden');
+}
+
+// Sends the report to Firestore
+async function submitReportFinal() {
+    const qId = document.getElementById('report-q-id').value;
+    const reason = document.getElementById('report-text').value.trim();
+    
+    if(!reason) return alert("Please describe the issue.");
+    
+    // Find the question object to include its text in the report
+    const qObj = allQuestions.find(q => q._uid === qId);
+    
+    try {
+        await db.collection('reports').add({
+            questionID: qId,
+            questionText: qObj ? qObj.Question : "Unknown",
+            reportReason: reason,
+            reportedBy: currentUser ? (currentUser.email || currentUser.uid) : 'Guest',
+            timestamp: new Date(),
+            status: 'pending' // For admin tracking
+        });
+        
+        alert("✅ Report Sent! Thank you.");
+        document.getElementById('report-modal').classList.add('hidden');
+    } catch (e) {
+        alert("Error sending report: " + e.message);
+    }
+}
+
 function submitReport() {
     const r = document.getElementById('report-reason').value;
     if(!r) return;
@@ -1985,10 +2040,70 @@ function parseDateRobust(input) {
     return isNaN(d.getTime()) ? null : d;
 }
 
+// ==========================================
+// SEARCH BAR LOGIC
+// ==========================================
+document.getElementById('global-search').addEventListener('input', function(e) {
+    const term = e.target.value.toLowerCase().trim();
+    const resultsBox = document.getElementById('search-results');
+    
+    // 1. Hide if search is too short
+    if (term.length < 3) {
+        resultsBox.style.display = 'none';
+        return;
+    }
 
+    // 2. Filter Questions (Search by Question text or Topic)
+    // We limit to 10 results to prevent lag
+    const matches = allQuestions.filter(q => 
+        (q.Question && q.Question.toLowerCase().includes(term)) || 
+        (q.Topic && q.Topic.toLowerCase().includes(term))
+    ).slice(0, 10); 
 
+    // 3. Render Results
+    if (matches.length === 0) {
+        resultsBox.style.display = 'none';
+        return;
+    }
 
+    resultsBox.innerHTML = '';
+    resultsBox.style.display = 'block';
 
+    matches.forEach(q => {
+        const div = document.createElement('div');
+        div.className = 'search-item';
+        div.innerHTML = `
+            <div style="font-weight:bold; color:#1e293b; font-size:13px;">${q.Topic || "General"}</div>
+            <div style="color:#64748b; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                ${q.Question.substring(0, 60)}...
+            </div>
+        `;
+        
+        // Action: Click to practice this specific question
+        div.onclick = () => {
+            resultsBox.style.display = 'none';
+            document.getElementById('global-search').value = ""; // Clear input
+            startSingleQuestionPractice(q);
+        };
+        resultsBox.appendChild(div);
+    });
+});
 
+// Helper: Start practice for a single searched question
+function startSingleQuestionPractice(question) {
+    filteredQuestions = [question];
+    currentMode = 'practice';
+    currentIndex = 0;
+    
+    showScreen('quiz-screen');
+    renderPage();
+    renderPracticeNavigator();
+}
 
-
+// Hide search results if user clicks outside
+document.addEventListener('click', function(e) {
+    if (e.target.id !== 'global-search') {
+        const box = document.getElementById('search-results');
+        if(box) box.style.display = 'none';
+    }
+});
