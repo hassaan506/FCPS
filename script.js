@@ -2005,9 +2005,23 @@ function handleAuthAction() {
 }
 
 function goHome() { 
-    clearInterval(testTimer); 
+    // 1. Stop any timers
+    if(testTimer) clearInterval(testTimer);
+    
+    // 2. Reset Quiz State
+    currentIndex = 0;
+    filteredQuestions = [];
+    currentMode = 'practice'; // Default back to practice
+    
+    // 3. Force Dashboard Screen
     showScreen('dashboard-screen'); 
     loadUserData(); 
+    
+    // 4. Clear Search Bar (Visual Cleanup)
+    const searchInput = document.getElementById('global-search');
+    if(searchInput) searchInput.value = "";
+    const results = document.getElementById('search-results');
+    if(results) results.style.display = 'none';
 }
 
 function resetPassword() {
@@ -2034,80 +2048,27 @@ function parseDateRobust(input) {
     return isNaN(d.getTime()) ? null : d;
 }
 
-// ==========================================
-// SEARCH BAR LOGIC
-// ==========================================
-document.getElementById('global-search').addEventListener('input', function(e) {
-    const term = e.target.value.toLowerCase().trim();
-    const resultsBox = document.getElementById('search-results');
+// --- REPORT BUTTON LOGIC ---
+function reportCurrentQuestion() {
+    // Check if a question is actually loaded
+    if (!filteredQuestions || filteredQuestions.length === 0) return;
     
-    // 1. Hide if search is too short
-    if (term.length < 3) {
-        resultsBox.style.display = 'none';
-        return;
+    // Get the ID of the question currently on screen
+    const currentQ = filteredQuestions[currentIndex];
+    if (currentQ) {
+        openReportModal(currentQ._uid);
     }
-
-    // 2. Filter Questions (Search by Question text or Topic)
-    // We limit to 10 results to prevent lag
-    const matches = allQuestions.filter(q => 
-        (q.Question && q.Question.toLowerCase().includes(term)) || 
-        (q.Topic && q.Topic.toLowerCase().includes(term))
-    ).slice(0, 10); 
-
-    // 3. Render Results
-    if (matches.length === 0) {
-        resultsBox.style.display = 'none';
-        return;
-    }
-
-    resultsBox.innerHTML = '';
-    resultsBox.style.display = 'block';
-
-    matches.forEach(q => {
-        const div = document.createElement('div');
-        div.className = 'search-item';
-        div.innerHTML = `
-            <div style="font-weight:bold; color:#1e293b; font-size:13px;">${q.Topic || "General"}</div>
-            <div style="color:#64748b; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                ${q.Question.substring(0, 60)}...
-            </div>
-        `;
-        
-        // Action: Click to practice this specific question
-        div.onclick = () => {
-            resultsBox.style.display = 'none';
-            document.getElementById('global-search').value = ""; // Clear input
-            startSingleQuestionPractice(q);
-        };
-        resultsBox.appendChild(div);
-    });
-});
-
-// Helper: Start practice for a single searched question
-function startSingleQuestionPractice(question) {
-    filteredQuestions = [question];
-    currentMode = 'practice';
-    currentIndex = 0;
-    
-    showScreen('quiz-screen');
-    renderPage();
-    renderPracticeNavigator();
 }
 
-// Hide search results if user clicks outside
-document.addEventListener('click', function(e) {
-    if (e.target.id !== 'global-search') {
-        const box = document.getElementById('search-results');
-        if(box) box.style.display = 'none';
-    }
-});
-
-// --- REPORT FUNCTIONALITY ---
-
 function openReportModal(qId) {
-    document.getElementById('report-q-id').value = qId;
-    document.getElementById('report-text').value = ""; 
-    document.getElementById('report-modal').classList.remove('hidden');
+    const modal = document.getElementById('report-modal');
+    if (modal) {
+        document.getElementById('report-q-id').value = qId;
+        document.getElementById('report-text').value = ""; 
+        modal.classList.remove('hidden');
+    } else {
+        console.error("Report modal not found in HTML");
+    }
 }
 
 async function submitReportFinal() {
@@ -2116,7 +2077,6 @@ async function submitReportFinal() {
     
     if(!reason) return alert("Please describe the issue.");
     
-    // Find question text to include in the report
     const qObj = allQuestions.find(q => q._uid === qId);
     
     try {
@@ -2129,11 +2089,72 @@ async function submitReportFinal() {
             status: 'pending'
         });
         
-        alert("✅ Report Sent! We will review it shortly.");
+        alert("✅ Report Sent!");
         document.getElementById('report-modal').classList.add('hidden');
     } catch (e) {
-        alert("Error sending report: " + e.message);
+        alert("Error: " + e.message);
     }
 }
 
+// --- SEARCH BAR LOGIC ---
+// Ensure this code is NOT inside another function
+const searchInput = document.getElementById('global-search');
+if (searchInput) {
+    searchInput.addEventListener('input', function(e) {
+        const term = e.target.value.toLowerCase().trim();
+        const resultsBox = document.getElementById('search-results');
+        
+        if (term.length < 3) {
+            resultsBox.style.display = 'none';
+            return;
+        }
 
+        const matches = allQuestions.filter(q => 
+            (q.Question && q.Question.toLowerCase().includes(term)) || 
+            (q.Topic && q.Topic.toLowerCase().includes(term))
+        ).slice(0, 10); 
+
+        if (matches.length === 0) {
+            resultsBox.style.display = 'none';
+            return;
+        }
+
+        resultsBox.innerHTML = '';
+        resultsBox.style.display = 'block';
+
+        matches.forEach(q => {
+            const div = document.createElement('div');
+            div.className = 'search-item';
+            div.innerHTML = `
+                <div style="font-weight:bold; color:#1e293b; font-size:13px;">${q.Topic || "General"}</div>
+                <div style="color:#64748b; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    ${q.Question.substring(0, 60)}...
+                </div>
+            `;
+            div.onclick = () => {
+                resultsBox.style.display = 'none';
+                document.getElementById('global-search').value = ""; 
+                startSingleQuestionPractice(q);
+            };
+            resultsBox.appendChild(div);
+        });
+    });
+}
+
+function startSingleQuestionPractice(question) {
+    filteredQuestions = [question]; // Create a 1-question quiz
+    currentMode = 'practice';
+    currentIndex = 0;
+    
+    showScreen('quiz-screen'); // Go to Quiz Screen
+    renderPage();
+    renderPracticeNavigator();
+}
+
+// Close search if clicking outside
+document.addEventListener('click', function(e) {
+    if (e.target.id !== 'global-search') {
+        const box = document.getElementById('search-results');
+        if(box) box.style.display = 'none';
+    }
+});
