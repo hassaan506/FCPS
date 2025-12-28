@@ -12,7 +12,7 @@
     --primary: #0072ff;
     --primary-dark: #0056b3;
     --primary-gradient: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%);
-    --secondary-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%); 
+    --secondary-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
     
     /* Backgrounds */
     --bg-color: #f0f4f8;
@@ -311,7 +311,7 @@ button {
     border: 1px solid var(--border-color); 
     border-radius: 16px; 
     box-shadow: var(--shadow-sm); 
-    transition: transform 0.3s ease;
+    transition: transform 0.3s ease; 
     width: 100%; 
     margin-bottom: 30px;
 }
@@ -408,19 +408,25 @@ button {
    8. QUIZ INTERFACE & EXAM MODE
    ========================================= */
 
-#quiz-screen .gameContainer { 
+/* IMPORTANT: FIX FOR STRETCHY QUIZ CARD */
+.quiz-container-unique { 
     display: flex; 
     flex-direction: column; 
-    max-width: 850px; 
-    margin: 0 auto; 
+    width: 100%;
+    max-width: 800px !important; /* Force card size constraint */
+    margin: 0 auto;              /* Center horizontally */
+    padding: 0 20px;
+    box-sizing: border-box;
+    position: relative;
 }
 
 .quiz-header { 
     width: 100%; 
+    max-width: 800px;            /* Match container width */
     display: flex; 
     justify-content: space-between; 
     align-items: center; 
-    margin-bottom: 25px; 
+    margin: 0 auto 25px auto;    /* Center and margin bottom */
     background: var(--card-bg); 
     padding: 15px 30px; 
     border-radius: 20px; 
@@ -437,7 +443,7 @@ button {
     border: 1px solid #bee3f8;
 }
 
-/* Question Box (Updated for Thinner Border) */
+/* Question Box (Updated for Thinner Border and Width Constraint) */
 .test-question-block { 
     padding: 30px; 
     text-align: left; 
@@ -446,7 +452,8 @@ button {
     
     /* Layout & Border */
     width: 100% !important; 
-    margin: 0 !important; 
+    max-width: 100% !important;
+    margin: 0 auto !important; 
     border: 2px solid var(--primary); /* <--- FIXED: THINNER BORDER */
     background: var(--card-bg); 
     border-radius: 16px; 
