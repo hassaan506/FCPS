@@ -166,13 +166,36 @@ function guestLogin() {
     alert("👤 Guest Mode Active\n\n⚠️ Progress is NOT saved.\n🔒 Limit: 20 Questions per topic.");
 }
 
-function login() {
-    const e = document.getElementById('email').value;
+async function login() {
+    const input = document.getElementById('email').value.trim().toLowerCase(); // Clean the input
     const p = document.getElementById('password').value;
-    if(!e || !p) return alert("Please enter email and password");
-    auth.signInWithEmailAndPassword(e, p).catch(err => document.getElementById('auth-msg').innerText = err.message);
-}
+    const msg = document.getElementById('auth-msg');
+    if(!input || !p) return alert("Please enter email/username and password");
+    msg.innerText = "Verifying...";
+  
+    let emailToUse = input;
 
+    if (!input.includes('@')) {
+        try {
+            const snap = await db.collection('users').where('username', '==', input).limit(1).get();
+            
+            if (snap.empty) {
+                msg.innerText = "❌ Username not found.";
+                return;
+            }
+            emailToUse = snap.docs[0].data().email;
+            console.log("Username found. Logging in via email:", emailToUse);
+            
+        } catch (e) {
+            msg.innerText = "Login Error: " + e.message;
+            return;
+        }
+    }
+   auth.signInWithEmailAndPassword(emailToUse, p)
+        .catch(err => {
+            msg.innerText = "❌ " + err.message;
+        });
+}
 function signup() {
     const e = document.getElementById('email').value;
     const p = document.getElementById('password').value;
@@ -1071,8 +1094,6 @@ function renderUserRow(u, extraLabel = "") {
     
     const planBadgeClass = isPrem ? 'badge-premium' : 'badge-free';
     const planText = isPrem ? 'Premium' : 'Free';
-
-    // Highlight Admin Row
     const rowClass = isAdmin ? "is-admin-row" : "";
     
     // Format Date
@@ -1082,13 +1103,15 @@ function renderUserRow(u, extraLabel = "") {
         if(!isNaN(d.getTime())) dateStr = formatDateHelper(d);
     }
 
-    // Return the new HTML
+    // NEW: Check for username
+    const usernameDisplay = u.username ? `<span style="color:#64748b; font-size:12px; margin-left:5px;">(@${u.username})</span>` : "";
+
     return `
     <div class="user-list-item ${rowClass}">
         <div class="user-info-group">
             <div class="user-email-text">
                 ${isAdmin ? '⭐' : ''} ${u.email || "Unknown User"} 
-                ${extraLabel}
+                ${usernameDisplay} ${extraLabel}
             </div>
             
             <div class="user-meta-row">
@@ -1312,22 +1335,47 @@ function deleteKey(id) {
 }
 
 async function adminLookupUser(targetId) {
-    const input = targetId || document.getElementById('admin-user-input').value;
+    const input = targetId || document.getElementById('admin-user-input').value.trim();
     const res = document.getElementById('admin-user-result');
     res.innerHTML = "Searching...";
     
-    let doc = await db.collection('users').doc(input).get();
-    if(!doc.exists) {
-        const s = await db.collection('users').where('email','==',input).limit(1).get();
-        if(!s.empty) doc = s.docs[0];
+    let doc = null;
+
+    // 1. Try fetching by UID directly
+    let directDoc = await db.collection('users').doc(input).get();
+    if(directDoc.exists) {
+        doc = directDoc;
+    } 
+    else {
+        // 2. Try fetching by Email
+        let s = await db.collection('users').where('email','==',input).limit(1).get();
+        if(!s.empty) {
+            doc = s.docs[0];
+        } 
+        else {
+            // 3. Try fetching by Username (NEW)
+            let u = await db.collection('users').where('username','==',input.toLowerCase()).limit(1).get();
+            if(!u.empty) {
+                doc = u.docs[0];
+            }
+        }
     }
 
-    if(!doc.exists) { res.innerHTML = "Not found"; return; }
-    const u = doc.data();
+    if(!doc) { res.innerHTML = "Not found (Check Email, Username or UID)"; return; }
     
-    res.innerHTML = `
+    // ... (Keep the rest of your render code for the user card) ...
+    // Pass the data to the render function
+    res.innerHTML = renderAdminUserCard(doc); // *See helper below
+}
+
+// *Helper: I separated the card HTML to make it cleaner. 
+// You can replace the bottom half of your existing adminLookupUser with this:
+function renderAdminUserCard(doc) {
+    const u = doc.data();
+    return `
     <div class="user-card">
         <h3>${u.email}</h3>
+        <p style="color:#0072ff; font-weight:bold;">@${u.username || "no-username"}</p>
         <p>Premium: ${u.isPremium ? '✅ Active' : '❌ Free'}</p>
         <p>Role: ${u.role}</p>
         
@@ -1360,7 +1408,6 @@ async function adminLookupUser(targetId) {
         </div>
     </div>`;
 }
-
 async function adminGrantPremium(uid) {
     const select = document.getElementById(`admin-grant-plan-${uid}`);
     const planKey = select.value;
@@ -1465,49 +1512,11 @@ async function openProfileModal() {
     }
 
     document.getElementById('profile-email').innerText = currentUser.email;
-    const isPrem = freshData.isPremium === true; 
-    document.getElementById('profile-plan').innerText = isPrem ? "PREMIUM 👑" : "Free Plan";
     
-    let joinedText = "N/A";
-    if (freshData.joined) {
-        const d = freshData.joined.seconds ? new Date(freshData.joined.seconds * 1000) : new Date(freshData.joined);
-        if (!isNaN(d.getTime())) joinedText = formatDateHelper(d);
-    }
-    if (joinedText === "N/A" && currentUser.metadata.creationTime) {
-        joinedText = formatDateHelper(new Date(currentUser.metadata.creationTime));
-    }
-    document.getElementById('profile-joined').innerText = joinedText;
-
-    // EXPIRES ON LOGIC
-    const expiryElem = document.getElementById('profile-expiry');
-    let expiryText = "-";
+    // --- NEW: Load Username ---
+    document.getElementById('edit-username').value = freshData.username || ""; 
     
-    if (isPrem) {
-        if (freshData.expiryDate) {
-            const d = freshData.expiryDate.seconds ? new Date(freshData.expiryDate.seconds * 1000) : new Date(freshData.expiryDate);
-            
-            if (!isNaN(d.getTime())) {
-                if (d.getFullYear() > 2090) {
-                    expiryText = "Lifetime";
-                    expiryElem.style.color = "#10b981"; 
-                } else {
-                    expiryText = formatDateHelper(d);
-                    expiryElem.style.color = "#d97706"; 
-                }
-            } else {
-                expiryText = "Active (Date Error)";
-                expiryElem.style.color = "#10b981";
-            }
-        } else {
-            expiryText = "Lifetime / Admin"; 
-            expiryElem.style.color = "#10b981";
-        }
-    } else {
-        expiryText = "Not Active";
-        expiryElem.style.color = "#64748b"; 
-    }
-    
-    expiryElem.innerText = expiryText;
+    // ... (Keep the rest of your existing code for Plan, Joined, Expiry, Name, Phone etc.) ...
     
     document.getElementById('edit-name').value = freshData.displayName || "";
     document.getElementById('edit-phone').value = freshData.phone || "";
@@ -1516,37 +1525,63 @@ async function openProfileModal() {
 }
 
 async function saveDetailedProfile() {
+    const btn = event.target; // Get the Save button
+    const originalText = btn.innerText;
+    btn.innerText = "Saving...";
+    btn.disabled = true;
+
     const name = document.getElementById('edit-name').value;
+    const username = document.getElementById('edit-username').value.trim().toLowerCase().replace(/\s+/g, ''); // Remove spaces
     const phone = document.getElementById('edit-phone').value;
     const college = document.getElementById('edit-college').value;
     const exam = document.getElementById('edit-exam').value;
 
     try {
+        // 1. UNIQUE USERNAME CHECK
+        if (username) {
+            // Check if anyone ELSE has this username
+            const check = await db.collection('users')
+                .where('username', '==', username)
+                .get();
+
+            let isTaken = false;
+            check.forEach(doc => {
+                if (doc.id !== currentUser.uid) isTaken = true; // Found someone else with it
+            });
+
+            if (isTaken) {
+                throw new Error("⚠️ Username is already taken! Please choose another.");
+            }
+        }
+
+        // 2. Standard Updates
         if (currentUser.displayName !== name) {
             await currentUser.updateProfile({ displayName: name });
         }
 
         await db.collection('users').doc(currentUser.uid).update({
             displayName: name,
+            username: username, // Save username
             phone: phone,
             college: college,
             targetExam: exam
         });
 
+        // Update local profile
         userProfile.displayName = name;
-        userProfile.phone = phone;
-        userProfile.college = college;
-        userProfile.targetExam = exam;
+        userProfile.username = username;
         
-        document.getElementById('user-display').innerText = name || "User"; 
+        document.getElementById('user-display').innerText = name || username || "User"; 
         alert("✅ Profile Updated Successfully!");
         document.getElementById('profile-modal').classList.add('hidden');
 
     } catch (e) {
-        alert("Error saving profile: " + e.message);
+        alert(e.message);
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
     }
 }
-
 function parseDateHelper(dateInput) {
     if (!dateInput) return new Date();
     if (dateInput.toDate) return dateInput.toDate(); 
@@ -1769,6 +1804,7 @@ function resetPassword() {
 window.onload = () => {
     if(localStorage.getItem('fcps-theme')==='dark') toggleTheme();
 }
+
 
 
 
