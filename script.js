@@ -1131,59 +1131,122 @@ function deleteReport(id) { db.collection('reports').doc(id).delete().then(()=>l
 
 async function loadAdminPayments() {
     const list = document.getElementById('admin-payments-list');
-    list.innerHTML = "Loading...";
+    list.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">Loading requests...</div>';
     
-    const snap = await db.collection('payment_requests').where('status','==','pending').get();
-    
-    if(snap.empty) { 
-        list.innerHTML = "<div style='padding:20px; text-align:center; color:#666;'>No pending payment requests.</div>"; 
-        return; 
-    }
-
-    let html = "";
-    snap.forEach(doc => {
-        const p = doc.data();
-        const reqPlan = p.planRequested ? p.planRequested.replace('_', ' ').toUpperCase() : "UNKNOWN";
+    try {
+        const snap = await db.collection('payment_requests')
+            .where('status','==','pending')
+            .orderBy('timestamp', 'desc') // Show newest first
+            .get();
         
-        html += `<div class="report-card">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
-                <div>
-                    <strong>${p.email}</strong>
-                    <div style="font-size:12px; color:#555; margin-top:2px;">
-                        Requested: <span style="background:#e0f2fe; color:#0284c7; padding:2px 6px; border-radius:4px; font-weight:bold;">${reqPlan}</span>
+        if(snap.empty) { 
+            list.innerHTML = "<div style='padding:30px; text-align:center; color:#94a3b8; font-style:italic;'>No pending payment requests.</div>"; 
+            return; 
+        }
+
+        let html = "";
+        snap.forEach(doc => {
+            const p = doc.data();
+            const reqPlan = p.planRequested ? p.planRequested.replace('_', ' ').toUpperCase() : "UNKNOWN";
+            
+            // Check if image exists
+            const imageHtml = p.image 
+                ? `<div class="pay-proof-container" onclick="viewFullReceipt('${p.image.replace(/'/g, "\\'")}')">
+                     <img src="${p.image}" class="pay-proof-img" alt="Receipt">
+                     <span class="view-receipt-text">🔍 Click to View Full Receipt</span>
+                   </div>`
+                : `<div style="padding:15px; background:#fff1f2; color:#be123c; border-radius:8px; font-size:12px; text-align:center; margin-bottom:15px;">
+                     ⚠️ No Screenshot Uploaded
+                   </div>`;
+
+            html += `
+            <div class="admin-payment-card" id="card-${doc.id}">
+                <div class="pay-card-header">
+                    <div>
+                        <span class="pay-user-email">${p.email || "Unknown User"}</span>
+                        <div style="font-size:11px; color:#94a3b8;">UID: ${p.uid}</div>
+                    </div>
+                    <span class="pay-plan-badge">${reqPlan}</span>
+                </div>
+                
+                ${imageHtml}
+                
+                <div class="pay-action-box">
+                    <label class="pay-action-label">Decide & Duration</label>
+                    <div class="pay-controls-row">
+                        <select id="dur-${doc.id}" class="pay-select">
+                            <option value="1_day" ${p.planRequested === '1_day' ? 'selected' : ''}>1 Day</option>
+                            <option value="1_week" ${p.planRequested === '1_week' ? 'selected' : ''}>1 Week</option>
+                            <option value="15_days" ${p.planRequested === '15_days' ? 'selected' : ''}>15 Days</option>
+                            <option value="1_month" ${p.planRequested === '1_month' ? 'selected' : ''}>1 Month</option>
+                            <option value="3_months" ${p.planRequested === '3_months' ? 'selected' : ''}>3 Months</option>
+                            <option value="6_months" ${p.planRequested === '6_months' ? 'selected' : ''}>6 Months</option>
+                            <option value="12_months" ${p.planRequested === '12_months' ? 'selected' : ''}>12 Months</option>
+                            <option value="lifetime" ${p.planRequested === 'lifetime' ? 'selected' : ''}>Lifetime</option>
+                        </select>
+                        
+                        <button class="btn-pay-action btn-approve" onclick="approvePayment('${doc.id}','${p.uid}')">
+                            ✅ Approve
+                        </button>
+                        
+                        <button class="btn-pay-action btn-reject" onclick="rejectPayment('${doc.id}')">
+                            ❌ Reject
+                        </button>
                     </div>
                 </div>
-            </div>
-            
-            ${p.image ? `
-                <div style="margin-bottom:15px;">
-                    <a href="${p.image}" target="_blank" style="text-decoration:none; display:inline-block;">
-                        <img src="${p.image}" style="height:100px; width:auto; max-width:100%; border-radius:8px; border:1px solid #cbd5e1; object-fit:cover; display:block;">
-                        <div style="font-size:11px; color:#0072ff; margin-top:4px; font-weight:600;">🔍 Click to View Full Receipt</div>
-                    </a>
-                </div>` 
-            : '<div style="font-size:11px; color:red; margin-bottom:10px;">(No Screenshot Uploaded)</div>'}
-            
-            <div style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #eee;">
-                <label style="font-size:11px; font-weight:bold; display:block; margin-bottom:5px;">Approve for Duration:</label>
-                <div style="display:flex; gap:5px;">
-                    <select id="dur-${doc.id}" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:6px; font-size:12px;">
-                        <option value="1_day" ${p.planRequested === '1_day' ? 'selected' : ''}>1 Day</option>
-                        <option value="1_week" ${p.planRequested === '1_week' ? 'selected' : ''}>1 Week</option>
-                        <option value="15_days" ${p.planRequested === '15_days' ? 'selected' : ''}>15 Days</option>
-                        <option value="1_month" ${p.planRequested === '1_month' ? 'selected' : ''}>1 Month</option>
-                        <option value="3_months" ${p.planRequested === '3_months' ? 'selected' : ''}>3 Months</option>
-                        <option value="6_months" ${p.planRequested === '6_months' ? 'selected' : ''}>6 Months</option>
-                        <option value="12_months" ${p.planRequested === '12_months' ? 'selected' : ''}>12 Months</option>
-                        <option value="lifetime" ${p.planRequested === 'lifetime' ? 'selected' : ''}>Lifetime</option>
-                    </select>
-                    <button class="primary" onclick="approvePayment('${doc.id}','${p.uid}')" style="margin:0; padding:0 15px; font-size:12px;">Approve</button>
-                </div>
-                <button class="secondary" onclick="db.collection('payment_requests').doc('${doc.id}').update({status:'rejected'}).then(()=>loadAdminPayments())" style="width:100%; margin-top:5px; padding:8px; font-size:12px; color:#ef4444; border-color:#fecaca;">Reject Request</button>
-            </div>
-        </div>`;
-    });
-    list.innerHTML = html;
+            </div>`;
+        });
+        list.innerHTML = html;
+        
+    } catch (e) {
+        console.error(e);
+        list.innerHTML = `<div style="color:red; padding:20px;">Error loading payments: ${e.message}</div>`;
+    }
+}
+
+// --- NEW HELPER FUNCTIONS ---
+
+// 1. Fix for the "Click to View" bug
+function viewFullReceipt(base64Image) {
+    const w = window.open("");
+    if(w) {
+        w.document.write(`
+            <html>
+                <head><title>Payment Receipt</title></head>
+                <body style="margin:0; background:#0f172a; display:flex; justify-content:center; align-items:center; height:100vh;">
+                    <img src="${base64Image}" style="max-width:100%; max-height:100vh; box-shadow:0 0 20px rgba(0,0,0,0.5);">
+                </body>
+            </html>
+        `);
+    } else {
+        alert("⚠️ Pop-up blocked! Please allow pop-ups to view the receipt.");
+    }
+}
+
+// 2. Helper for Rejection
+async function rejectPayment(docId) {
+    if(!confirm("Are you sure you want to REJECT this request?")) return;
+    
+    // UI Feedback
+    const card = document.getElementById(`card-${docId}`);
+    if(card) card.style.opacity = "0.5";
+
+    try {
+        await db.collection('payment_requests').doc(docId).update({
+            status: 'rejected',
+            rejectedAt: new Date()
+        });
+        // Remove from list immediately
+        if(card) card.remove();
+        
+        // If list is empty now, reload to show "No pending requests" message
+        const list = document.getElementById('admin-payments-list');
+        if(list.children.length === 0) loadAdminPayments();
+        
+    } catch (e) {
+        alert("Error: " + e.message);
+        if(card) card.style.opacity = "1";
+    }
 }
 
 async function approvePayment(docId, userId) {
@@ -1804,6 +1867,7 @@ function resetPassword() {
 window.onload = () => {
     if(localStorage.getItem('fcps-theme')==='dark') toggleTheme();
 }
+
 
 
 
