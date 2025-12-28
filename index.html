@@ -19,12 +19,17 @@
         <p class="subTitle">Go Beyond Yourself!</p>
 <div id="auth-form">
     <h2 id="auth-title">Log In</h2>
-    <form onsubmit="event.preventDefault(); login();">
+    
+    <form onsubmit="event.preventDefault(); handleAuthAction();">
+        <div id="signup-username-group" class="hidden">
+            <input type="text" id="reg-username" placeholder="Choose a Username (Unique)" autocomplete="username">
+        </div>
+
         <input type="text" id="email" placeholder="Email or Username" autocomplete="username">
         <input type="password" id="password" placeholder="Password" autocomplete="current-password">
         
         <div id="auth-btn-container">
-            <button type="submit" class="primary">Log In</button>
+            <button type="submit" class="primary" id="main-auth-btn">Log In</button>
         </div>
     </form>
     
@@ -33,13 +38,8 @@
         <span id="auth-toggle-link" onclick="toggleAuthMode()" style="color:var(--primary); cursor:pointer; font-weight:bold;">Create New ID</span>
     </p>
     
-    <p onclick="resetPassword()" style="margin-top:10px; font-size:12px; color:#64748b; cursor:pointer; text-decoration:underline;">
-        Forgot Password?
-    </p>
-    
     <p id="auth-msg" style="color:red; font-size:12px; margin-top:10px;"></p>
-</div>
-        
+</div>        
         <div style="margin-top:30px; border-top:1px solid #eee; padding-top:20px;">
             <button class="secondary" onclick="guestLogin()">👤 Continue as Guest</button>
         </div>
@@ -506,6 +506,7 @@
     <script src="script.js"></script>
 </body>
 </html>
+
 
 
 
