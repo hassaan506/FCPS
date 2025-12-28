@@ -1812,56 +1812,62 @@ function updateBadgeButton() {
 
 async function openAnalytics() {
     const modal = document.getElementById('analytics-modal');
-    const container = document.getElementById('analytics-content');
+    const content = document.getElementById('analytics-content');
     modal.classList.remove('hidden');
-    container.innerHTML = "Loading...";
-    
-    if(!currentUser || isGuest) { container.innerHTML = "Sign in to see stats."; return; }
-    
+    content.innerHTML = "Loading...";
+
+    if(!currentUser || isGuest) { content.innerHTML = "Guest mode."; return; }
+
     try {
         const doc = await db.collection('users').doc(currentUser.uid).get();
         const stats = doc.data().stats || {};
         
-        let html = "<h3>📊 Subject Performance</h3>";
-        Object.keys(stats).forEach(key => {
-            const s = stats[key];
-            const pct = Math.round((s.correct/s.total)*100);
-            html += `<div class="stat-item">
-                <div class="stat-header"><span>${key}</span><span>${pct}% (${s.correct}/${s.total})</span></div>
-                <div class="progress-track"><div class="progress-fill" style="width:${pct}%; background:#2ecc71;"></div></div>
+        let html = `<div class="perf-section-title">📊 Subject Performance</div>`;
+        
+        Object.keys(stats).forEach(subj => {
+            const s = stats[subj];
+            const pct = Math.round((s.correct / s.total) * 100) || 0;
+            
+            html += `
+            <div class="perf-item">
+                <div class="perf-meta">
+                    <span>${subj}</span>
+                    <span>${pct}% (${s.correct}/${s.total})</span>
+                </div>
+                <div class="perf-bar-bg">
+                    <div class="perf-bar-fill" style="width:${pct}%"></div>
+                </div>
             </div>`;
         });
 
-        const historySnap = await db.collection('users').doc(currentUser.uid).collection('results').orderBy('date', 'desc').limit(10).get();
+        // Recent Exams Table
+        html += `<div class="perf-section-title" style="margin-top:30px;">📜 Recent Exams</div>
+                 <table class="exam-table">
+                    <thead><tr><th>Date</th><th>Subject</th><th>Score</th></tr></thead>
+                    <tbody>`;
         
-        html += "<h3 style='margin-top:25px; border-top:1px solid #eee; padding-top:15px;'>📜 Recent Exams</h3>";
-        if(historySnap.empty) html += "<p style='color:#666;'>No exams taken yet.</p>";
-        else {
-            html += `<table style='width:100%; border-collapse:collapse; font-size:13px; margin-top:10px;'>
-                <tr style='background:#f8fafc; text-align:left;'>
-                    <th style='padding:8px; border:1px solid #e2e8f0;'>Date</th>
-                    <th style='padding:8px; border:1px solid #e2e8f0;'>Subject</th>
-                    <th style='padding:8px; border:1px solid #e2e8f0;'>Score</th>
-                </tr>`;
+        const snaps = await db.collection('users').doc(currentUser.uid).collection('results').orderBy('date','desc').limit(5).get();
+        
+        if(snaps.empty) html += `<tr><td colspan="3">No exams yet.</td></tr>`;
+        
+        snaps.forEach(r => {
+            const d = r.data();
+            const dateStr = d.date ? formatDateHelper(parseDateRobust(d.date)) : "-";
+            const scoreColor = d.score === 0 ? "red" : "#1e293b";
             
-            historySnap.forEach(r => {
-                const d = r.data();
-                const dateStr = d.date ? formatDateHelper(new Date(d.date.seconds*1000)) : '-';
-                const subj = d.subject || "Mixed"; 
-                const scoreColor = d.score >= 70 ? "#166534" : "#b91c1c"; 
-                
-                html += `<tr>
-                    <td style='border:1px solid #e2e8f0; padding:8px;'>${dateStr}</td>
-                    <td style='border:1px solid #e2e8f0; padding:8px;'>${subj}</td>
-                    <td style='border:1px solid #e2e8f0; padding:8px; font-weight:bold; color:${scoreColor};'>${d.score}%</td>
-                </tr>`;
-            });
-            html += "</table>";
-        }
-        
-        container.innerHTML = html || "No data yet.";
-    } catch(e) { container.innerHTML = "Error loading analytics: " + e.message; }
+            html += `<tr>
+                <td>${dateStr}</td>
+                <td>${d.subject}</td>
+                <td style="color:${scoreColor}; font-weight:bold;">${d.score}%</td>
+            </tr>`;
+        });
+
+        html += `</tbody></table>`;
+        content.innerHTML = html;
+
+    } catch(e) { content.innerText = "Error: " + e.message; }
 }
+
 
 function toggleTheme() {
     const isDark = document.body.getAttribute('data-theme') === 'dark';
@@ -1978,6 +1984,7 @@ function parseDateRobust(input) {
     const d = new Date(input);
     return isNaN(d.getTime()) ? null : d;
 }
+
 
 
 
