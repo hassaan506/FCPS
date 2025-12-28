@@ -1676,3 +1676,113 @@ button.secondary {
     cursor: pointer !important;
     pointer-events: auto !important;
 }
+
+/* =====================================================
+   DESKTOP LAYOUT (Explicit)
+   Applies to screens ≥ 1024px
+   ===================================================== */
+@media screen and (min-width: 1024px) {
+
+  /* Dashboard Grid */
+  #dashboard-screen .gameContainer {
+    grid-template-columns: 450px 1fr;
+    gap: 30px;
+    padding: 0 20px;
+  }
+
+  /* Study Panel */
+  #study-panel {
+    height: auto;
+    max-height: none;
+    overflow-y: auto;
+  }
+
+  /* Sidebar stays floating on desktop */
+  .test-sidebar {
+    position: fixed;
+    right: 30px;
+    top: 120px;
+    width: 280px;
+    max-height: 75vh;
+  }
+
+  /* Topbar stays horizontal */
+  .topbar {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+
+/* =====================================================
+   MOBILE & TABLET LAYOUT (Override Everything)
+   Applies to screens ≤ 1023px
+   ===================================================== */
+@media screen and (max-width: 1023px) {
+
+  /* Kill fixed heights */
+  #study-panel,
+  .test-question-block {
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  /* Force single column everywhere */
+  #dashboard-screen .gameContainer {
+    grid-template-columns: 1fr !important;
+    padding: 0 12px;
+  }
+
+  .panel,
+  #study-panel {
+    max-width: 100% !important;
+    margin: 0 auto 20px auto !important;
+  }
+
+  /* Header becomes stacked */
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .topbar-left,
+  .topbar-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  /* Quiz options: reduce motion */
+  .option-btn:hover {
+    transform: none;
+  }
+
+  /* Sidebar becomes inline */
+  .test-sidebar {
+    position: relative;
+    width: 100%;
+    right: auto;
+    top: auto;
+    max-height: 220px;
+    margin-top: 20px;
+  }
+
+  /* Navigator buttons easier to tap */
+  .prac-nav-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 13px;
+  }
+
+  /* Reduce padding everywhere */
+  .joinCard,
+  .panel,
+  .quiz-header {
+    padding: 18px;
+  }
+
+  /* Prevent horizontal scroll bugs */
+  body {
+    overflow-x: hidden;
+  }
+}
