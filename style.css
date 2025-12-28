@@ -1940,3 +1940,62 @@ button.secondary {
     .pay-controls-row { flex-direction: column; }
     .pay-select, .btn-pay-action { width: 100%; }
 }
+
+
+/* --- PERFORMANCE REPORT STYLES --- */
+.perf-card-new {
+    width: 100%;
+    max-width: 500px;
+    background: white;
+    border-radius: 20px;
+    padding: 25px;
+}
+
+.perf-section-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.perf-item { margin-bottom: 15px; }
+.perf-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #334155;
+}
+.perf-bar-bg {
+    height: 8px;
+    background: #f1f5f9;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.perf-bar-fill {
+    height: 100%;
+    background: #22c55e; /* Green */
+    border-radius: 10px;
+}
+
+.exam-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+.exam-table th {
+    text-align: left;
+    background: #f8fafc;
+    padding: 10px;
+    color: #1e293b;
+    font-weight: 700;
+}
+.exam-table td {
+    padding: 10px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #475569;
+}
