@@ -714,33 +714,54 @@ function createQuestionCard(q, index, showNumber = true) {
     block.className = "test-question-block";
     block.id = `q-card-${index}`;
 
-    // --- NEW: Header Row (Text + Report Button) ---
+    // --- 1. HEADER ROW (Fixes the layout issue) ---
     const headerRow = document.createElement('div');
-    headerRow.style.cssText = "display:flex; justify-content:space-between; align-items:flex-start; gap:15px; margin-bottom:20px;";
+    headerRow.style.display = "flex";
+    headerRow.style.justifyContent = "space-between";
+    headerRow.style.alignItems = "flex-start"; 
+    headerRow.style.gap = "15px";
+    headerRow.style.marginBottom = "20px";
     
-    // 1. Question Text
+    // --- 2. QUESTION TEXT ---
     const qText = document.createElement('div');
     qText.className = "test-q-text";
-    qText.style.marginBottom = "0"; // Remove bottom margin so it aligns with button
+    qText.style.marginBottom = "0"; // Remove bottom margin so it aligns
+    qText.style.flex = "1";         // Allow text to take available space
+    qText.style.textAlign = "justify";
     qText.innerHTML = `${showNumber ? (index + 1) + ". " : ""}${q.Question || "Missing Text"}`;
     
-    // 2. Report Button (The Flag)
+    // --- 3. REPORT BUTTON (Styled to be small) ---
     const reportBtn = document.createElement('button');
     reportBtn.innerHTML = "🚩 Report";
     reportBtn.title = "Report a mistake";
-    // Inline styles for a small, subtle button
-    reportBtn.style.cssText = "background:transparent; border:1px solid #fca5a5; color:#ef4444; font-size:11px; font-weight:600; cursor:pointer; padding:4px 8px; border-radius:6px; flex-shrink:0; height:fit-content; margin-top:5px;";
+    
+    // Inline styles to override global CSS
+    reportBtn.style.cssText = `
+        width: auto !important;
+        background: transparent;
+        border: 1px solid #fca5a5;
+        color: #ef4444;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 5px 10px;
+        border-radius: 6px;
+        flex-shrink: 0;
+        margin-top: 5px;
+        box-shadow: none;
+    `;
     
     reportBtn.onclick = (e) => {
-        e.stopPropagation(); // Prevent accidental clicks
+        e.stopPropagation(); 
         openReportModal(q._uid);
     };
 
+    // Append to Header
     headerRow.appendChild(qText);
     headerRow.appendChild(reportBtn);
     block.appendChild(headerRow);
-    // ----------------------------------------------
 
+    // --- 4. OPTIONS (Standard Logic) ---
     const optionsDiv = document.createElement('div');
     optionsDiv.className = "options-group";
     optionsDiv.id = `opts-${index}`;
@@ -780,6 +801,8 @@ function createQuestionCard(q, index, showNumber = true) {
     block.appendChild(optionsDiv);
     return block;
 }
+
+
 function checkAnswer(selectedOption, btnElement, q) {
     if (currentMode === 'test') {
         testAnswers[q._uid] = selectedOption;
@@ -2107,3 +2130,38 @@ document.addEventListener('click', function(e) {
         if(box) box.style.display = 'none';
     }
 });
+
+// --- REPORT FUNCTIONALITY ---
+
+function openReportModal(qId) {
+    document.getElementById('report-q-id').value = qId;
+    document.getElementById('report-text').value = ""; 
+    document.getElementById('report-modal').classList.remove('hidden');
+}
+
+async function submitReportFinal() {
+    const qId = document.getElementById('report-q-id').value;
+    const reason = document.getElementById('report-text').value.trim();
+    
+    if(!reason) return alert("Please describe the issue.");
+    
+    // Find question text to include in the report
+    const qObj = allQuestions.find(q => q._uid === qId);
+    
+    try {
+        await db.collection('reports').add({
+            questionID: qId,
+            questionText: qObj ? qObj.Question : "Unknown",
+            reportReason: reason,
+            reportedBy: currentUser ? (currentUser.email || currentUser.uid) : 'Guest',
+            timestamp: new Date(),
+            status: 'pending'
+        });
+        
+        alert("✅ Report Sent! We will review it shortly.");
+        document.getElementById('report-modal').classList.add('hidden');
+    } catch (e) {
+        alert("Error sending report: " + e.message);
+    }
+}
+
