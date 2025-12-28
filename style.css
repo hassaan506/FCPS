@@ -1,5 +1,5 @@
 /* -----------------------------------------------------------
-   STYLE.CSS - MEDICAL MASTERY (FINAL: NEW BADGES & HEADER)
+   STYLE.CSS - MEDICAL MASTERY (FINAL FIXED VERSION)
    ----------------------------------------------------------- */
 
 /* =========================================
@@ -258,109 +258,38 @@ button {
 
 
 /* =========================================
-   6. DASHBOARD & HEADER (UPDATED)
+   6. DASHBOARD & MAIN UI (Grid Layout)
    ========================================= */
 
-.topbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 16px;
-  background: var(--card-bg);
-  border-bottom: 1px solid var(--border-color);
-  border-radius: 12px;
-  margin-bottom: 20px;
-  box-shadow: var(--shadow-sm);
+/* DASHBOARD HEADER (TopBar) */
+.topBar { 
+    width: 100%; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    margin-bottom: 30px; 
+    padding: 25px 35px; 
+    background: var(--card-bg); 
+    border-radius: 24px; 
+    box-shadow: var(--shadow-md); 
+    border: 1px solid rgba(255,255,255,0.6); 
+    animation: slideUp 0.5s ease-out;
 }
 
-.topbar-left {
-  display: flex;
-  align-items: center;
-}
+.user-badge { display: flex; flex-direction: column; text-align: left; }
+.user-badge span { display: block; }
 
-.user-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.logout-btn { 
+    width: auto; 
+    padding: 10px 24px; 
+    font-size: 13px; 
+    background: #fee2e2; 
+    color: #ef4444; 
+    margin: 0; 
+    border-radius: 12px; 
+    border: 1px solid #fecaca;
 }
-
-.welcome-text {
-  font-size: 11px;
-  color: var(--text-light);
-}
-
-.user-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.username {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-dark);
-}
-
-.badge-pro {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: #ffd700;
-  color: #5c4002;
-  border: 1px solid #d97706;
-}
-
-.topbar-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.streak {
-  font-size: 13px;
-  font-weight: 600;
-  padding: 4px 8px;
-  background: var(--input-bg);
-  border-radius: 6px;
-}
-
-.btn-outline {
-  font-size: 11px;
-  padding: 4px 8px;
-  background: var(--input-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  cursor: pointer;
-  width: auto;
-  margin: 0;
-}
-
-.btn-pro {
-  font-size: 11px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #FFD700, #FDB931);
-  color: #5c4002;
-  font-weight: 700;
-  border: none;
-  box-shadow: 0 4px 10px rgba(255, 215, 0, 0.4);
-  cursor: pointer;
-  width: auto;
-  margin: 0;
-}
-
-.btn-logout {
-  font-size: 11px;
-  padding: 6px 10px;
-  background: transparent;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  color: var(--text-light);
-  cursor: pointer;
-  width: auto;
-  margin: 0;
-}
+.logout-btn:hover { background: #fecaca; transform: translateY(-1px); }
 
 /* DASHBOARD LAYOUT (CSS Grid) - APPLIES ONLY TO DASHBOARD */
 #dashboard-screen .gameContainer { 
@@ -412,7 +341,7 @@ button {
     margin: 0 !important;
 }
 
-/* --- MOBILE FIX FOR DASHBOARD LAYOUT --- */
+/* --- MOBILE FIX --- */
 @media screen and (max-width: 950px) {
     #dashboard-screen .gameContainer {
         grid-template-columns: 1fr; /* Single column on mobile */
@@ -652,7 +581,7 @@ button {
 
 
 /* =========================================
-   9. POPUPS, MODALS & OVERLAYS
+   9. POPUPS, MODALS & OVERLAYS (Mobile Fixed)
    ========================================= */
 
 .modal-overlay {
@@ -675,19 +604,21 @@ button {
     max-height: 85vh; 
     width: 95%; 
     max-width: 600px; 
+    
     display: flex; 
     flex-direction: column; 
-    overflow: hidden; 
+    overflow: hidden; /* Prevents whole card from scrolling */
+    
     margin: 0; 
     text-align: left;
-    padding: 0; 
+    padding: 0; /* We move padding to children for better scroll control */
 }
 
 .modal-overlay .joinCard h2, 
 .modal-overlay .joinCard h3 {
     padding: 25px 25px 10px 25px;
     margin: 0;
-    flex-shrink: 0; 
+    flex-shrink: 0; /* Never shrink the header */
 }
 
 .dynamic-explanation {
@@ -698,29 +629,32 @@ button {
     font-size: 15px;
     border-top: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
-    flex: 1;            
-    overflow-y: auto;   
-    min-height: 0;      
-    padding: 20px 25px; 
-    margin: 0 !important; 
-    max-height: none !important; 
+    
+    flex: 1;            /* Take all available remaining height */
+    overflow-y: auto;   /* Scroll ONLY this part */
+    min-height: 0;      /* Critical for Flexbox scrolling */
+    
+    padding: 20px 25px; /* Internal padding */
+    margin: 0 !important; /* Reset margins */
+    max-height: none !important; /* Override any inline style */
 }
 
 .modal-overlay .joinCard > div:last-child,
 .modal-overlay .joinCard > div:nth-last-child(2) {
     padding: 15px 25px 25px 25px;
-    flex-shrink: 0; 
+    flex-shrink: 0; /* Never shrink the buttons */
     background: var(--card-bg);
 }
 
 #explanation-text {
+    /* Ensure the specific ID also follows the rules */
     display: block;
     width: 100%;
 }
 
-/* =====================================================
-   10. EXTRAS (BADGES, STREAK, ICON BUTTONS, SEARCH) - REDESIGNED
-   ===================================================== */
+/* =========================================
+   10. EXTRAS (Sidebar, Badges, Search)
+   ========================================= */
 
 /* EXAM SIDEBAR */
 .test-sidebar {
@@ -753,176 +687,87 @@ button {
 .nav-btn.answered { background: #e3f2fd; color: #0072ff; border-color: #90cdf4; }
 .nav-btn.flagged { border-color: var(--warning); color: var(--warning); background: #fffbeb; }
 
-/* ---------- STREAK ---------- */
-.streak-container {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 10px;
-  background: rgba(239, 68, 68, 0.1);
-  color: var(--danger);
-  font-weight: 700;
-  font-size: 13px;
-}
+/* BADGES & GAMIFICATION */
+.streak-container { display: flex; align-items: center; margin-right: 15px; font-weight: 700; color: var(--danger); font-size: 14px; }
+.streak-icon { font-size: 20px; margin-right: 5px; animation: burn 0.8s infinite alternate; }
 
-.streak-icon {
-  font-size: 18px;
-  animation: burn 1s ease-in-out infinite alternate;
+.icon-btn, .theme-toggle { 
+    background: transparent; border: none; font-size: 22px; cursor: pointer; margin-right: 15px; 
+    transition: transform 0.2s; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
 }
+.icon-btn:hover, .theme-toggle:hover { background: #f1f5f9; transform: scale(1.1); }
 
-/* ---------- ICON BUTTONS ---------- */
-.icon-btn,
-.theme-toggle {
-  width: 38px;
-  height: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 10px;
-  border: 1px solid var(--border-color);
-  background: var(--input-bg);
-  font-size: 18px;
-  cursor: pointer;
-  transition: background 0.15s ease, transform 0.15s ease;
-  margin-right: 0; /* Reset previous margin */
-}
-
-.icon-btn:hover,
-.theme-toggle:hover {
-  background: var(--card-bg);
-  transform: translateY(-1px);
-}
-
-/* ---------- BADGE GRID ---------- */
-.badge-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 14px;
-  margin-top: 20px;
-}
-
-/* ---------- BADGE CARD ---------- */
+.badge-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 20px; }
 .badge-item {
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 14px;
-  padding: 14px 12px;
-  text-align: center;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
-  opacity: 0.35;
-  color: var(--text-light);
-  filter: saturate(0.3);
+    background: var(--input-bg);        /* Adapts to Dark Mode */
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 15px;
+    text-align: center;
+    opacity: 0.5;
+    filter: grayscale(100%);
+    transition: all 0.3s;
+    color: var(--text-dark);            /* Ensures text is visible */
 }
 
-/* UNLOCKED BADGE */
-.badge-item.unlocked {
-  opacity: 1;
-  filter: none;
-  color: var(--text-dark);
-  border-color: #facc15;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 215, 0, 0.12),
-    var(--card-bg)
-  );
-  box-shadow: 0 6px 18px rgba(250, 204, 21, 0.25);
-  transform: translateY(-4px);
+.badge-item.unlocked { 
+    opacity: 1; 
+    filter: grayscale(0%); 
+    border-color: #ffd700; 
+    background: #fffbeb;               /* Light Mode Gold */
+    transform: translateY(-5px); 
+    box-shadow: 0 5px 15px rgba(255, 215, 0, 0.2);
+    color: #b7791f;                    /* Dark Gold Text */
 }
 
-/* DARK MODE UNLOCKED BADGE */
+/* Fix for Dark Mode Unlocked Badges */
 [data-theme="dark"] .badge-item.unlocked {
-  background: rgba(250, 204, 21, 0.12);
-  border-color: #facc15;
-  color: #facc15;
+    background: rgba(255, 215, 0, 0.15); /* Dark transparent gold */
+    color: #ffd700;                       /* Bright Gold Text */
+    border-color: #ffd700;
 }
 
-/* BADGE CONTENT */
+/* The Icon inside the badge */
 .badge-icon {
-  font-size: 28px;
-  margin-bottom: 6px;
-  display: block;
+    font-size: 30px;
+    display: block;
+    margin-bottom: 5px;
 }
-
-.badge-name {
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.badge-desc {
-  font-size: 11px;
-  margin-top: 2px;
-  color: var(--text-light);
-  line-height: 1.3;
-}
-
-/* ---------- SEARCH DROPDOWN ---------- */
+/* SEARCH */
 .search-results-list {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  right: 0;
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  max-height: 260px;
-  overflow-y: auto;
-  z-index: 1000;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
-  display: none;
+    position: absolute; top: 110%; left: 0; right: 0;
+    background: white; border: 1px solid #ccc; max-height: 250px;
+    overflow-y: auto; z-index: 1000; display: none;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-radius: 12px;
 }
-
-.search-item {
-  padding: 12px 14px;
-  font-size: 14px;
-  cursor: pointer;
-  border-bottom: 1px solid var(--border-color);
-  transition: background 0.15s ease;
-  text-align: left;
-}
-
-.search-item:last-child {
-  border-bottom: none;
-}
-
-.search-item:hover {
-  background: rgba(59, 130, 246, 0.08);
-  color: var(--primary);
-}
+.search-item { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s; }
+.search-item:hover { background-color: #f0f9ff; color: var(--primary); }
 
 
 /* =========================================
-   11. MOBILE OPTIMIZATIONS (Updated for New Header)
+   11. MOBILE OPTIMIZATIONS
    ========================================= */
 @media screen and (max-width: 600px) {
     /* Login Fix */
     .joinCard { width: 95%; padding: 30px 20px; }
     .gameTitle { font-size: 26px; }
     
-    /* Header Fixes for .topbar (NEW) */
-    .topbar {
-        flex-direction: column;
-        align-items: flex-start;
-        padding: 15px;
-        gap: 15px;
-        height: auto;
+    /* Header Fixes */
+    .topBar {
+        flex-direction: column !important; align-items: center !important; height: auto !important; padding: 15px !important;
+    }
+    .user-badge { width: 100% !important; align-items: center !important; margin-bottom: 10px !important; }
+    .user-badge div { justify-content: center !important; }
+    
+    .topBar > div:last-child {
+        width: 100% !important; display: flex !important; flex-wrap: nowrap !important;
+        justify-content: center !important; align-items: center !important; gap: 5px !important;
     }
     
-    .topbar-left {
-        width: 100%;
-        justify-content: space-between;
-    }
-    
-    .topbar-right {
-        width: 100%;
-        justify-content: space-between;
-        flex-wrap: wrap; 
-        gap: 10px;
-    }
-    
-    .user-info {
-        align-items: flex-start;
-    }
+    .streak-container { font-size: 12px !important; white-space: nowrap !important; margin-right: 5px !important; }
+    .icon-btn, .theme-toggle { font-size: 18px !important; width: 32px !important; height: 32px !important; margin-right: 5px !important; }
+    .logout-btn { width: 100% !important; margin-top: 15px !important; order: 99 !important; padding: 12px !important; }
 
     /* Quiz Fixes */
     .test-question-block { padding: 25px; border-left-width: 5px; }
@@ -931,10 +776,10 @@ button {
     
     /* NAVIGATOR FIX FOR MOBILE (Moved to Bottom) */
     .test-sidebar { 
-        position: relative; 
+        position: relative; /* Not fixed anymore */
         top: auto; right: auto; width: 100%; 
         max-height: 200px; margin-top: 20px; 
-        order: 10; 
+        order: 10; /* Move to bottom of flex container */
         display: none;
     }
     .test-sidebar.active { display: block; }
@@ -1443,6 +1288,23 @@ tr:last-child td { border-bottom: none; }
     margin-left: 5px;
 }
 
+/* --- ADD THIS TO BOTTOM OF STYLE.CSS --- */
+
+/* Badge Description Text */
+.badge-desc {
+    display: block;
+    font-size: 11px;
+    color: #64748b; /* Grey text */
+    margin-top: 4px;
+    line-height: 1.3;
+}
+
+/* Ensure unlocked badges look distinct */
+.badge-item.unlocked .badge-desc {
+    color: #b45309; /* Darker gold/brown for readability on gold bg */
+    font-weight: 500;
+}
+
 /* Fix Admin User Card Spacing */
 .user-card {
     padding: 20px;
@@ -1675,114 +1537,4 @@ button.secondary {
     display: inline-block;
     cursor: pointer !important;
     pointer-events: auto !important;
-}
-
-/* =====================================================
-   DESKTOP LAYOUT (Explicit)
-   Applies to screens ≥ 1024px
-   ===================================================== */
-@media screen and (min-width: 1024px) {
-
-  /* Dashboard Grid */
-  #dashboard-screen .gameContainer {
-    grid-template-columns: 450px 1fr;
-    gap: 30px;
-    padding: 0 20px;
-  }
-
-  /* Study Panel */
-  #study-panel {
-    height: auto;
-    max-height: none;
-    overflow-y: auto;
-  }
-
-  /* Sidebar stays floating on desktop */
-  .test-sidebar {
-    position: fixed;
-    right: 30px;
-    top: 120px;
-    width: 280px;
-    max-height: 75vh;
-  }
-
-  /* Topbar stays horizontal */
-  .topbar {
-    flex-direction: row;
-    align-items: center;
-  }
-}
-
-
-/* =====================================================
-   MOBILE & TABLET LAYOUT (Override Everything)
-   Applies to screens ≤ 1023px
-   ===================================================== */
-@media screen and (max-width: 1023px) {
-
-  /* Kill fixed heights */
-  #study-panel,
-  .test-question-block {
-    height: auto !important;
-    max-height: none !important;
-  }
-
-  /* Force single column everywhere */
-  #dashboard-screen .gameContainer {
-    grid-template-columns: 1fr !important;
-    padding: 0 12px;
-  }
-
-  .panel,
-  #study-panel {
-    max-width: 100% !important;
-    margin: 0 auto 20px auto !important;
-  }
-
-  /* Header becomes stacked */
-  .topbar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-  }
-
-  .topbar-left,
-  .topbar-right {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  /* Quiz options: reduce motion */
-  .option-btn:hover {
-    transform: none;
-  }
-
-  /* Sidebar becomes inline */
-  .test-sidebar {
-    position: relative;
-    width: 100%;
-    right: auto;
-    top: auto;
-    max-height: 220px;
-    margin-top: 20px;
-  }
-
-  /* Navigator buttons easier to tap */
-  .prac-nav-btn {
-    width: 44px;
-    height: 44px;
-    font-size: 13px;
-  }
-
-  /* Reduce padding everywhere */
-  .joinCard,
-  .panel,
-  .quiz-header {
-    padding: 18px;
-  }
-
-  /* Prevent horizontal scroll bugs */
-  body {
-    overflow-x: hidden;
-  }
 }
