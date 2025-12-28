@@ -1791,3 +1791,152 @@ button.secondary {
     .btn-manage-user { width: 100% !important; text-align: center; }
 }
 
+/* =========================================
+   ADMIN PAYMENT CARD REDESIGN
+   ========================================= */
+
+.admin-payment-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s ease;
+    border-left: 5px solid #0072ff; /* Brand Accent */
+}
+
+.admin-payment-card:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+/* Header Section */
+.pay-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.pay-user-email {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-dark);
+    display: block;
+    margin-bottom: 4px;
+}
+
+.pay-plan-badge {
+    background: #e0f2fe;
+    color: #0284c7;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Image Section */
+.pay-proof-container {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 10px;
+    text-align: center;
+    margin-bottom: 20px;
+    border: 1px dashed #cbd5e1;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.pay-proof-container:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+.pay-proof-img {
+    height: 120px;
+    width: auto;
+    max-width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    object-fit: contain;
+}
+
+.view-receipt-text {
+    display: block;
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--primary);
+    font-weight: 600;
+}
+
+/* Action Section (The Control Panel) */
+.pay-action-box {
+    background: #f8fafc;
+    padding: 15px;
+    border-radius: 12px;
+}
+
+.pay-action-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+    margin-bottom: 8px;
+    display: block;
+    text-transform: uppercase;
+}
+
+.pay-controls-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* Dropdown styling */
+.pay-select {
+    flex: 2; /* Takes up 2 parts of space */
+    padding: 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 13px;
+    background: white;
+    color: #334155;
+    font-weight: 500;
+}
+
+/* Button Styling */
+.btn-pay-action {
+    flex: 1; /* Takes up 1 part space */
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    margin: 0 !important; /* Override global margins */
+    transition: all 0.2s;
+}
+
+.btn-approve {
+    background: #10b981; /* Green */
+    color: white;
+    box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);
+}
+.btn-approve:hover { background: #059669; transform: translateY(-1px); }
+
+.btn-reject {
+    background: white;
+    color: #ef4444;
+    border: 1px solid #fecaca;
+}
+.btn-reject:hover { background: #fee2e2; }
+
+/* Mobile Stack */
+@media screen and (max-width: 500px) {
+    .pay-controls-row { flex-direction: column; }
+    .pay-select, .btn-pay-action { width: 100%; }
+}
