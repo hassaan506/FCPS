@@ -1481,34 +1481,30 @@ tr:last-child td { border-bottom: none; }
     left: 0;
     width: 100% !important;
     height: 100% !important;
-    background: #f0f4f8 !important; /* Cover background so clicks don't fall through */
-    z-index: 2147483647 !important; /* Max Z-Index to stay on top */
+    background: #f0f4f8 !important;
+    z-index: 9999 !important; /* FIXED: Safe value */
     
-    /* Flexbox Center */
     display: flex !important;
-    align-items: center;       
-    justify-content: center;   
+    align-items: center;        
+    justify-content: center;    
     
-    overflow-y: auto !important; /* Enable scrolling */
+    overflow-y: auto !important;
     padding: 20px 0; 
-    pointer-events: auto !important; /* Force clickable */
+    pointer-events: auto !important;
 }
 
 /* 2. Fix the Card Size & Margin */
 .joinCard {
-    /* Reset margins for mobile flex scrolling */
     margin: auto !important; 
     
-    /* Sizing */
     width: 90% !important;
     max-width: 400px !important;
     min-width: 280px !important;
     
-    /* Padding */
     padding: 30px 20px !important;
     
     position: relative !important;
-    z-index: 2147483648 !important; /* Higher than container */
+    z-index: 10000 !important; /* FIXED: Safe value (9999 + 1) */
     pointer-events: auto !important;
 }
 
@@ -1699,3 +1695,4 @@ button.secondary {
         padding: 12px;
     }
 }
+
