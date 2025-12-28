@@ -45,37 +45,31 @@
     </div>
 </div>
 
-    <div class="topbar">
-  <div class="topbar-left">
-    <div class="user-info">
-      <span class="welcome-text">Welcome back</span>
-      <div class="user-row">
-        <span id="user-display" class="username">Doctor</span>
-        <span id="premium-badge" class="badge-pro hidden">PRO</span>
-        <button class="btn-outline" onclick="openProfileModal()">Profile</button>
-      </div>
-    </div>
-  </div>
+    <div id="dashboard-screen" class="screen hidden">       
+        <div class="topBar">
+            <div class="user-badge">
+                <span style="font-size:12px; color:var(--text-light); font-weight:500;">Welcome back,</span>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span id="user-display" style="font-weight:700; font-size:16px; color:var(--text-dark);">Doctor</span>
+                    <span id="premium-badge" class="hidden" style="background:#ffd700; color:#b7791f; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold; border:1px solid #d97706;">PRO</span>
+                    <button onclick="openProfileModal()" style="padding:2px 8px; font-size:10px; width:auto; margin:0; background:var(--input-bg); color:var(--text-light); border:1px solid var(--border-color);">EDIT</button>
+                </div>
+            </div>
+            
+            <div style="display:flex; align-items:center;">
+                <div id="streak-display" class="streak-container hidden">
+                    <span class="streak-icon">🔥</span> <span id="streak-count">0</span>
+                </div>
 
-  <div class="topbar-right">
-    <div id="streak-display" class="streak hidden">
-      🔥 <span id="streak-count">0</span>
-    </div>
+                <button id="admin-btn" class="icon-btn hidden" onclick="openAdminPanel()" title="Admin Dashboard" style="background:#ef4444; color:white; border:none;">🛡️</button>
+                
+                <button id="get-premium-btn" onclick="openPremiumModal()" class="primary" style="width:auto; padding:8px 12px; font-size:11px; margin-right:10px; background:linear-gradient(135deg, #FFD700 0%, #FDB931 100%); color:#5c4002; border:none; box-shadow:0 4px 10px rgba(255, 215, 0, 0.4);">✨ PRO</button>
 
-    <button id="admin-btn" class="icon-btn danger hidden" onclick="openAdminPanel()" title="Admin Dashboard">
-      🛡️
-    </button>
-
-    <button id="get-premium-btn" class="btn-pro" onclick="openPremiumModal()">
-      ✨ Go PRO
-    </button>
-
-    <button class="icon-btn" onclick="openBadges()" title="Achievements">🏆</button>
-    <button class="icon-btn" onclick="toggleTheme()" id="theme-btn">🌙</button>
-
-    <button class="btn-logout" onclick="logout()">Log out</button>
-  </div>
-</div>
+                <button id="main-badge-btn" class="icon-btn" onclick="openBadges()" title="Achievements">🏆</button>
+                <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn">🌙</button>
+                <button onclick="logout()" class="logout-btn">Log Out</button>
+            </div>
+        </div> 
 
         <div class="gameContainer">
             
@@ -437,16 +431,3 @@
     <script src="script.js"></script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
