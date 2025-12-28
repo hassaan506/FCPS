@@ -1,5 +1,5 @@
 /* -----------------------------------------------------------
-   STYLE.CSS - MEDICAL MASTERY (FULL COMPLETE VERSION)
+   STYLE.CSS - MEDICAL MASTERY (FINAL FIXED VERSION + NEW LOGIN)
    ----------------------------------------------------------- */
 
 /* =========================================
@@ -329,6 +329,10 @@ button {
 .auth-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 15px 25px -5px rgba(0, 114, 255, 0.5);
+}
+
+.auth-btn:active {
+    transform: scale(0.98);
 }
 
 /* Auth Footer */
@@ -1100,69 +1104,3 @@ details[open] .subject-summary::after {
     background-color: var(--input-bg) !important;
     color: var(--text-dark) !important;
 }
-
-/* Achievement/Badges Fixes */
-.achievements-card {
-    background: white;
-    width: 95%; max-width: 700px;
-    border-radius: 24px; padding: 0;
-    position: relative; overflow: hidden;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.2);
-    display: flex; flex-direction: column;
-    max-height: 85vh;
-}
-.ach-header {
-    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-    padding: 30px 20px 20px; text-align: center;
-    border-bottom: 1px solid #cbd5e1;
-}
-.ach-trophy-wrapper { position: relative; display: inline-block; margin-bottom: 10px; }
-.main-trophy { font-size: 40px; position: relative; z-index: 2; animation: pulse 2s infinite; }
-.trophy-glow {
-    position: absolute; top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    width: 60px; height: 60px;
-    background: radial-gradient(circle, rgba(255,215,0,0.4) 0%, rgba(255,255,255,0) 70%);
-    z-index: 1;
-}
-.ach-header h2 { margin: 0; color: var(--text-dark); font-size: 22px; font-weight: 800; }
-.ach-header p { margin: 5px 0 0; color: var(--text-light); font-size: 13px; }
-.ach-grid {
-    display: grid; grid-template-columns: repeat(2, 1fr);
-    gap: 15px; padding: 25px; overflow-y: auto;
-}
-.ach-item {
-    display: flex; align-items: center; gap: 15px;
-    padding: 15px; border-radius: 16px;
-    border: 2px solid transparent; transition: all 0.3s ease;
-    position: relative;
-}
-.ach-item.locked {
-    background: #f8fafc; border-color: #e2e8f0;
-    opacity: 0.7; filter: grayscale(1);
-}
-.ach-lock { margin-left: auto; font-size: 14px; opacity: 0.5; }
-.ach-item.unlocked {
-    background: linear-gradient(135deg, #fffbeb 0%, #fff 100%);
-    border-color: #ffd700; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.15);
-    filter: grayscale(0); transform: translateY(-2px);
-}
-.ach-item.unlocked .ach-icon-box {
-    background: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-    border: 1px solid #fcd34d;
-}
-.ach-check {
-    margin-left: auto; width: 24px; height: 24px;
-    background: #10b981; color: white;
-    border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: bold;
-    box-shadow: 0 2px 5px rgba(16, 185, 129, 0.3);
-}
-.ach-icon-box {
-    width: 50px; height: 50px; border-radius: 12px;
-    background: #e2e8f0; display: flex; align-items: center; justify-content: center;
-    font-size: 24px; flex-shrink: 0;
-}
-.ach-info h3 { margin: 0; font-size: 15px; font-weight: 700; color: var(--text-dark); }
-.ach-info span { font-size: 11px; color: var(--text-light); display: block; margin-top: 2px; }
-.ach-footer { padding: 15px 25px 25px; background: white; border-top: 1px solid #f1f5f9; }
