@@ -825,49 +825,76 @@ function submitTest() {
 // ======================================================
 
 async function redeemKey() {
-    const codeInput = document.getElementById('activation-code').value.trim();
+    const codeInput = document.getElementById('activation-code').value.trim().toUpperCase();
+    const btn = event.target;
+    
     if (!codeInput) return alert("Please enter a code.");
+    
+    btn.innerText = "Verifying...";
+    btn.disabled = true;
 
     try {
-        const snapshot = await db.collection('activation_codes').where('code', '==', codeInput).where('status', '==', 'unused').get();
+        // 1. Find Key
+        const snapshot = await db.collection('activation_keys').where('code', '==', codeInput).get();
 
-        if (snapshot.empty) return alert("❌ Invalid or used code.");
+        if (snapshot.empty) throw new Error("Invalid Code.");
 
-        const codeDoc = snapshot.docs[0];
-        const codeData = codeDoc.data();
+        const keyDoc = snapshot.docs[0];
+        const k = keyDoc.data();
+        const keyId = keyDoc.id;
+
+        // 2. CHECK: Expiry
+        if (k.expiresAt) {
+            const expiryDate = k.expiresAt.toDate();
+            if (new Date() > expiryDate) throw new Error("This code has expired.");
+        }
+
+        // 3. CHECK: Usage Limit
+        if (k.usedCount >= k.maxUses) throw new Error("This code has been fully redeemed.");
+
+        // 4. CHECK: Already Used by Me?
+        if (k.usersRedeemed && k.usersRedeemed.includes(currentUser.uid)) {
+            throw new Error("You have already used this code.");
+        }
+
+        // 5. CALCULATE PREMIUM DURATION
+        // (Ensure PLAN_DURATIONS is defined at top of script.js)
+        const duration = PLAN_DURATIONS[k.plan] || 2592000000; 
         
-        const planKey = codeData.plan || '1_month';
-        const duration = PLAN_DURATIONS[planKey] || 2592000000; 
-
         let newExpiry;
-        if (planKey === 'lifetime') newExpiry = new Date("2100-01-01");
+        if (k.plan === 'lifetime') newExpiry = new Date("2100-01-01");
         else newExpiry = new Date(Date.now() + duration);
 
+        // 6. EXECUTE TRANSACTION (Safe Update)
         const batch = db.batch();
 
+        // A. Update User
         const userRef = db.collection('users').doc(currentUser.uid);
         batch.update(userRef, {
             isPremium: true,
-            plan: planKey,
-            expiryDate: newExpiry
+            plan: k.plan,
+            expiryDate: newExpiry,
+            updatedAt: new Date()
         });
 
-        batch.update(codeDoc.ref, {
-            status: 'used',
-            usedBy: currentUser.uid,
-            usedAt: new Date()
+        // B. Update Key Stats (Increment count, Add user ID)
+        const keyRef = db.collection('activation_keys').doc(keyId);
+        batch.update(keyRef, {
+            usedCount: firebase.firestore.FieldValue.increment(1),
+            usersRedeemed: firebase.firestore.FieldValue.arrayUnion(currentUser.uid),
+            lastUsedAt: new Date()
         });
 
         await batch.commit();
-        
-        userProfile.isPremium = true;
-        userProfile.expiryDate = newExpiry;
-        
-        alert(`✅ Code Redeemed Successfully!\nExpires: ${formatDateHelper(newExpiry)}`);
-        window.location.reload(); 
+
+        // 7. Success
+        alert(`✅ Code Redeemed!\nPlan: ${k.plan.replace('_',' ').toUpperCase()}\nExpires: ${formatDateHelper(newExpiry)}`);
+        window.location.reload();
 
     } catch (e) {
-        alert("Error: " + e.message);
+        alert("❌ " + e.message);
+        btn.innerText = "Unlock Now";
+        btn.disabled = false;
     }
 }
 
@@ -1167,21 +1194,108 @@ async function approvePayment(docId, userId) {
 
 async function generateAdminKey() {
     const plan = document.getElementById('key-plan').value;
-    const code = 'KEY-' + Math.random().toString(36).substr(2,6).toUpperCase();
-    await db.collection('activation_keys').add({ code, plan, isUsed: false, createdAt: new Date() });
-    document.getElementById('generated-key-display').innerText = code;
+    const customCode = document.getElementById('key-custom-code').value.trim().toUpperCase();
+    const limit = parseInt(document.getElementById('key-limit').value) || 1;
+    const expiryInput = document.getElementById('key-expiry').value; // YYYY-MM-DD
+
+    // 1. Determine Code Name
+    let code = customCode;
+    if (!code) {
+        code = 'KEY-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+    }
+
+    // 2. Check for Duplicate Code
+    const check = await db.collection('activation_keys').where('code', '==', code).get();
+    if (!check.empty) {
+        return alert("❌ Error: This code already exists!");
+    }
+
+    // 3. Prepare Data
+    const keyData = {
+        code: code,
+        plan: plan,
+        maxUses: limit,
+        usedCount: 0,
+        usersRedeemed: [], // Track who used it to prevent double-dipping
+        createdAt: new Date(),
+        active: true
+    };
+
+    // Add Expiry if set
+    if (expiryInput) {
+        keyData.expiresAt = new Date(expiryInput + "T23:59:59"); // End of that day
+    } else {
+        keyData.expiresAt = null; // Never expires
+    }
+
+    // 4. Save to DB
+    await db.collection('activation_keys').add(keyData);
+    
+    alert(`✅ Key Created: ${code}\nLimit: ${limit} Users`);
+    
+    // Clear inputs
+    document.getElementById('key-custom-code').value = "";
+    document.getElementById('key-limit').value = "1";
+    document.getElementById('key-expiry').value = "";
+    
     loadAdminKeys();
 }
 
 async function loadAdminKeys() {
     const list = document.getElementById('admin-keys-list');
-    const snap = await db.collection('activation_keys').orderBy('createdAt','desc').limit(10).get();
-    let html = "<table><tr><th>Code</th><th>Plan</th><th>Status</th></tr>";
+    list.innerHTML = "Loading...";
+    
+    // Sort by newest created
+    const snap = await db.collection('activation_keys').orderBy('createdAt', 'desc').limit(20).get();
+    
+    if (snap.empty) {
+        list.innerHTML = "<p style='color:#666; text-align:center;'>No keys generated yet.</p>";
+        return;
+    }
+
+    let html = `<table style="width:100%; border-collapse:collapse; font-size:12px; background:white;">
+        <tr style="background:#f1f5f9; text-align:left;">
+            <th style="padding:10px; border-bottom:2px solid #e2e8f0;">Code</th>
+            <th style="padding:10px; border-bottom:2px solid #e2e8f0;">Plan</th>
+            <th style="padding:10px; border-bottom:2px solid #e2e8f0;">Usage</th>
+            <th style="padding:10px; border-bottom:2px solid #e2e8f0;">Expires</th>
+            <th style="padding:10px; border-bottom:2px solid #e2e8f0;">Action</th>
+        </tr>`;
+
     snap.forEach(doc => {
         const k = doc.data();
-        html += `<tr><td>${k.code}</td><td>${k.plan}</td><td>${k.isUsed?'USED':'ACTIVE'}</td></tr>`;
+        
+        // Status Check
+        const isFull = k.usedCount >= k.maxUses;
+        const isExpired = k.expiresAt && new Date() > k.expiresAt.toDate();
+        let statusColor = "#10b981"; // Green (Active)
+        
+        if (isFull) statusColor = "#ef4444"; // Red (Full)
+        else if (isExpired) statusColor = "#94a3b8"; // Grey (Expired)
+
+        // Date Format
+        const expiryStr = k.expiresAt ? formatDateHelper(k.expiresAt) : "Never";
+
+        html += `
+        <tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:10px; font-weight:bold; color:#2563eb;">${k.code}</td>
+            <td style="padding:10px;">${k.plan.replace('_',' ')}</td>
+            <td style="padding:10px;">
+                <span style="color:${statusColor}; font-weight:bold;">${k.usedCount} / ${k.maxUses}</span>
+            </td>
+            <td style="padding:10px;">${expiryStr}</td>
+            <td style="padding:10px;">
+                <button onclick="deleteKey('${doc.id}')" style="padding:2px 6px; font-size:10px; color:red; border:1px solid red; background:white; border-radius:4px; cursor:pointer;">Delete</button>
+            </td>
+        </tr>`;
     });
     list.innerHTML = html + "</table>";
+}
+
+// Add this helper if missing
+function deleteKey(id) {
+    if(!confirm("Delete this key permanently?")) return;
+    db.collection('activation_keys').doc(id).delete().then(() => loadAdminKeys());
 }
 
 async function adminLookupUser(targetId) {
@@ -1612,3 +1726,4 @@ function resetPassword() {
 window.onload = () => {
     if(localStorage.getItem('fcps-theme')==='dark') toggleTheme();
 }
+
