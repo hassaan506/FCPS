@@ -1538,3 +1538,164 @@ button.secondary {
     cursor: pointer !important;
     pointer-events: auto !important;
 }
+
+
+/* =========================================
+   ACHIEVEMENTS MODAL REDESIGN
+   ========================================= */
+
+/* 1. Modal Card Sizing */
+.achievements-card {
+    background: white;
+    width: 95%;
+    max-width: 700px; /* Wider than normal cards */
+    border-radius: 24px;
+    padding: 0; /* Reset padding for internal layout */
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    max-height: 85vh; /* Keep it fit on screen */
+}
+
+/* 2. Header Area */
+.ach-header {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    padding: 30px 20px 20px;
+    text-align: center;
+    border-bottom: 1px solid #cbd5e1;
+}
+
+.ach-trophy-wrapper {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 10px;
+}
+
+.main-trophy {
+    font-size: 40px;
+    position: relative;
+    z-index: 2;
+    animation: pulse 2s infinite;
+}
+
+/* Glowing effect behind trophy */
+.trophy-glow {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px; height: 60px;
+    background: radial-gradient(circle, rgba(255,215,0,0.4) 0%, rgba(255,255,255,0) 70%);
+    z-index: 1;
+}
+
+.ach-header h2 { margin: 0; color: var(--text-dark); font-size: 22px; font-weight: 800; }
+.ach-header p { margin: 5px 0 0; color: var(--text-light); font-size: 13px; }
+
+/* 3. The Grid Layout */
+.ach-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* 2 Columns by default */
+    gap: 15px;
+    padding: 25px;
+    overflow-y: auto; /* Allows scrolling if list is long */
+}
+
+/* 4. Achievement Item Styles */
+.ach-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    border-radius: 16px;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+/* --- LOCKED STATE (Default) --- */
+.ach-item.locked {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+    opacity: 0.7;
+    filter: grayscale(1); /* Makes emojis grey */
+}
+
+.ach-lock {
+    margin-left: auto; /* Pushes lock to right */
+    font-size: 14px;
+    opacity: 0.5;
+}
+
+/* --- UNLOCKED STATE (Gold/Premium) --- */
+.ach-item.unlocked {
+    background: linear-gradient(135deg, #fffbeb 0%, #fff 100%);
+    border-color: #ffd700;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.15);
+    filter: grayscale(0);
+    transform: translateY(-2px);
+}
+
+.ach-item.unlocked .ach-icon-box {
+    background: #fff;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    border: 1px solid #fcd34d;
+}
+
+.ach-check {
+    margin-left: auto;
+    width: 24px; height: 24px;
+    background: #10b981;
+    color: white;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: bold;
+    box-shadow: 0 2px 5px rgba(16, 185, 129, 0.3);
+}
+
+/* Icon & Text Styling */
+.ach-icon-box {
+    width: 50px; height: 50px;
+    border-radius: 12px;
+    background: #e2e8f0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.ach-info h3 {
+    margin: 0; font-size: 15px; font-weight: 700; color: var(--text-dark);
+}
+
+.ach-info span {
+    font-size: 11px; color: var(--text-light); display: block; margin-top: 2px;
+}
+
+/* 5. Footer */
+.ach-footer {
+    padding: 15px 25px 25px;
+    background: white;
+    border-top: 1px solid #f1f5f9;
+}
+
+/* =========================================
+   MOBILE RESPONSIVENESS
+   ========================================= */
+@media screen and (max-width: 600px) {
+    .achievements-card {
+        width: 100%;
+        height: 100%;
+        max-height: 100%;
+        border-radius: 0;
+    }
+    
+    .ach-grid {
+        grid-template-columns: 1fr; /* 1 Column on Phone */
+        padding: 20px;
+    }
+    
+    .ach-item {
+        padding: 12px;
+    }
+}
