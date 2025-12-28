@@ -17,344 +17,260 @@
     <div class="joinCard">
         <h1 class="gameTitle">EDEETOS</h1>
         <p class="subTitle">Go Beyond Yourself!</p>
-<div id="auth-form">
-    <h2 id="auth-title">Log In</h2>
-    
-    <form onsubmit="event.preventDefault(); handleAuthAction();">
-        <div id="signup-username-group" class="hidden">
-            <input type="text" id="reg-username" placeholder="Choose a Username" autocomplete="username">
-        </div>
+        <div id="auth-form">
+            <h2 id="auth-title">Log In</h2>
+            
+            <form onsubmit="event.preventDefault(); handleAuthAction();">
+                <div id="signup-username-group" class="hidden">
+                    <input type="text" id="reg-username" placeholder="Choose a Username" autocomplete="username">
+                </div>
 
-        <input type="text" id="email" placeholder="Email or Username" autocomplete="username">
-        <input type="password" id="password" placeholder="Password" autocomplete="current-password">
-        
-        <div id="auth-btn-container">
-            <button type="submit" class="primary" id="main-auth-btn">Log In</button>
-        </div>
-    </form>
-    
-    <p style="margin-top:15px; font-size:12px;">
-        <span id="auth-toggle-msg">New here?</span> 
-        <span id="auth-toggle-link" onclick="toggleAuthMode()" style="color:var(--primary); cursor:pointer; font-weight:bold;">Create New ID</span>
-    </p>
-    
-    <p id="auth-msg" style="color:red; font-size:12px; margin-top:10px;"></p>
-</div>        
+                <input type="text" id="email" placeholder="Email or Username" autocomplete="username">
+                <input type="password" id="password" placeholder="Password" autocomplete="current-password">
+                
+                <div id="auth-btn-container">
+                    <button type="submit" class="primary" id="main-auth-btn">Log In</button>
+                </div>
+            </form>
+            
+            <p style="margin-top:15px; font-size:12px;">
+                <span id="auth-toggle-msg">New here?</span> 
+                <span id="auth-toggle-link" onclick="toggleAuthMode()" style="color:var(--primary); cursor:pointer; font-weight:bold;">Create New ID</span>
+            </p>
+            
+            <p id="auth-msg" style="color:red; font-size:12px; margin-top:10px;"></p>
+        </div>        
         <div style="margin-top:30px; border-top:1px solid #eee; padding-top:20px;">
             <button class="secondary" onclick="guestLogin()">👤 Continue as Guest</button>
         </div>
     </div>
 </div>
 
-    <div id="dashboard-screen" class="screen hidden">       
-        <div class="topBar">
-            <div class="user-badge">
-                <span style="font-size:12px; color:var(--text-light); font-weight:500;">Welcome back,</span>
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <span id="user-display" style="font-weight:700; font-size:16px; color:var(--text-dark);">Doctor</span>
-                    <span id="premium-badge" class="hidden" style="background:#ffd700; color:#b7791f; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold; border:1px solid #d97706;">Premium</span>
-                    <button onclick="openProfileModal()" style="padding:2px 8px; font-size:10px; width:auto; margin:0; background:var(--input-bg); color:var(--text-light); border:1px solid var(--border-color);">Profile</button>
-                </div>
+<div id="dashboard-screen" class="screen hidden">        
+    <div class="topBar">
+        <div class="user-badge">
+            <span style="font-size:12px; color:var(--text-light); font-weight:500;">Welcome back,</span>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <span id="user-display" style="font-weight:700; font-size:16px; color:var(--text-dark);">Doctor</span>
+                <span id="premium-badge" class="hidden" style="background:#ffd700; color:#b7791f; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold; border:1px solid #d97706;">Premium</span>
+                <button onclick="openProfileModal()" style="padding:2px 8px; font-size:10px; width:auto; margin:0; background:var(--input-bg); color:var(--text-light); border:1px solid var(--border-color);">Profile</button>
             </div>
-            
-            <div style="display:flex; align-items:center;">
-                <div id="streak-display" class="streak-container hidden">
-                    <span class="streak-icon">🔥</span> <span id="streak-count">0</span>
-                </div>
-
-                <button id="admin-btn" class="icon-btn hidden" onclick="openAdminPanel()" title="Admin Dashboard" style="background:#ef4444; color:white; border:none;">🛡️</button>
-                
-                <button id="get-premium-btn" onclick="openPremiumModal()" class="primary" style="width:auto; padding:8px 12px; font-size:11px; margin-right:10px; background:linear-gradient(135deg, #FFD700 0%, #FDB931 100%); color:#5c4002; border:none; box-shadow:0 4px 10px rgba(255, 215, 0, 0.4);">✨ PRO</button>
-
-                <button id="main-badge-btn" class="icon-btn" onclick="openBadges()" title="Achievements">🏆</button>
-                <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn">🌙</button>
-                <button onclick="logout()" class="logout-btn">Log Out</button>
-            </div>
-        </div> 
-<div id="achievement-modal" class="modal-overlay hidden">
-    <div class="achievements-card">
+        </div>
         
-        <div class="ach-header">
-            <div class="ach-trophy-wrapper">
-                <span class="main-trophy">🏆</span>
-                <div class="trophy-glow"></div>
+        <div style="display:flex; align-items:center;">
+            <div id="streak-display" class="streak-container hidden">
+                <span class="streak-icon">🔥</span> <span id="streak-count">0</span>
             </div>
-            <h2>Your Journey</h2>
-            <p>Track your progress and unlock mastery.</p>
-        </div>
 
-        <div class="ach-grid">
+            <button id="admin-btn" class="icon-btn hidden" onclick="openAdminPanel()" title="Admin Dashboard" style="background:#ef4444; color:white; border:none;">🛡️</button>
             
-            <div class="ach-item unlocked">
-                <div class="ach-icon-box">👶</div>
-                <div class="ach-info">
-                    <h3>Novice</h3>
-                    <span>Solve 10 Questions</span>
-                </div>
-                <div class="ach-check">✓</div>
-            </div>
+            <button id="get-premium-btn" onclick="openPremiumModal()" class="primary" style="width:auto; padding:8px 12px; font-size:11px; margin-right:10px; background:linear-gradient(135deg, #FFD700 0%, #FDB931 100%); color:#5c4002; border:none; box-shadow:0 4px 10px rgba(255, 215, 0, 0.4);">✨ PRO</button>
 
-            <div class="ach-item locked">
-                <div class="ach-icon-box">🥉</div>
-                <div class="ach-info">
-                    <h3>Bronze</h3>
-                    <span>Solve 100 Questions</span>
-                </div>
-                <div class="ach-lock">🔒</div>
-            </div>
-
-            <div class="ach-item locked">
-                <div class="ach-icon-box">🥈</div>
-                <div class="ach-info">
-                    <h3>Silver</h3>
-                    <span>Solve 500 Questions</span>
-                </div>
-                <div class="ach-lock">🔒</div>
-            </div>
-
-            <div class="ach-item locked">
-                <div class="ach-icon-box">🥇</div>
-                <div class="ach-info">
-                    <h3>Gold</h3>
-                    <span>Solve 1000 Questions</span>
-                </div>
-                <div class="ach-lock">🔒</div>
-            </div>
-
-            <div class="ach-item locked">
-                <div class="ach-icon-box">💎</div>
-                <div class="ach-info">
-                    <h3>Diamond</h3>
-                    <span>Solve 2000 Questions</span>
-                </div>
-                <div class="ach-lock">🔒</div>
-            </div>
-
-            <div class="ach-item locked">
-                <div class="ach-icon-box">👑</div>
-                <div class="ach-info">
-                    <h3>Master</h3>
-                    <span>Solve 5000 Questions</span>
-                </div>
-                <div class="ach-lock">🔒</div>
-            </div>
-
+            <button id="main-badge-btn" class="icon-btn" onclick="openBadges()" title="Achievements">🏆</button>
+            <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn">🌙</button>
+            <button onclick="logout()" class="logout-btn">Log Out</button>
         </div>
+    </div> 
 
-        <div class="ach-footer">
-            <button class="primary" onclick="document.getElementById('achievement-modal').classList.add('hidden')">Close</button>
-        </div>
-    </div>
-</div>
-        <div class="gameContainer">
-            
-            <div style="display:flex; flex-direction:column; gap:25px;">
-                <div class="panel" id="stats-box">
-                    <h3>📊 Your Progress</h3>
-                    <div id="quick-stats">
-                        <p>Loading stats...</p>
-                    </div>
-                    <button onclick="openAnalytics()" class="secondary" style="margin-top:15px; font-size:13px;">View Detailed Analytics 📈</button>
+    <div class="gameContainer">
+        <div style="display:flex; flex-direction:column; gap:25px;">
+            <div class="panel" id="stats-box">
+                <h3>📊 Your Progress</h3>
+                <div id="quick-stats">
+                    <p>Loading stats...</p>
                 </div>
+                <button onclick="openAnalytics()" class="secondary" style="margin-top:15px; font-size:13px;">View Detailed Analytics 📈</button>
+            </div>
     
-<div class="panel">
-    <h3>⚙️ Settings</h3>
-    <button id="install-btn" class="secondary" style="margin-bottom:10px;">📱 Install App</button>
-    <button onclick="startMistakePractice()" class="secondary" style="margin-bottom:10px;">⚠️ Practice Mistakes</button>
-    <button onclick="startSavedQuestions()" class="secondary" style="margin-bottom:10px;">⭐ Review Bookmarks</button>
-    <button onclick="resetAccountData()" class="secondary">⚠️ Reset Progress</button>
-</div>
-            </div>
-
-            <div class="panel" id="study-panel">
-                <h3>📚 Study Session</h3>
-                
-                <div class="search-container" style="margin-bottom: 15px; position: relative;">
-                    <input type="text" id="global-search" placeholder="🔍 Search specific topics..." style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box;">
-                    <div id="search-results" class="search-results-list"></div>
-                </div>
-
-                <div class="tabs">
-                    <button class="tab-btn active" onclick="setMode('practice')">Practice</button>
-                    <button class="tab-btn" onclick="setMode('test')">Exam Mode</button>
-                </div>
-
-                <div id="test-settings" class="hidden">
-                    <div style="display:flex; gap:15px; margin-bottom:15px;">
-                        <div style="flex:1;">
-                            <label style="color:#64748b; font-size:11px; font-weight:700; display:block; margin-bottom:5px; text-transform:uppercase;">Questions</label>
-                            <input type="number" id="q-count" value="20">
-                        </div>
-                        <div style="flex:1;">
-                            <label style="color:#64748b; font-size:11px; font-weight:700; display:block; margin-bottom:5px; text-transform:uppercase;">Minutes</label>
-                            <input type="number" id="t-limit" value="30">
-                        </div>
-                    </div>
-                    <label style="color:#64748b; font-size:11px; font-weight:700; display:block; margin-bottom:5px; text-transform:uppercase;">Select Syllabus</label>
-                    <div id="filter-container" class="filter-container">
-                        <p style="color:#999; font-size:12px;">Loading subjects...</p>
-                    </div>
-                    <button class="primary" onclick="startTest()">Start Exam</button>
-                </div>
-
-                <div id="practice-filter-controls" style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px; padding: 0 5px;">
-                    <input type="checkbox" id="unattempted-only" style="width: 20px; height: 20px; margin: 0; cursor: pointer;">
-                    <label for="unattempted-only" style="font-size: 14px; font-weight: 600; color: var(--text-dark); cursor: pointer;">
-                        Show Unattempted Only
-                    </label>
-                </div>
-
-                <div id="dynamic-menus">
-                    <p style="color:#718096;">Loading Question Bank...</p>
-                </div>
+            <div class="panel">
+                <h3>⚙️ Settings</h3>
+                <button id="install-btn" class="secondary" style="margin-bottom:10px;">📱 Install App</button>
+                <button onclick="startMistakePractice()" class="secondary" style="margin-bottom:10px;">⚠️ Practice Mistakes</button>
+                <button onclick="startSavedQuestions()" class="secondary" style="margin-bottom:10px;">⭐ Review Bookmarks</button>
+                <button onclick="resetAccountData()" class="secondary">⚠️ Reset Progress</button>
             </div>
         </div>
-    </div>
 
-<div class="quiz-header">
-    <button onclick="goHome()" class="secondary" style="width:auto; padding:8px 20px;">Exit Session</button>
-    
-    <div style="display:flex; gap:10px; align-items:center;">
-        <button onclick="reportCurrentQuestion()" style="background:transparent; border:1px solid #fca5a5; color:#ef4444; font-size:12px; font-weight:600; padding:6px 12px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:5px;">
-            <span>🚩</span> Report
-        </button>
-
-        <button id="flag-btn" class="flag-btn hidden" onclick="toggleFlag()">
-            <span>🏳️</span> Flag
-        </button>
-        <div id="timer" class="hidden">00:00</div>
-    </div>
-</div>
-    <div id="test-sidebar" class="test-sidebar">
-                <h4 style="font-size:14px; color:#333; font-weight:700; border-bottom:1px solid #eee; padding-bottom:10px;">Question Navigator</h4>
-                <div id="nav-grid" class="nav-grid"></div>
-            </div>
-
-            <div id="quiz-content-area"></div>
-            <div id="practice-nav-container" class="hidden"></div>
-
-            <div class="quiz-footer">
-                <button id="prev-btn" onclick="prevPage()" class="secondary hidden" style="width:auto;">Previous</button>
-                <span id="q-progress"></span>
-                <button id="next-btn" onclick="nextPage()" class="primary" style="width:auto;">Next</button>
-                <button id="submit-btn" onclick="submitTest()" class="primary hidden" style="background:#10b981;">Submit Exam</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="result-screen" class="screen">
-        <div class="joinCard" style="max-width: 700px; padding:30px;">
-            <h1 class="gameTitle">Session Report</h1>
-            <div class="score-display">
-                <span id="final-score" style="font-size:48px; color:#0072ff; display:block; margin:20px 0;">0%</span>
-            </div>
-            <div id="review-list" style="text-align:left; max-height:400px; overflow-y:auto; margin-bottom:20px;"></div>
-            <button onclick="goHome()" class="primary">Back to Dashboard</button>
-        </div>
-    </div>
-
-    <div id="admin-screen" class="screen hidden">
-        <div class="topBar" style="background:#1e293b; color:white;">
-            <div style="font-weight:700; display:flex; align-items:center; gap:10px;">
-                <span>🛡️ Super Admin</span>
-                <span style="font-size:10px; background:rgba(255,255,255,0.2); padding:2px 6px; border-radius:4px;">Questions: <span id="admin-total-q">0</span></span>
-            </div>
-            <button onclick="goHome()" style="width:auto; padding:5px 15px; background:rgba(255,255,255,0.2); color:white; border:none;">Exit</button>
-        </div>
-
-        <div class="gameContainer" style="display:block; max-width:800px; margin:0 auto;">
+        <div class="panel" id="study-panel">
+            <h3>📚 Study Session</h3>
             
-            <div style="display:flex; gap:10px; overflow-x:auto; margin-bottom:20px; padding-bottom:5px;">
-                <button class="admin-tab active" onclick="switchAdminTab('reports')" style="flex:1;">🚩 Reports</button>
-                <button class="admin-tab" onclick="switchAdminTab('payments')" style="flex:1;">💸 Payments</button>
-                <button class="admin-tab" onclick="switchAdminTab('keys')" style="flex:1;">🔑 Keys</button>
-                <button class="admin-tab" onclick="switchAdminTab('users')" style="flex:1;">👥 Users</button>
+            <div class="search-container" style="margin-bottom: 15px; position: relative;">
+                <input type="text" id="global-search" placeholder="🔍 Search specific topics..." style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box;">
+                <div id="search-results" class="search-results-list"></div>
             </div>
 
-            <div id="tab-reports">
-                <h3>Reported Issues & Locator</h3>
-                <div id="admin-reports-list">Loading...</div>
+            <div class="tabs">
+                <button class="tab-btn active" onclick="setMode('practice')">Practice</button>
+                <button class="tab-btn" onclick="setMode('test')">Exam Mode</button>
             </div>
 
-            <div id="tab-payments" class="hidden">
-                <h3>Payment Requests</h3>
-                <div id="admin-payments-list">Loading...</div>
+            <div id="test-settings" class="hidden">
+                <div style="display:flex; gap:15px; margin-bottom:15px;">
+                    <div style="flex:1;">
+                        <label style="color:#64748b; font-size:11px; font-weight:700; display:block; margin-bottom:5px; text-transform:uppercase;">Questions</label>
+                        <input type="number" id="q-count" value="20">
+                    </div>
+                    <div style="flex:1;">
+                        <label style="color:#64748b; font-size:11px; font-weight:700; display:block; margin-bottom:5px; text-transform:uppercase;">Minutes</label>
+                        <input type="number" id="t-limit" value="30">
+                    </div>
+                </div>
+                <label style="color:#64748b; font-size:11px; font-weight:700; display:block; margin-bottom:5px; text-transform:uppercase;">Select Syllabus</label>
+                <div id="filter-container" class="filter-container">
+                    <p style="color:#999; font-size:12px;">Loading subjects...</p>
+                </div>
+                <button class="primary" onclick="startTest()">Start Exam</button>
             </div>
 
-            <div id="tab-keys" class="hidden">
-    <div style="background:#f8fafc; padding:20px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:20px;">
-        <h3 style="margin-top:0; color:#1e293b;">🔑 Create Key / Coupon</h3>
+            <div id="practice-filter-controls" style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px; padding: 0 5px;">
+                <input type="checkbox" id="unattempted-only" style="width: 20px; height: 20px; margin: 0; cursor: pointer;">
+                <label for="unattempted-only" style="font-size: 14px; font-weight: 600; color: var(--text-dark); cursor: pointer;">
+                    Show Unattempted Only
+                </label>
+            </div>
+
+            <div id="dynamic-menus">
+                <p style="color:#718096;">Loading Question Bank...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="quiz-screen" class="screen">
+    <div class="quiz-container-unique">
+        <div class="quiz-header">
+            <button onclick="goHome()" class="secondary" style="width:auto; padding:8px 20px;">Exit Session</button>
+            
+            <div style="display:flex; gap:10px; align-items:center;">
+                <button onclick="reportCurrentQuestion()" style="background:transparent; border:1px solid #fca5a5; color:#ef4444; font-size:12px; font-weight:600; padding:6px 12px; border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:5px;">
+                    <span>🚩</span> Report
+                </button>
+
+                <button id="flag-btn" class="flag-btn hidden" onclick="toggleFlag()">
+                    <span>🏳️</span> Flag
+                </button>
+                <div id="timer" class="hidden">00:00</div>
+            </div>
+        </div>
+
+        <div id="test-sidebar" class="test-sidebar">
+            <h4 style="font-size:14px; color:#333; font-weight:700; border-bottom:1px solid #eee; padding-bottom:10px;">Question Navigator</h4>
+            <div id="nav-grid" class="nav-grid"></div>
+        </div>
+
+        <div id="quiz-content-area"></div>
+        <div id="practice-nav-container" class="hidden"></div>
+
+        <div class="quiz-footer">
+            <button id="prev-btn" onclick="prevPage()" class="secondary hidden" style="width:auto;">Previous</button>
+            <span id="q-progress"></span>
+            <button id="next-btn" onclick="nextPage()" class="primary" style="width:auto;">Next</button>
+            <button id="submit-btn" onclick="submitTest()" class="primary hidden" style="background:#10b981;">Submit Exam</button>
+        </div>
+    </div>
+</div>
+
+<div id="result-screen" class="screen">
+    <div class="joinCard" style="max-width: 700px; padding:30px;">
+        <h1 class="gameTitle">Session Report</h1>
+        <div class="score-display">
+            <span id="final-score" style="font-size:48px; color:#0072ff; display:block; margin:20px 0;">0%</span>
+        </div>
+        <div id="review-list" style="text-align:left; max-height:400px; overflow-y:auto; margin-bottom:20px;"></div>
+        <button onclick="goHome()" class="primary">Back to Dashboard</button>
+    </div>
+</div>
+
+<div id="admin-screen" class="screen hidden">
+    <div class="topBar" style="background:#1e293b; color:white;">
+        <div style="font-weight:700; display:flex; align-items:center; gap:10px;">
+            <span>🛡️ Super Admin</span>
+            <span style="font-size:10px; background:rgba(255,255,255,0.2); padding:2px 6px; border-radius:4px;">Questions: <span id="admin-total-q">0</span></span>
+        </div>
+        <button onclick="goHome()" style="width:auto; padding:5px 15px; background:rgba(255,255,255,0.2); color:white; border:none;">Exit</button>
+    </div>
+
+    <div class="gameContainer" style="display:block; max-width:800px; margin:0 auto;">
         
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
-            <div>
-                <label style="font-size:12px; font-weight:bold; color:#64748b;">Plan Duration</label>
-                <select id="key-plan" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:5px;">
-                    <option value="1_day">1 Day</option>
-                    <option value="1_week">1 Week</option>
-                    <option value="15_days">15 Days</option>
-                    <option value="1_month">1 Month</option>
-                    <option value="3_months">3 Months</option>
-                    <option value="6_months">6 Months</option>
-                    <option value="12_months">12 Months</option>
-                    <option value="lifetime">Lifetime</option>
-                </select>
-            </div>
-
-            <div>
-                <label style="font-size:12px; font-weight:bold; color:#64748b;">Custom Code (Optional)</label>
-                <input type="text" id="key-custom-code" placeholder="e.g. SALE2025" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:5px; text-transform:uppercase;">
-            </div>
-
-            <div>
-                <label style="font-size:12px; font-weight:bold; color:#64748b;">Max Users (1 = Single Use)</label>
-                <input type="number" id="key-limit" value="1" min="1" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:5px;">
-            </div>
-
-            <div>
-                <label style="font-size:12px; font-weight:bold; color:#64748b;">Expires On (Optional)</label>
-                <input type="date" id="key-expiry" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:5px;">
-            </div>
+        <div style="display:flex; gap:10px; overflow-x:auto; margin-bottom:20px; padding-bottom:5px;">
+            <button class="admin-tab active" onclick="switchAdminTab('reports')" style="flex:1;">🚩 Reports</button>
+            <button class="admin-tab" onclick="switchAdminTab('payments')" style="flex:1;">💸 Payments</button>
+            <button class="admin-tab" onclick="switchAdminTab('keys')" style="flex:1;">🔑 Keys</button>
+            <button class="admin-tab" onclick="switchAdminTab('users')" style="flex:1;">👥 Users</button>
         </div>
 
-        <button class="primary" onclick="generateAdminKey()" style="width:100%;">Generate Key</button>
-    </div>
+        <div id="tab-reports">
+            <h3>Reported Issues & Locator</h3>
+            <div id="admin-reports-list">Loading...</div>
+        </div>
 
-    <div id="admin-keys-list" style="overflow-x:auto;"></div>
+        <div id="tab-payments" class="hidden">
+            <h3>Payment Requests</h3>
+            <div id="admin-payments-list">Loading...</div>
+        </div>
+
+        <div id="tab-keys" class="hidden">
+            <div style="background:#f8fafc; padding:20px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:20px;">
+                <h3 style="margin-top:0; color:#1e293b;">🔑 Create Key / Coupon</h3>
+                
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
+                    <div>
+                        <label style="font-size:12px; font-weight:bold; color:#64748b;">Plan Duration</label>
+                        <select id="key-plan" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:5px;">
+                            <option value="1_day">1 Day</option>
+                            <option value="1_week">1 Week</option>
+                            <option value="15_days">15 Days</option>
+                            <option value="1_month">1 Month</option>
+                            <option value="3_months">3 Months</option>
+                            <option value="6_months">6 Months</option>
+                            <option value="12_months">12 Months</option>
+                            <option value="lifetime">Lifetime</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label style="font-size:12px; font-weight:bold; color:#64748b;">Custom Code (Optional)</label>
+                        <input type="text" id="key-custom-code" placeholder="e.g. SALE2025" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:5px; text-transform:uppercase;">
+                    </div>
+
+                    <div>
+                        <label style="font-size:12px; font-weight:bold; color:#64748b;">Max Users (1 = Single Use)</label>
+                        <input type="number" id="key-limit" value="1" min="1" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:5px;">
+                    </div>
+
+                    <div>
+                        <label style="font-size:12px; font-weight:bold; color:#64748b;">Expires On (Optional)</label>
+                        <input type="date" id="key-expiry" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-top:5px;">
+                    </div>
+                </div>
+
+                <button class="primary" onclick="generateAdminKey()" style="width:100%;">Generate Key</button>
+            </div>
+
+            <div id="admin-keys-list" style="overflow-x:auto;"></div>
+        </div>
+
+        <div id="tab-users" class="hidden">
+            <h3>User Manager</h3>
+            <div style="display:flex; gap:10px; margin-bottom:20px;">
+                <input type="text" id="admin-user-input" placeholder="User UID or Email..." style="margin:0;">
+                <button class="primary" onclick="adminLookupUser()" style="width:auto; margin:0;">Search</button>
+            </div>
+            <div id="admin-user-result"></div>
+        </div>
+    </div>
 </div>
 
-    <div id="admin-keys-list"></div>
+<div id="explanation-modal" class="modal-overlay hidden">
+    <div class="joinCard" style="max-width: 600px; border-left: 6px solid #28a745; text-align: left;">
+        <h2 style="color:#28a745; margin-bottom:10px; font-size: 24px;">✅ Correct!</h2>
+        <div id="explanation-text" class="dynamic-explanation" style="margin-top:0; border:none; background:#f9f9f9; text-align:left;"></div>
+        <div style="display:flex; gap:10px; margin-top:20px; align-items:center;">
+            <button class="secondary" onclick="closeModal()">Review Options</button>
+            <button class="primary" onclick="nextPageFromModal()">Next Question ➜</button>
+        </div>
+    </div>
 </div>
-            
-            <div id="tab-users" class="hidden">
-                <h3>User Manager</h3>
-                <div style="display:flex; gap:10px; margin-bottom:20px;">
-                    <input type="text" id="admin-user-input" placeholder="User UID or Email..." style="margin:0;">
-                    <button class="primary" onclick="adminLookupUser()" style="width:auto; margin:0;">Search</button>
-                </div>
-                <div id="admin-user-result"></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="explanation-modal" class="modal-overlay hidden">
-        <div class="joinCard" style="max-width: 600px; border-left: 6px solid #28a745; text-align: left;">
-            <h2 style="color:#28a745; margin-bottom:10px; font-size: 24px;">✅ Correct!</h2>
-            <div id="explanation-text" class="dynamic-explanation" style="margin-top:0; border:none; background:#f9f9f9; text-align:left;"></div>
-            <div style="display:flex; gap:10px; margin-top:20px; align-items:center;">
-                <button class="secondary" onclick="closeModal()">Review Options</button>
-                <button class="primary" onclick="nextPageFromModal()">Next Question ➜</button>
-            </div>
-            <div style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px;">
-                <p onclick="toggleReportForm()" style="color:#e74c3c; font-size:12px; cursor:pointer; text-decoration:underline;">
-                    🚩 Report a mistake in this question
-                </p>
-                <div id="report-form" class="hidden" style="margin-top:10px; background:#fff5f5; padding:10px; border-radius:8px;">
-                    <input type="text" id="report-reason" placeholder="Describe error (e.g. Typo in Option A)" style="width:100%; margin-bottom:5px; font-size:13px; background:white;">
-                    <button onclick="submitReport()" style="background:#e74c3c; color:white; font-size:12px; padding:8px 15px; width:auto; border:none;">Submit Report</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
 <div id="report-modal" class="modal-overlay hidden">
     <div class="joinCard" style="max-width: 400px; padding: 25px;">
@@ -374,8 +290,8 @@
         </div>
     </div>
 </div>
-    
-    <div id="premium-modal" class="modal-overlay hidden">
+
+<div id="premium-modal" class="modal-overlay hidden">
     <div class="joinCard" style="padding: 0 !important; overflow: hidden; display: flex; flex-direction: column; max-height: 85vh; width: 100%; max-width: 450px; background: white; border-radius: 20px;">
         
         <div class="modal-header" style="flex-shrink: 0; padding: 20px 25px; border-bottom: 1px solid #f1f5f9; background: white;">
@@ -433,8 +349,8 @@
         </div>
     </div>
 </div>
-    
-   <div id="profile-modal" class="modal-overlay hidden">
+
+<div id="profile-modal" class="modal-overlay hidden">
     <div class="joinCard" style="padding: 0 !important; overflow: hidden; display: flex; flex-direction: column; max-height: 85vh; width: 100%; max-width: 500px; background: white; border-radius: 20px;">
         
         <div class="modal-header" style="flex-shrink: 0; padding: 20px 25px; border-bottom: 1px solid #f1f5f9; background: white; display:flex; justify-content:space-between; align-items:center;">
@@ -514,7 +430,7 @@
         </div>
     </div>
 </div>
-    
+
 <div id="analytics-modal" class="modal-overlay hidden">
     <div class="perf-card-new">
         <h2 style="margin-top: 0; margin-bottom: 25px; color: #1e293b;">Performance Report</h2>
@@ -526,27 +442,90 @@
     </div>
 </div>
 
-    
-    <div id="badges-modal" class="modal-overlay hidden">
-        <div class="joinCard" style="max-width: 500px;">
-            <h2 style="margin-bottom:10px;">🏆 Your Achievements</h2>
-            <div id="badge-list" class="badge-grid"></div>
-            <button class="primary" onclick="document.getElementById('badges-modal').classList.add('hidden')" style="margin-top:20px;">Close</button>
+<div id="achievement-modal" class="modal-overlay hidden">
+    <div class="achievements-card">
+        
+        <div class="ach-header">
+            <div class="ach-trophy-wrapper">
+                <span class="main-trophy">🏆</span>
+                <div class="trophy-glow"></div>
+            </div>
+            <h2>Your Journey</h2>
+            <p>Track your progress and unlock mastery.</p>
+        </div>
+
+        <div class="ach-grid">
+            
+            <div class="ach-item unlocked">
+                <div class="ach-icon-box">👶</div>
+                <div class="ach-info">
+                    <h3>Novice</h3>
+                    <span>Solve 10 Questions</span>
+                </div>
+                <div class="ach-check">✓</div>
+            </div>
+
+            <div class="ach-item locked">
+                <div class="ach-icon-box">🥉</div>
+                <div class="ach-info">
+                    <h3>Bronze</h3>
+                    <span>Solve 100 Questions</span>
+                </div>
+                <div class="ach-lock">🔒</div>
+            </div>
+
+            <div class="ach-item locked">
+                <div class="ach-icon-box">🥈</div>
+                <div class="ach-info">
+                    <h3>Silver</h3>
+                    <span>Solve 500 Questions</span>
+                </div>
+                <div class="ach-lock">🔒</div>
+            </div>
+
+            <div class="ach-item locked">
+                <div class="ach-icon-box">🥇</div>
+                <div class="ach-info">
+                    <h3>Gold</h3>
+                    <span>Solve 1000 Questions</span>
+                </div>
+                <div class="ach-lock">🔒</div>
+            </div>
+
+            <div class="ach-item locked">
+                <div class="ach-icon-box">💎</div>
+                <div class="ach-info">
+                    <h3>Diamond</h3>
+                    <span>Solve 2000 Questions</span>
+                </div>
+                <div class="ach-lock">🔒</div>
+            </div>
+
+            <div class="ach-item locked">
+                <div class="ach-icon-box">👑</div>
+                <div class="ach-info">
+                    <h3>Master</h3>
+                    <span>Solve 5000 Questions</span>
+                </div>
+                <div class="ach-lock">🔒</div>
+            </div>
+
+        </div>
+
+        <div class="ach-footer">
+            <button class="primary" onclick="document.getElementById('achievement-modal').classList.add('hidden')">Close</button>
         </div>
     </div>
+</div>
 
-    <script src="script.js"></script>
+<div id="badges-modal" class="modal-overlay hidden">
+    <div class="joinCard" style="max-width: 500px;">
+        <h2 style="margin-bottom:10px;">🏆 Your Achievements</h2>
+        <div id="badge-list" class="badge-grid"></div>
+        <button class="primary" onclick="document.getElementById('badges-modal').classList.add('hidden')" style="margin-top:20px;">Close</button>
+    </div>
+</div>
+
+<script src="script.js"></script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
