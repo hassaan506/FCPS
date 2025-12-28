@@ -1596,52 +1596,63 @@ function switchPremTab(tab) {
 async function openProfileModal() {
     if (!currentUser || isGuest) return alert("Please log in to edit profile.");
     
+    // 1. Show Modal Immediately
     document.getElementById('profile-modal').classList.remove('hidden');
-    
-    // 1. Fetch Latest Data
-    let data = userProfile || {};
+    document.getElementById('profile-plan').innerText = "Loading...";
+
+    // 2. FORCE FETCH FRESH DATA (Fixes the "Still Free" bug)
+    let freshData = {};
     try {
         const doc = await db.collection('users').doc(currentUser.uid).get();
-        if (doc.exists) data = doc.data();
-    } catch (e) { console.error(e); }
+        if (doc.exists) freshData = doc.data();
+        userProfile = freshData; // Update global state
+    } catch (e) {
+        console.error("Fetch error:", e);
+        freshData = userProfile || {};
+    }
 
-    // 2. Fill Basic Fields
+    // 3. Fill Basic Fields
     document.getElementById('profile-email').innerText = currentUser.email;
-    document.getElementById('edit-username').value = data.username || ""; // Allow adding if missing
-    document.getElementById('edit-name').value = data.displayName || "";
-    document.getElementById('edit-phone').value = data.phone || "";
-    document.getElementById('edit-college').value = data.college || "";
-    document.getElementById('edit-exam').value = data.targetExam || "FCPS-1";
+    document.getElementById('edit-username').value = freshData.username || ""; // Empty if they haven't set one yet
+    document.getElementById('edit-name').value = freshData.displayName || "";
+    document.getElementById('edit-phone').value = freshData.phone || "";
+    document.getElementById('edit-college').value = freshData.college || "";
+    document.getElementById('edit-exam').value = freshData.targetExam || "FCPS-1";
 
-    // 3. ROBUST DATE PARSING (The Fix)
-    const joinDate = parseDateRobust(data.joined) || new Date(currentUser.metadata.creationTime);
-    document.getElementById('profile-joined').innerText = formatDateHelper(joinDate);
+    // 4. FIX DATES (Joined)
+    // We try multiple ways to find the date: Database -> Auth Meta -> Now
+    let joinDateRaw = freshData.joined || currentUser.metadata.creationTime;
+    let joinDateObj = parseDateRobust(joinDateRaw);
+    document.getElementById('profile-joined').innerText = joinDateObj ? formatDateHelper(joinDateObj) : "N/A";
 
-    // 4. PLAN & EXPIRY LOGIC
+    // 5. FIX PLAN & EXPIRY
     const planElem = document.getElementById('profile-plan');
     const expiryElem = document.getElementById('profile-expiry');
 
-    if (data.isPremium) {
+    if (freshData.isPremium) {
         planElem.innerText = "PREMIUM 👑";
         
-        // Handle Lifetime vs Date
-        if (data.plan === 'lifetime') {
+        // Handle "Lifetime" vs "Date"
+        if (freshData.plan === 'lifetime') {
              expiryElem.innerText = "Lifetime Access";
-             expiryElem.style.color = "#10b981";
+             expiryElem.style.color = "#10b981"; // Green
         } else {
-             const expDate = parseDateRobust(data.expiryDate);
-             if (expDate) {
-                 expiryElem.innerText = formatDateHelper(expDate);
+             let expDateObj = parseDateRobust(freshData.expiryDate);
+             
+             if (expDateObj) {
+                 expiryElem.innerText = formatDateHelper(expDateObj);
+                 
                  // Check if actually expired
-                 if (new Date() > expDate) {
+                 if (new Date() > expDateObj) {
                      expiryElem.innerText += " (Expired)";
                      expiryElem.style.color = "red";
-                     planElem.innerText = "Expired";
+                     planElem.innerText = "Expired Plan";
                  } else {
-                     expiryElem.style.color = "#d97706";
+                     expiryElem.style.color = "#d97706"; // Orange/Gold
                  }
              } else {
-                 expiryElem.innerText = "Active";
+                 expiryElem.innerText = "Active (No Date)";
+                 expiryElem.style.color = "#10b981";
              }
         }
     } else {
@@ -1651,74 +1662,55 @@ async function openProfileModal() {
     }
 }
 
-// --- Add this Helper Function to the bottom of script.js ---
-function parseDateRobust(input) {
-    if (!input) return null;
-    // Handle Firestore Timestamp (has .seconds)
-    if (input.seconds) return new Date(input.seconds * 1000);
-    // Handle String or Number
-    const d = new Date(input);
-    return isNaN(d.getTime()) ? null : d;
-}
-
 async function saveDetailedProfile() {
-    const btn = event.target; // Get the Save button
-    const originalText = btn.innerText;
+    const btn = event.target;
     btn.innerText = "Saving...";
     btn.disabled = true;
 
     const name = document.getElementById('edit-name').value;
-    const username = document.getElementById('edit-username').value.trim().toLowerCase().replace(/\s+/g, ''); // Remove spaces
+    const usernameRaw = document.getElementById('edit-username').value;
+    const username = usernameRaw ? usernameRaw.trim().toLowerCase().replace(/\s+/g, '') : "";
     const phone = document.getElementById('edit-phone').value;
     const college = document.getElementById('edit-college').value;
     const exam = document.getElementById('edit-exam').value;
 
     try {
-        // 1. UNIQUE USERNAME CHECK
-        if (username) {
-            // Check if anyone ELSE has this username
-            const check = await db.collection('users')
-                .where('username', '==', username)
-                .get();
-
-            let isTaken = false;
-            check.forEach(doc => {
-                if (doc.id !== currentUser.uid) isTaken = true; // Found someone else with it
-            });
-
-            if (isTaken) {
-                throw new Error("⚠️ Username is already taken! Please choose another.");
-            }
+        // 1. If username changed, check uniqueness
+        if (username && username !== (userProfile.username || "")) {
+            const check = await db.collection('users').where('username', '==', username).get();
+            let taken = false;
+            check.forEach(d => { if(d.id !== currentUser.uid) taken = true; });
+            
+            if (taken) throw new Error("⚠️ Username already taken.");
         }
 
-        // 2. Standard Updates
-        if (currentUser.displayName !== name) {
-            await currentUser.updateProfile({ displayName: name });
-        }
-
-        await db.collection('users').doc(currentUser.uid).update({
+        // 2. Update DB
+        const updates = {
             displayName: name,
-            username: username, // Save username
             phone: phone,
             college: college,
             targetExam: exam
-        });
+        };
+        if (username) updates.username = username;
 
-        // Update local profile
-        userProfile.displayName = name;
-        userProfile.username = username;
+        await db.collection('users').doc(currentUser.uid).update(updates);
         
-        document.getElementById('user-display').innerText = name || username || "User"; 
-        alert("✅ Profile Updated Successfully!");
+        // 3. Update Local State
+        if (username) userProfile.username = username;
+        userProfile.displayName = name;
+
+        document.getElementById('user-display').innerText = name || username || "User";
+        alert("✅ Saved!");
         document.getElementById('profile-modal').classList.add('hidden');
 
     } catch (e) {
-        alert(e.message);
+        alert("Error: " + e.message);
     } finally {
-        btn.innerText = originalText;
+        btn.innerText = "💾 Save Changes";
         btn.disabled = false;
     }
 }
+
 function parseDateHelper(dateInput) {
     if (!dateInput) return new Date();
     if (dateInput.toDate) return dateInput.toDate(); 
@@ -1961,6 +1953,17 @@ function resetPassword() {
 
 window.onload = () => {
     if(localStorage.getItem('fcps-theme')==='dark') toggleTheme();
+}
+
+function parseDateRobust(input) {
+    if (!input) return null;
+    // 1. Firestore Timestamp object (has .seconds)
+    if (input.seconds) return new Date(input.seconds * 1000);
+    // 2. Already a JS Date object
+    if (input instanceof Date) return input;
+    // 3. String or Number (Timestamp)
+    const d = new Date(input);
+    return isNaN(d.getTime()) ? null : d;
 }
 
 
