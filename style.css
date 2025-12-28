@@ -2031,19 +2031,18 @@ button.secondary {
     color: var(--text-dark) !important;
 }
 
-
 /* =========================================
-   MODERN LOGIN CARD REDESIGN
+   NEW MODERN LOGIN CARD DESIGN
    ========================================= */
 
-/* 1. The Card Container */
+/* The Card Container */
 .auth-card-modern {
     background: rgba(255, 255, 255, 0.85); /* Semi-transparent White */
     backdrop-filter: blur(20px);           /* The Glass Effect */
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.6);
     box-shadow: 
-        0 20px 50px -10px rgba(0, 70, 150, 0.15), /* Soft Blue Shadow */
+        0 20px 50px -10px rgba(0, 70, 150, 0.15),
         0 10px 20px -10px rgba(0, 0, 0, 0.05);
     padding: 40px 30px !important;
     border-radius: 24px;
@@ -2123,7 +2122,7 @@ button.secondary {
     color: #334155;
     outline: none;
     transition: all 0.3s ease;
-    text-align: left; /* Normal typing alignment */
+    text-align: left !important; /* Force text to align left */
 }
 
 .auth-card-modern input:focus {
