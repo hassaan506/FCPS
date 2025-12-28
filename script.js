@@ -1064,33 +1064,46 @@ async function loadAllUsers() {
 function renderUserRow(u, extraLabel = "") {
     const isAdmin = u.role === 'admin';
     const isPrem = u.isPremium;
-    const bgStyle = isAdmin ? "background:#fff7ed; border-left:4px solid #d97706;" : "border-bottom:1px solid #f1f5f9;";
     
+    // Determine Badge Classes
+    const roleBadgeClass = isAdmin ? 'badge-admin' : 'badge-student';
+    const roleText = isAdmin ? 'Admin' : 'Student';
+    
+    const planBadgeClass = isPrem ? 'badge-premium' : 'badge-free';
+    const planText = isPrem ? 'Premium' : 'Free';
+
+    // Highlight Admin Row
+    const rowClass = isAdmin ? "is-admin-row" : "";
+    
+    // Format Date
     let dateStr = "N/A";
     if(u.joined) {
         const d = u.joined.seconds ? new Date(u.joined.seconds * 1000) : new Date(u.joined);
         if(!isNaN(d.getTime())) dateStr = formatDateHelper(d);
     }
 
+    // Return the new HTML
     return `
-    <div class="user-list-item" style="padding:12px; display:flex; justify-content:space-between; align-items:center; ${bgStyle}">
-        <div>
-            <div style="font-weight:bold; color:#1e293b;">
-                ${u.email || "Unknown User"} 
-                ${isAdmin ? '⭐' : ''}
+    <div class="user-list-item ${rowClass}">
+        <div class="user-info-group">
+            <div class="user-email-text">
+                ${isAdmin ? '⭐' : ''} ${u.email || "Unknown User"} 
                 ${extraLabel}
             </div>
-            <div style="font-size:11px; color:#64748b; margin-top:2px;">
-                ${isAdmin ? '<b>Admin</b>' : 'Student'} | 
-                ${isPrem ? '<b style="color:#10b981">Premium</b>' : 'Free'} | 
-                Joined: ${dateStr}
+            
+            <div class="user-meta-row">
+                <span class="status-badge ${roleBadgeClass}">${roleText}</span>
+                <span class="status-badge ${planBadgeClass}">${planText}</span>
+                <span style="border-left:1px solid #cbd5e1; padding-left:10px;">Joined: ${dateStr}</span>
             </div>
         </div>
-        <button onclick="adminLookupUser('${u.id}')" style="border:1px solid #cbd5e1; background:white; color:#333; padding:5px 12px; border-radius:6px; cursor:pointer; font-size:12px;">
-            Manage
+
+        <button class="btn-manage-user" onclick="adminLookupUser('${u.id}')">
+            ⚙️ Manage
         </button>
     </div>`;
 }
+
 function deleteReport(id) { db.collection('reports').doc(id).delete().then(()=>loadAdminReports()); }
 
 async function loadAdminPayments() {
@@ -1756,5 +1769,6 @@ function resetPassword() {
 window.onload = () => {
     if(localStorage.getItem('fcps-theme')==='dark') toggleTheme();
 }
+
 
 
