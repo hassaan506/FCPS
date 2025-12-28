@@ -172,7 +172,7 @@ async function login() {
     const msg = document.getElementById('auth-msg');
     if(!input || !p) return alert("Please enter email/username and password");
     msg.innerText = "Verifying...";
-  
+   
     let emailToUse = input;
 
     if (!input.includes('@')) {
@@ -800,12 +800,12 @@ function checkAnswer(selectedOption, btnElement, q) {
 function reportCurrentQuestion() {
     // 1. Check if we have questions loaded
     if (!filteredQuestions || filteredQuestions.length === 0) return;
-
+    
     // 2. Get the specific ID of the question currently on screen
     const currentQ = filteredQuestions[currentIndex];
     
     // 3. Open the modal for this ID
-    openReportModal(currentQ._uid);
+    if(currentQ) openReportModal(currentQ._uid);
 }
 
 function toggleFlag() {
