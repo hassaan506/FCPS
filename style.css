@@ -1999,3 +1999,27 @@ button.secondary {
     border-bottom: 1px solid #f1f5f9;
     color: #475569;
 }
+
+
+/* =========================================
+   DARK MODE BUTTON FIXES
+   ========================================= */
+
+/* Force all 'secondary' white buttons to turn dark */
+[data-theme="dark"] .secondary {
+    background-color: var(--input-bg) !important; /* Becomes dark grey */
+    color: var(--text-dark) !important;           /* Text becomes white */
+    border-color: var(--border-color) !important;
+}
+
+/* Fix hover effect in dark mode */
+[data-theme="dark"] .secondary:hover {
+    background-color: #334155 !important; /* Slightly lighter grey on hover */
+    border-color: #475569 !important;
+}
+
+/* Specifically fix the 'View Analytics' button if it has inline styles */
+[data-theme="dark"] #stats-box .secondary {
+    background-color: var(--input-bg) !important;
+    color: var(--text-dark) !important;
+}
