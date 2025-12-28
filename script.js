@@ -1596,62 +1596,75 @@ function switchPremTab(tab) {
 async function openProfileModal() {
     if (!currentUser || isGuest) return alert("Please log in to edit profile.");
     
-    // 1. Show Modal Immediately
+    // 1. Show Modal
     document.getElementById('profile-modal').classList.remove('hidden');
     document.getElementById('profile-plan').innerText = "Loading...";
 
-    // 2. FORCE FETCH FRESH DATA (Fixes the "Still Free" bug)
+    // 2. Fetch Fresh Data
     let freshData = {};
     try {
         const doc = await db.collection('users').doc(currentUser.uid).get();
         if (doc.exists) freshData = doc.data();
-        userProfile = freshData; // Update global state
+        userProfile = freshData;
     } catch (e) {
-        console.error("Fetch error:", e);
         freshData = userProfile || {};
     }
 
-    // 3. Fill Basic Fields
-    document.getElementById('profile-email').innerText = currentUser.email;
-    document.getElementById('edit-username').value = freshData.username || ""; // Empty if they haven't set one yet
+    // 3. FILL FIELDS & LOCK USERNAME LOGIC (The Fix)
+    const emailElem = document.getElementById('profile-email');
+    const userInput = document.getElementById('edit-username');
+    
+    emailElem.innerText = currentUser.email;
+    
+    // Check if username exists
+    if (freshData.username) {
+        userInput.value = freshData.username;
+        userInput.disabled = true; // LOCK THE INPUT
+        userInput.style.backgroundColor = "#f1f5f9"; // Grey out background
+        userInput.style.color = "#64748b"; // Grey text
+        userInput.style.cursor = "not-allowed";
+        userInput.title = "Username cannot be changed. Contact Admin.";
+    } else {
+        userInput.value = ""; 
+        userInput.disabled = false; // UNLOCK
+        userInput.style.backgroundColor = "white";
+        userInput.style.color = "#0072ff";
+        userInput.style.cursor = "text";
+        userInput.placeholder = "Create a username (One-time only)";
+    }
+
     document.getElementById('edit-name').value = freshData.displayName || "";
     document.getElementById('edit-phone').value = freshData.phone || "";
     document.getElementById('edit-college').value = freshData.college || "";
     document.getElementById('edit-exam').value = freshData.targetExam || "FCPS-1";
 
-    // 4. FIX DATES (Joined)
-    // We try multiple ways to find the date: Database -> Auth Meta -> Now
+    // 4. Handle Dates (Robust)
     let joinDateRaw = freshData.joined || currentUser.metadata.creationTime;
     let joinDateObj = parseDateRobust(joinDateRaw);
     document.getElementById('profile-joined').innerText = joinDateObj ? formatDateHelper(joinDateObj) : "N/A";
 
-    // 5. FIX PLAN & EXPIRY
+    // 5. Handle Plan & Expiry
     const planElem = document.getElementById('profile-plan');
     const expiryElem = document.getElementById('profile-expiry');
 
     if (freshData.isPremium) {
         planElem.innerText = "PREMIUM 👑";
-        
-        // Handle "Lifetime" vs "Date"
         if (freshData.plan === 'lifetime') {
              expiryElem.innerText = "Lifetime Access";
-             expiryElem.style.color = "#10b981"; // Green
+             expiryElem.style.color = "#10b981";
         } else {
              let expDateObj = parseDateRobust(freshData.expiryDate);
-             
              if (expDateObj) {
                  expiryElem.innerText = formatDateHelper(expDateObj);
-                 
-                 // Check if actually expired
                  if (new Date() > expDateObj) {
                      expiryElem.innerText += " (Expired)";
                      expiryElem.style.color = "red";
                      planElem.innerText = "Expired Plan";
                  } else {
-                     expiryElem.style.color = "#d97706"; // Orange/Gold
+                     expiryElem.style.color = "#d97706";
                  }
              } else {
-                 expiryElem.innerText = "Active (No Date)";
+                 expiryElem.innerText = "Active";
                  expiryElem.style.color = "#10b981";
              }
         }
@@ -1965,6 +1978,7 @@ function parseDateRobust(input) {
     const d = new Date(input);
     return isNaN(d.getTime()) ? null : d;
 }
+
 
 
 
