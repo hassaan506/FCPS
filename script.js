@@ -714,54 +714,15 @@ function createQuestionCard(q, index, showNumber = true) {
     block.className = "test-question-block";
     block.id = `q-card-${index}`;
 
-    // --- 1. HEADER ROW (Fixes the layout issue) ---
-    const headerRow = document.createElement('div');
-    headerRow.style.display = "flex";
-    headerRow.style.justifyContent = "space-between";
-    headerRow.style.alignItems = "flex-start"; 
-    headerRow.style.gap = "15px";
-    headerRow.style.marginBottom = "20px";
-    
-    // --- 2. QUESTION TEXT ---
+    // 1. Question Text (Clean, no inner button)
     const qText = document.createElement('div');
     qText.className = "test-q-text";
-    qText.style.marginBottom = "0"; // Remove bottom margin so it aligns
-    qText.style.flex = "1";         // Allow text to take available space
-    qText.style.textAlign = "justify";
+    // Standard text formatting
     qText.innerHTML = `${showNumber ? (index + 1) + ". " : ""}${q.Question || "Missing Text"}`;
     
-    // --- 3. REPORT BUTTON (Styled to be small) ---
-    const reportBtn = document.createElement('button');
-    reportBtn.innerHTML = "🚩 Report";
-    reportBtn.title = "Report a mistake";
-    
-    // Inline styles to override global CSS
-    reportBtn.style.cssText = `
-        width: auto !important;
-        background: transparent;
-        border: 1px solid #fca5a5;
-        color: #ef4444;
-        font-size: 11px;
-        font-weight: 600;
-        cursor: pointer;
-        padding: 5px 10px;
-        border-radius: 6px;
-        flex-shrink: 0;
-        margin-top: 5px;
-        box-shadow: none;
-    `;
-    
-    reportBtn.onclick = (e) => {
-        e.stopPropagation(); 
-        openReportModal(q._uid);
-    };
+    block.appendChild(qText);
 
-    // Append to Header
-    headerRow.appendChild(qText);
-    headerRow.appendChild(reportBtn);
-    block.appendChild(headerRow);
-
-    // --- 4. OPTIONS (Standard Logic) ---
+    // 2. Options
     const optionsDiv = document.createElement('div');
     optionsDiv.className = "options-group";
     optionsDiv.id = `opts-${index}`;
@@ -802,7 +763,6 @@ function createQuestionCard(q, index, showNumber = true) {
     return block;
 }
 
-
 function checkAnswer(selectedOption, btnElement, q) {
     if (currentMode === 'test') {
         testAnswers[q._uid] = selectedOption;
@@ -835,6 +795,17 @@ function checkAnswer(selectedOption, btnElement, q) {
     }
     
     renderPracticeNavigator();
+}
+
+function reportCurrentQuestion() {
+    // 1. Check if we have questions loaded
+    if (!filteredQuestions || filteredQuestions.length === 0) return;
+
+    // 2. Get the specific ID of the question currently on screen
+    const currentQ = filteredQuestions[currentIndex];
+    
+    // 3. Open the modal for this ID
+    openReportModal(currentQ._uid);
 }
 
 function toggleFlag() {
@@ -2164,4 +2135,5 @@ async function submitReportFinal() {
         alert("Error sending report: " + e.message);
     }
 }
+
 
