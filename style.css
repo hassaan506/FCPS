@@ -1,5 +1,5 @@
 /* -----------------------------------------------------------
-   STYLE.CSS - MEDICAL MASTERY (UPDATED HEADER VERSION)
+   STYLE.CSS - MEDICAL MASTERY (FINAL: NEW BADGES & HEADER)
    ----------------------------------------------------------- */
 
 /* =========================================
@@ -258,7 +258,7 @@ button {
 
 
 /* =========================================
-   6. DASHBOARD & HEADER (UPDATED AS REQUESTED)
+   6. DASHBOARD & HEADER (UPDATED)
    ========================================= */
 
 .topbar {
@@ -268,8 +268,8 @@ button {
   padding: 10px 16px;
   background: var(--card-bg);
   border-bottom: 1px solid var(--border-color);
-  border-radius: 12px; /* Added rounded corners to match theme */
-  margin-bottom: 20px; /* Spacing below header */
+  border-radius: 12px;
+  margin-bottom: 20px;
   box-shadow: var(--shadow-sm);
 }
 
@@ -323,29 +323,6 @@ button {
   padding: 4px 8px;
   background: var(--input-bg);
   border-radius: 6px;
-}
-
-.icon-btn {
-  border: 1px solid var(--border-color);
-  background: var(--input-bg);
-  padding: 6px 8px;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex; /* Added for centering icons */
-  align-items: center;
-  justify-content: center;
-  width: auto; /* Overrides global button width */
-  margin-top: 0; /* Overrides global button margin */
-}
-
-.icon-btn:hover {
-    background: #e2e8f0;
-}
-
-.icon-btn.danger {
-  background: #ef4444;
-  color: #fff;
-  border: none;
 }
 
 .btn-outline {
@@ -675,7 +652,7 @@ button {
 
 
 /* =========================================
-   9. POPUPS, MODALS & OVERLAYS (Mobile Fixed)
+   9. POPUPS, MODALS & OVERLAYS
    ========================================= */
 
 .modal-overlay {
@@ -698,21 +675,19 @@ button {
     max-height: 85vh; 
     width: 95%; 
     max-width: 600px; 
-    
     display: flex; 
     flex-direction: column; 
-    overflow: hidden; /* Prevents whole card from scrolling */
-    
+    overflow: hidden; 
     margin: 0; 
     text-align: left;
-    padding: 0; /* We move padding to children for better scroll control */
+    padding: 0; 
 }
 
 .modal-overlay .joinCard h2, 
 .modal-overlay .joinCard h3 {
     padding: 25px 25px 10px 25px;
     margin: 0;
-    flex-shrink: 0; /* Never shrink the header */
+    flex-shrink: 0; 
 }
 
 .dynamic-explanation {
@@ -723,32 +698,29 @@ button {
     font-size: 15px;
     border-top: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
-    
-    flex: 1;            /* Take all available remaining height */
-    overflow-y: auto;   /* Scroll ONLY this part */
-    min-height: 0;      /* Critical for Flexbox scrolling */
-    
-    padding: 20px 25px; /* Internal padding */
-    margin: 0 !important; /* Reset margins */
-    max-height: none !important; /* Override any inline style */
+    flex: 1;            
+    overflow-y: auto;   
+    min-height: 0;      
+    padding: 20px 25px; 
+    margin: 0 !important; 
+    max-height: none !important; 
 }
 
 .modal-overlay .joinCard > div:last-child,
 .modal-overlay .joinCard > div:nth-last-child(2) {
     padding: 15px 25px 25px 25px;
-    flex-shrink: 0; /* Never shrink the buttons */
+    flex-shrink: 0; 
     background: var(--card-bg);
 }
 
 #explanation-text {
-    /* Ensure the specific ID also follows the rules */
     display: block;
     width: 100%;
 }
 
-/* =========================================
-   10. EXTRAS (Sidebar, Badges, Search)
-   ========================================= */
+/* =====================================================
+   10. EXTRAS (BADGES, STREAK, ICON BUTTONS, SEARCH) - REDESIGNED
+   ===================================================== */
 
 /* EXAM SIDEBAR */
 .test-sidebar {
@@ -781,62 +753,142 @@ button {
 .nav-btn.answered { background: #e3f2fd; color: #0072ff; border-color: #90cdf4; }
 .nav-btn.flagged { border-color: var(--warning); color: var(--warning); background: #fffbeb; }
 
-/* BADGES & GAMIFICATION */
-.streak-container { display: flex; align-items: center; margin-right: 15px; font-weight: 700; color: var(--danger); font-size: 14px; }
-.streak-icon { font-size: 20px; margin-right: 5px; animation: burn 0.8s infinite alternate; }
-
-.icon-btn, .theme-toggle { 
-    background: transparent; border: none; font-size: 22px; cursor: pointer; margin-right: 15px; 
-    transition: transform 0.2s; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
-    border-radius: 50%;
+/* ---------- STREAK ---------- */
+.streak-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+  font-weight: 700;
+  font-size: 13px;
 }
-.icon-btn:hover, .theme-toggle:hover { background: #f1f5f9; transform: scale(1.1); }
 
-.badge-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 20px; }
+.streak-icon {
+  font-size: 18px;
+  animation: burn 1s ease-in-out infinite alternate;
+}
+
+/* ---------- ICON BUTTONS ---------- */
+.icon-btn,
+.theme-toggle {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: var(--input-bg);
+  font-size: 18px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+  margin-right: 0; /* Reset previous margin */
+}
+
+.icon-btn:hover,
+.theme-toggle:hover {
+  background: var(--card-bg);
+  transform: translateY(-1px);
+}
+
+/* ---------- BADGE GRID ---------- */
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 14px;
+  margin-top: 20px;
+}
+
+/* ---------- BADGE CARD ---------- */
 .badge-item {
-    background: var(--input-bg);        /* Adapts to Dark Mode */
-    border: 1px solid var(--border-color);
-    border-radius: 16px;
-    padding: 15px;
-    text-align: center;
-    opacity: 0.5;
-    filter: grayscale(100%);
-    transition: all 0.3s;
-    color: var(--text-dark);            /* Ensures text is visible */
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 14px 12px;
+  text-align: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  opacity: 0.35;
+  color: var(--text-light);
+  filter: saturate(0.3);
 }
 
-.badge-item.unlocked { 
-    opacity: 1; 
-    filter: grayscale(0%); 
-    border-color: #ffd700; 
-    background: #fffbeb;               /* Light Mode Gold */
-    transform: translateY(-5px); 
-    box-shadow: 0 5px 15px rgba(255, 215, 0, 0.2);
-    color: #b7791f;                    /* Dark Gold Text */
+/* UNLOCKED BADGE */
+.badge-item.unlocked {
+  opacity: 1;
+  filter: none;
+  color: var(--text-dark);
+  border-color: #facc15;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 215, 0, 0.12),
+    var(--card-bg)
+  );
+  box-shadow: 0 6px 18px rgba(250, 204, 21, 0.25);
+  transform: translateY(-4px);
 }
 
-/* Fix for Dark Mode Unlocked Badges */
+/* DARK MODE UNLOCKED BADGE */
 [data-theme="dark"] .badge-item.unlocked {
-    background: rgba(255, 215, 0, 0.15); /* Dark transparent gold */
-    color: #ffd700;                       /* Bright Gold Text */
-    border-color: #ffd700;
+  background: rgba(250, 204, 21, 0.12);
+  border-color: #facc15;
+  color: #facc15;
 }
 
-/* The Icon inside the badge */
+/* BADGE CONTENT */
 .badge-icon {
-    font-size: 30px;
-    display: block;
-    margin-bottom: 5px;
+  font-size: 28px;
+  margin-bottom: 6px;
+  display: block;
 }
-/* SEARCH */
+
+.badge-name {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.badge-desc {
+  font-size: 11px;
+  margin-top: 2px;
+  color: var(--text-light);
+  line-height: 1.3;
+}
+
+/* ---------- SEARCH DROPDOWN ---------- */
 .search-results-list {
-    position: absolute; top: 110%; left: 0; right: 0;
-    background: white; border: 1px solid #ccc; max-height: 250px;
-    overflow-y: auto; z-index: 1000; display: none;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-radius: 12px;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  max-height: 260px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+  display: none;
 }
-.search-item { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s; }
-.search-item:hover { background-color: #f0f9ff; color: var(--primary); }
+
+.search-item {
+  padding: 12px 14px;
+  font-size: 14px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.15s ease;
+  text-align: left;
+}
+
+.search-item:last-child {
+  border-bottom: none;
+}
+
+.search-item:hover {
+  background: rgba(59, 130, 246, 0.08);
+  color: var(--primary);
+}
 
 
 /* =========================================
@@ -864,7 +916,8 @@ button {
     .topbar-right {
         width: 100%;
         justify-content: space-between;
-        flex-wrap: wrap; /* Allows buttons to wrap if needed */
+        flex-wrap: wrap; 
+        gap: 10px;
     }
     
     .user-info {
@@ -878,10 +931,10 @@ button {
     
     /* NAVIGATOR FIX FOR MOBILE (Moved to Bottom) */
     .test-sidebar { 
-        position: relative; /* Not fixed anymore */
+        position: relative; 
         top: auto; right: auto; width: 100%; 
         max-height: 200px; margin-top: 20px; 
-        order: 10; /* Move to bottom of flex container */
+        order: 10; 
         display: none;
     }
     .test-sidebar.active { display: block; }
@@ -1388,23 +1441,6 @@ tr:last-child td { border-bottom: none; }
     font-weight: bold;
     border: 1px solid #d97706;
     margin-left: 5px;
-}
-
-/* --- ADD THIS TO BOTTOM OF STYLE.CSS --- */
-
-/* Badge Description Text */
-.badge-desc {
-    display: block;
-    font-size: 11px;
-    color: #64748b; /* Grey text */
-    margin-top: 4px;
-    line-height: 1.3;
-}
-
-/* Ensure unlocked badges look distinct */
-.badge-item.unlocked .badge-desc {
-    color: #b45309; /* Darker gold/brown for readability on gold bg */
-    font-weight: 500;
 }
 
 /* Fix Admin User Card Spacing */
