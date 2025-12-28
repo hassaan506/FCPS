@@ -353,7 +353,24 @@
             </div>
         </div>
     </div>
-
+<div id="report-modal" class="modal-overlay hidden">
+    <div class="joinCard" style="max-width: 400px; padding: 25px;">
+        <h3 style="margin-top:0; color:#ef4444; display:flex; align-items:center; gap:10px;">
+            <span>🚩</span> Report Issue
+        </h3>
+        <p style="font-size:13px; color:#666; margin-bottom:15px;">
+            Found a mistake? Let us know.
+        </p>
+        
+        <input type="hidden" id="report-q-id">
+        <textarea id="report-text" rows="4" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-bottom:15px; font-family:inherit; font-size:14px;" placeholder="Describe the error (e.g., Option B is wrong)..."></textarea>
+        
+        <div style="display:flex; gap:10px;">
+            <button class="secondary" onclick="document.getElementById('report-modal').classList.add('hidden')">Cancel</button>
+            <button class="primary" onclick="submitReportFinal()" style="background:#ef4444; color:white; border:none; box-shadow:none;">Submit</button>
+        </div>
+    </div>
+</div>
 <div id="premium-modal" class="modal-overlay hidden">
     <div class="joinCard" style="padding: 0 !important; overflow: hidden; display: flex; flex-direction: column; max-height: 85vh; width: 100%; max-width: 450px; background: white; border-radius: 20px;">
         
@@ -517,6 +534,7 @@
     <script src="script.js"></script>
 </body>
 </html>
+
 
 
 
