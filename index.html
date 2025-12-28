@@ -14,38 +14,56 @@
 <body>
 
 <div id="auth-screen" class="screen active">
-    <div class="joinCard">
-        <h1 class="gameTitle">EDEETOS</h1>
-        <p class="subTitle">Go Beyond Yourself!</p>
+    <div class="joinCard auth-card-modern">
+        
+        <div class="auth-header">
+            <div class="logo-circle">🩺</div>
+            <h1 class="gameTitle">EDEETOS</h1>
+            <p class="subTitle">Go Beyond Yourself!</p>
+        </div>
+
         <div id="auth-form">
-            <h2 id="auth-title">Log In</h2>
+            <h2 id="auth-title" class="fade-in">Welcome Back</h2>
             
             <form onsubmit="event.preventDefault(); handleAuthAction();">
-                <div id="signup-username-group" class="hidden">
-                    <input type="text" id="reg-username" placeholder="Choose a Username" autocomplete="username">
+                
+                <div id="signup-username-group" class="input-group hidden">
+                    <span class="input-icon">👤</span>
+                    <input type="text" id="reg-username" placeholder="Choose Username" autocomplete="username">
                 </div>
 
-                <input type="text" id="email" placeholder="Email or Username" autocomplete="username">
-                <input type="password" id="password" placeholder="Password" autocomplete="current-password">
+                <div class="input-group">
+                    <span class="input-icon">✉️</span>
+                    <input type="text" id="email" placeholder="Email or Username" autocomplete="username">
+                </div>
+
+                <div class="input-group">
+                    <span class="input-icon">🔒</span>
+                    <input type="password" id="password" placeholder="Password" autocomplete="current-password">
+                </div>
                 
                 <div id="auth-btn-container">
-                    <button type="submit" class="primary" id="main-auth-btn">Log In</button>
+                    <button type="submit" class="primary auth-btn" id="main-auth-btn">
+                        Log In <span style="margin-left:5px">➜</span>
+                    </button>
                 </div>
             </form>
             
-            <p style="margin-top:15px; font-size:12px;">
-                <span id="auth-toggle-msg">New here?</span> 
-                <span id="auth-toggle-link" onclick="toggleAuthMode()" style="color:var(--primary); cursor:pointer; font-weight:bold;">Create New ID</span>
+            <p class="auth-footer-text">
+                <span id="auth-toggle-msg" style="color:#64748b;">New here?</span> 
+                <span id="auth-toggle-link" onclick="toggleAuthMode()">Create Account</span>
             </p>
             
-            <p id="auth-msg" style="color:red; font-size:12px; margin-top:10px;"></p>
+            <p id="auth-msg" class="error-msg"></p>
         </div>        
-        <div style="margin-top:30px; border-top:1px solid #eee; padding-top:20px;">
-            <button class="secondary" onclick="guestLogin()">👤 Continue as Guest</button>
+        
+        <div class="guest-section">
+            <div class="divider"><span>OR</span></div>
+            <button class="secondary guest-btn" onclick="guestLogin()">Continue as Guest</button>
         </div>
     </div>
 </div>
-
+    
 <div id="dashboard-screen" class="screen hidden">        
     <div class="topBar">
         <div class="user-badge">
@@ -529,3 +547,4 @@
 <script src="script.js"></script>
 </body>
 </html>
+
