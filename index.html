@@ -22,7 +22,7 @@
     
     <form onsubmit="event.preventDefault(); handleAuthAction();">
         <div id="signup-username-group" class="hidden">
-            <input type="text" id="reg-username" placeholder="Choose a Username (Unique)" autocomplete="username">
+            <input type="text" id="reg-username" placeholder="Choose a Username" autocomplete="username">
         </div>
 
         <input type="text" id="email" placeholder="Email or Username" autocomplete="username">
@@ -455,7 +455,7 @@
             <div style="display:flex; flex-direction:column; gap:15px;">
                 
                 <div>
-                    <label style="font-size:13px; font-weight:600; color:#1e293b; display:block; margin-bottom:6px;">Username (Unique)</label>
+                    <label style="font-size:13px; font-weight:600; color:#1e293b; display:block; margin-bottom:6px;">Username</label>
                     <input type="text" id="edit-username" placeholder="@username" style="width:100%; padding:12px; border:1px solid #cbd5e1; border-radius:10px; font-size:14px; background:white; color:#0072ff; font-weight:bold;">
                 </div>
 
@@ -494,14 +494,18 @@
     </div>
 </div>
     
-    <div id="analytics-modal" class="modal-overlay hidden">
-        <div class="joinCard" style="max-width: 600px; text-align: left; width: 95%;">
-            <h2 class="gameTitle" style="font-size:24px; margin-bottom:20px;">Performance Report</h2>
-            <div id="analytics-content" style="max-height: 60vh; overflow-y: auto; padding-right: 10px;"></div>
-            <button class="primary" onclick="document.getElementById('analytics-modal').classList.add('hidden')">Close Report</button>
-        </div>
-    </div>
+<div id="analytics-modal" class="modal-overlay hidden">
+    <div class="perf-card-new">
+        <h2 style="margin-top: 0; margin-bottom: 25px; color: #1e293b;">Performance Report</h2>
+        
+        <div id="analytics-content">
+            </div>
 
+        <button class="btn-approve-big" onclick="document.getElementById('analytics-modal').classList.add('hidden')" style="background: #0088ff; color: white; border: none; padding: 12px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer;">Close Report</button>
+    </div>
+</div>
+
+    
     <div id="badges-modal" class="modal-overlay hidden">
         <div class="joinCard" style="max-width: 500px;">
             <h2 style="margin-bottom:10px;">🏆 Your Achievements</h2>
@@ -513,6 +517,7 @@
     <script src="script.js"></script>
 </body>
 </html>
+
 
 
 
