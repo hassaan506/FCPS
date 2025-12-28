@@ -196,11 +196,44 @@ async function login() {
             msg.innerText = "❌ " + err.message;
         });
 }
-function signup() {
-    const e = document.getElementById('email').value;
-    const p = document.getElementById('password').value;
-    if(!e || !p) return alert("Please enter email and password");
-    auth.createUserWithEmailAndPassword(e, p).catch(err => document.getElementById('auth-msg').innerText = err.message);
+
+async function signup() {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const username = document.getElementById('reg-username').value.trim().toLowerCase().replace(/\s+/g, '');
+    const msg = document.getElementById('auth-msg');
+
+    if (!email || !password || !username) return alert("Please fill in all fields.");
+    if (username.length < 3) return alert("Username must be at least 3 characters.");
+
+    msg.innerText = "Checking availability...";
+
+    try {
+        // 1. Check if Username is Taken
+        const check = await db.collection('users').where('username', '==', username).get();
+        if (!check.empty) throw new Error("⚠️ Username is already taken.");
+
+        // 2. Create Auth User
+        msg.innerText = "Creating account...";
+        const cred = await auth.createUserWithEmailAndPassword(email, password);
+        
+        // 3. Create Firestore Profile
+        await db.collection('users').doc(cred.user.uid).set({
+            email: email,
+            username: username, // Saved!
+            role: 'student',
+            isPremium: false,
+            joined: new Date(),
+            deviceId: currentDeviceId,
+            solved: [], bookmarks: [], mistakes: [], stats: {}
+        });
+
+        msg.innerText = "✅ Success!";
+        // Auth listener will handle redirection
+
+    } catch (e) {
+        msg.innerText = "Error: " + e.message;
+    }
 }
 
 function logout() {
@@ -1560,31 +1593,72 @@ function switchPremTab(tab) {
     document.getElementById('tab-btn-'+tab).classList.add('active');
 }
 
-// --- PROFILE FUNCTION (ROBUST) ---
 async function openProfileModal() {
     if (!currentUser || isGuest) return alert("Please log in to edit profile.");
     
     document.getElementById('profile-modal').classList.remove('hidden');
     
-    let freshData = {};
+    // 1. Fetch Latest Data
+    let data = userProfile || {};
     try {
         const doc = await db.collection('users').doc(currentUser.uid).get();
-        if (doc.exists) freshData = doc.data();
-    } catch (e) {
-        freshData = userProfile || {}; 
-    }
+        if (doc.exists) data = doc.data();
+    } catch (e) { console.error(e); }
 
+    // 2. Fill Basic Fields
     document.getElementById('profile-email').innerText = currentUser.email;
-    
-    // --- NEW: Load Username ---
-    document.getElementById('edit-username').value = freshData.username || ""; 
-    
-    // ... (Keep the rest of your existing code for Plan, Joined, Expiry, Name, Phone etc.) ...
-    
-    document.getElementById('edit-name').value = freshData.displayName || "";
-    document.getElementById('edit-phone').value = freshData.phone || "";
-    document.getElementById('edit-college').value = freshData.college || "";
-    document.getElementById('edit-exam').value = freshData.targetExam || "FCPS-1";
+    document.getElementById('edit-username').value = data.username || ""; // Allow adding if missing
+    document.getElementById('edit-name').value = data.displayName || "";
+    document.getElementById('edit-phone').value = data.phone || "";
+    document.getElementById('edit-college').value = data.college || "";
+    document.getElementById('edit-exam').value = data.targetExam || "FCPS-1";
+
+    // 3. ROBUST DATE PARSING (The Fix)
+    const joinDate = parseDateRobust(data.joined) || new Date(currentUser.metadata.creationTime);
+    document.getElementById('profile-joined').innerText = formatDateHelper(joinDate);
+
+    // 4. PLAN & EXPIRY LOGIC
+    const planElem = document.getElementById('profile-plan');
+    const expiryElem = document.getElementById('profile-expiry');
+
+    if (data.isPremium) {
+        planElem.innerText = "PREMIUM 👑";
+        
+        // Handle Lifetime vs Date
+        if (data.plan === 'lifetime') {
+             expiryElem.innerText = "Lifetime Access";
+             expiryElem.style.color = "#10b981";
+        } else {
+             const expDate = parseDateRobust(data.expiryDate);
+             if (expDate) {
+                 expiryElem.innerText = formatDateHelper(expDate);
+                 // Check if actually expired
+                 if (new Date() > expDate) {
+                     expiryElem.innerText += " (Expired)";
+                     expiryElem.style.color = "red";
+                     planElem.innerText = "Expired";
+                 } else {
+                     expiryElem.style.color = "#d97706";
+                 }
+             } else {
+                 expiryElem.innerText = "Active";
+             }
+        }
+    } else {
+        planElem.innerText = "Free Plan";
+        expiryElem.innerText = "-";
+        expiryElem.style.color = "#64748b";
+    }
+}
+
+// --- Add this Helper Function to the bottom of script.js ---
+function parseDateRobust(input) {
+    if (!input) return null;
+    // Handle Firestore Timestamp (has .seconds)
+    if (input.seconds) return new Date(input.seconds * 1000);
+    // Handle String or Number
+    const d = new Date(input);
+    return isNaN(d.getTime()) ? null : d;
 }
 
 async function saveDetailedProfile() {
@@ -1836,17 +1910,38 @@ function submitReport() {
     }).then(() => { alert("Report Sent!"); toggleReportForm(); });
 }
 
+let isSignupMode = false;
+
 function toggleAuthMode() {
-    const t = document.getElementById('auth-title');
-    if(t.innerText === "FCPS PREP") {
-        t.innerText = "Create Account";
-        document.getElementById('auth-btn-container').innerHTML = `<button class="primary" onclick="signup()">Sign Up</button>`;
-        document.getElementById('auth-toggle-link').innerText = "Log In here";
+    isSignupMode = !isSignupMode;
+    const title = document.getElementById('auth-title');
+    const btn = document.getElementById('main-auth-btn');
+    const toggleLink = document.getElementById('auth-toggle-link');
+    const toggleMsg = document.getElementById('auth-toggle-msg');
+    const userField = document.getElementById('signup-username-group');
+    const emailField = document.getElementById('email');
+
+    if (isSignupMode) {
+        title.innerText = "Create Account";
+        btn.innerText = "Sign Up";
+        toggleMsg.innerText = "Already have an account?";
+        toggleLink.innerText = "Log In here";
+        userField.classList.remove('hidden'); // Show Username
+        emailField.placeholder = "Email Address"; // Must be email for signup
     } else {
-        t.innerText = "FCPS PREP";
-        document.getElementById('auth-btn-container').innerHTML = `<button class="primary" onclick="login()">Log In</button>`;
-        document.getElementById('auth-toggle-link').innerText = "Create New ID";
+        title.innerText = "Log In";
+        btn.innerText = "Log In";
+        toggleMsg.innerText = "New here?";
+        toggleLink.innerText = "Create New ID";
+        userField.classList.add('hidden'); // Hide Username
+        emailField.placeholder = "Email or Username";
     }
+}
+
+// Router for the "Enter" key
+function handleAuthAction() {
+    if (isSignupMode) signup();
+    else login();
 }
 
 function goHome() { 
@@ -1867,6 +1962,7 @@ function resetPassword() {
 window.onload = () => {
     if(localStorage.getItem('fcps-theme')==='dark') toggleTheme();
 }
+
 
 
 
