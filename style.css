@@ -160,7 +160,7 @@ body::before {
     background: var(--card-bg); 
     border-radius: 24px; 
     box-shadow: var(--shadow-md); 
-    border: 1px solid rgba(255,255,255,0.6);
+    border: 1px solid rgba(255, 255, 255, 0.6);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -272,7 +272,7 @@ button {
     background: var(--card-bg); 
     border-radius: 24px; 
     box-shadow: var(--shadow-md); 
-    border: 1px solid rgba(255,255,255,0.6); 
+    border: 1px solid rgba(255, 255, 255, 0.6); 
     animation: slideUp 0.5s ease-out;
 }
 
@@ -585,7 +585,13 @@ button {
     margin-top: 30px; 
 }
 
-
+/* --- NEW: FLAGGED BUTTON STYLE --- */
+.flagged-btn-active {
+    background-color: #fffbeb !important;
+    color: #d97706 !important;
+    border-color: #f59e0b !important;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+}
 
 /* =========================================
    9. POPUPS, MODALS & OVERLAYS (Mobile Fixed)
@@ -722,10 +728,10 @@ button {
     opacity: 1; 
     filter: grayscale(0%); 
     border-color: #ffd700; 
-    background: #fffbeb;               /* Light Mode Gold */
+    background: #fffbeb;                /* Light Mode Gold */
     transform: translateY(-5px); 
     box-shadow: 0 5px 15px rgba(255, 215, 0, 0.2);
-    color: #b7791f;                    /* Dark Gold Text */
+    color: #b7791f;                     /* Dark Gold Text */
 }
 
 /* Fix for Dark Mode Unlocked Badges */
@@ -2030,4 +2036,3 @@ button.secondary {
     background-color: var(--input-bg) !important;
     color: var(--text-dark) !important;
 }
-
