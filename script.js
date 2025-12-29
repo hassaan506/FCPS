@@ -2,21 +2,19 @@
 // 1. CONFIGURATION & FIREBASE SETUP
 // ======================================================
 
-// --- MULTI-COURSE CONFIGURATION ---
+// --- MULTI-COURSE CONFIGURATION (Replaces single Sheet URL) ---
 const COURSE_CONFIG = {
     'FCPS': {
         name: "FCPS Part 1",
-        // The Original Sheet
         sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8aw1eGppF_fgvI5VAOO_3XEONyI-4QgWa0IgQg7K-VdxeFyn4XBpWT9tVDewbQ6PnMEQ80XpwbASh/pub?output=csv",
-        prefix: "", // No prefix = Legacy Mode (Keeps existing users safe)
-        theme: ""   // Default Blue
+        prefix: "",       // No prefix = Keeps existing user progress safe
+        theme: ""         // Default Blue Theme
     },
     'MBBS': {
         name: "MBBS Final Year",
-        // The New Sheet
         sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6fLWMz_k89yK_S8kfjqAGs9I_fGzBE-WQ-Ci8l-D5ownRGV0I1Tz-ifZZKBOTXZAx9bvs4wVuWLID/pub?output=csv",
-        prefix: "MBBS_", // Prefix ensures data ISOLATION
-        theme: "mbbs-mode" // Turns site Green
+        prefix: "MBBS_",  // Prefix ensures data separation (e.g. MBBS_solved)
+        theme: "mbbs-mode" // Activates Green Theme
     }
 };
 
@@ -41,13 +39,13 @@ let currentUser = null;
 let userProfile = null; 
 let isGuest = false;
 
-// --- NEW: Track Active Course ---
+// --- NEW: Track Current Course ---
 let currentCourse = 'FCPS'; // Default
 
 let allQuestions = [];
 let filteredQuestions = [];
 
-// These arrays now load DYNAMICALLY based on currentCourse
+// Progress Arrays (Loaded dynamically based on selected Course)
 let userBookmarks = [];
 let userSolvedIDs = [];
 let userMistakes = [];
@@ -89,15 +87,15 @@ auth.onAuthStateChanged(async (user) => {
         currentUser = user;
         isGuest = false;
         
-        // --- ROUTING CHANGE: Go to Course Selection First ---
-        showScreen('course-selection-screen');
+        // --- STEP 1: Show Course Selection Screen ---
+        showScreen('course-selection-screen'); 
         
         // Hide Auth
         document.getElementById('auth-screen').classList.add('hidden');
         document.getElementById('auth-screen').classList.remove('active');
         
         await checkLoginSecurity(user);
-        updateCourseBadges(); // Visual update for selection screen
+        updateCourseSelectionUI(); // Update buttons with active status
         
     } else {
         if (!isGuest) {
@@ -125,74 +123,68 @@ async function checkLoginSecurity(user) {
                 deviceId: currentDeviceId,
                 role: 'student',
                 joined: new Date(),
-                // Initialize Standard (FCPS) Data
-                isPremium: false,
-                solved: [], bookmarks: [], mistakes: [], stats: {}
+                // Init Legacy Data
+                isPremium: false, solved: [], bookmarks: [], mistakes: [], stats: {}
             }, { merge: true });
             
-            loadUserData();
+            userProfile = (await docRef.get()).data();
         } else {
             userProfile = doc.data();
             
-            // Auto-Repair Email
             if (!userProfile.email || userProfile.email !== user.email) {
                 docRef.update({ email: user.email });
             }
-
             if (userProfile.disabled) {
                 auth.signOut();
                 alert("⛔ Your account has been disabled by the admin.");
                 return;
             }
-
             if (!userProfile.deviceId) await docRef.update({ deviceId: currentDeviceId });
-            
-            // Note: We do NOT load dashboard here anymore. 
-            // We wait for selectCourse() to be clicked.
         }
         
+        // Admin button visibility
         if (userProfile && userProfile.role === 'admin') {
             const btn = document.getElementById('admin-btn');
             if(btn) btn.classList.remove('hidden');
         }
 
-    } catch (e) { 
-        console.error("Auth Error:", e); 
-    }
+    } catch (e) { console.error("Auth Error:", e); }
 }
 
 // --- NEW: COURSE SELECTION LOGIC ---
 
-function updateCourseBadges() {
+function updateCourseSelectionUI() {
     if(!userProfile) return;
     
-    // Check FCPS (Standard Keys)
+    // Check FCPS Status
     const fcpsActive = userProfile.isPremium && isDateActive(userProfile.expiryDate);
     const fcpsBadge = document.getElementById('status-badge-FCPS');
     if(fcpsBadge) {
-        fcpsBadge.innerText = fcpsActive ? "✅ Active" : "🔒 Free";
-        fcpsBadge.style.background = fcpsActive ? "#d1fae5" : "#f1f5f9";
+        fcpsBadge.innerText = fcpsActive ? "✅ Active" : "🔒 Free Version";
+        fcpsBadge.style.background = fcpsActive ? "#d1fae5" : "#e2e8f0";
+        fcpsBadge.style.color = fcpsActive ? "#065f46" : "#475569";
     }
 
-    // Check MBBS (Prefixed Keys)
+    // Check MBBS Status
     const mbbsActive = userProfile.MBBS_isPremium && isDateActive(userProfile.MBBS_expiryDate);
     const mbbsBadge = document.getElementById('status-badge-MBBS');
     if(mbbsBadge) {
-        mbbsBadge.innerText = mbbsActive ? "✅ Active" : "🔒 Free";
-        mbbsBadge.style.background = mbbsActive ? "#d1fae5" : "#f1f5f9";
+        mbbsBadge.innerText = mbbsActive ? "✅ Active" : "🔒 Free Version";
+        mbbsBadge.style.background = mbbsActive ? "#d1fae5" : "#e2e8f0";
+        mbbsBadge.style.color = mbbsActive ? "#065f46" : "#475569";
     }
 }
 
 function selectCourse(courseName) {
-    if (!COURSE_CONFIG[courseName]) return alert("Coming Soon!");
+    if (!COURSE_CONFIG[courseName]) return alert("Course coming soon!");
     
     currentCourse = courseName;
     const config = COURSE_CONFIG[courseName];
 
-    // 1. Apply Theme
-    document.body.className = config.theme;
+    // 1. Apply Visual Theme
+    document.body.className = config.theme; 
     
-    // 2. Update UI Text
+    // 2. Update Header
     const badge = document.getElementById('active-course-badge');
     if(badge) badge.innerText = courseName;
     
@@ -202,148 +194,31 @@ function selectCourse(courseName) {
     // 3. Load Data & Dashboard
     showScreen('dashboard-screen');
     
-    // Reset Globals before loading
+    // Reset Data
     allQuestions = [];
     filteredQuestions = [];
     
-    loadQuestions(config.sheet); // Dynamic URL
-    loadUserData(); // Dynamic Prefix Loading
+    loadQuestions(config.sheet); // Load specific sheet
+    loadUserData(); // Load specific user data
 }
 
 function returnToCourseSelection() {
     showScreen('course-selection-screen');
-    updateCourseBadges();
+    updateCourseSelectionUI();
+    allQuestions = [];
+    filteredQuestions = [];
 }
 
 // --- HELPER: GET ISOLATED DB KEY ---
 function getStoreKey(baseKey) {
+    // If MBBS, returns "MBBS_solved". If FCPS, returns "solved".
     const prefix = COURSE_CONFIG[currentCourse].prefix;
     return prefix + baseKey;
 }
 
-// ======================================================
-// 4. USER DATA MANAGEMENT (ISOLATED)
-// ======================================================
-
-async function loadUserData() {
-    if (isGuest || !currentUser) return;
-
-    if (currentUser.displayName) {
-        const nameDisplay = document.getElementById('user-display');
-        if(nameDisplay) nameDisplay.innerText = currentUser.displayName;
-    }
-
-    try {
-        const statsBox = document.getElementById('quick-stats');
-        if(statsBox) statsBox.style.opacity = "0.5"; 
-
-        const userDoc = await db.collection('users').doc(currentUser.uid).get();
-        if(!userDoc.exists) return;
-        userProfile = userDoc.data();
-
-        // --- DYNAMIC DATA LOADING ---
-        // We use getStoreKey to grab 'solved' OR 'MBBS_solved'
-        userSolvedIDs = userProfile[getStoreKey('solved')] || [];
-        userBookmarks = userProfile[getStoreKey('bookmarks')] || [];
-        userMistakes = userProfile[getStoreKey('mistakes')] || []; 
-
-        checkStreak(userProfile);
-
-        // Stats Calculation (Isolated)
-        let totalAttempts = 0;
-        let totalCorrect = 0;
-        const statsObj = userProfile[getStoreKey('stats')] || {};
-        
-        Object.values(statsObj).forEach(s => {
-            totalAttempts += (s.total || 0);
-            totalCorrect += (s.correct || 0);
-        });
-        
-        const accuracy = totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0;
-
-        if(statsBox) {
-            statsBox.style.opacity = "1"; 
-            statsBox.innerHTML = `
-                <div style="margin-top:5px; font-size:14px; line-height:1.8;">
-                    <div>✅ ${currentCourse} Solved: <b style="color:#2ecc71;">${userSolvedIDs.length}</b></div>
-                    <div>🎯 Accuracy: <b>${accuracy}%</b> <span style="font-size:11px; color:#666;">(${totalCorrect}/${totalAttempts})</span></div>
-                    <div style="color:#ef4444;">❌ Pending Mistakes: <b>${userMistakes.length}</b></div>
-                    <div style="color:#f59e0b;">⭐ Bookmarked: <b>${userBookmarks.length}</b></div>
-                </div>`;
-        }
-
-        updateBadgeButton(); 
-        checkPremiumExpiry(); // Checks specific course expiry
-
-        // Re-process questions if they loaded before user data
-        if (allQuestions.length > 0) processData(allQuestions, true);
-
-    } catch (e) { console.error("Load Error:", e); }
-}
-
-function checkPremiumExpiry() {
-    if (!userProfile) return;
-    
-    const premKey = getStoreKey('isPremium');
-    const expKey = getStoreKey('expiryDate');
-    
-    const isPrem = userProfile[premKey];
-    const expiryRaw = userProfile[expKey];
-
-    if (!isPrem || !expiryRaw) {
-        document.getElementById('premium-badge').classList.add('hidden');
-        document.getElementById('get-premium-btn').classList.remove('hidden');
-        return;
-    }
-    
-    if (isDateActive(expiryRaw)) {
-        document.getElementById('premium-badge').classList.remove('hidden');
-        document.getElementById('get-premium-btn').classList.add('hidden');
-    } else {
-        // Expired
-        db.collection('users').doc(currentUser.uid).update({ [premKey]: false });
-        userProfile[premKey] = false;
-        
-        document.getElementById('premium-badge').classList.add('hidden');
-        document.getElementById('get-premium-btn').classList.remove('hidden');
-        alert(`⚠️ Your ${currentCourse} Premium has expired.`);
-    }
-}
-
-function isDateActive(dateInput) {
-    if(!dateInput) return false;
-    const now = new Date().getTime();
-    const d = parseDateRobust(dateInput);
-    if(!d) return false;
-    return now < d.getTime();
-}
-
-function checkStreak(data) {
-    const today = new Date().toDateString();
-    const lastLogin = data.lastLoginDate;
-    let currentStreak = data.streak || 0;
-
-    if (lastLogin !== today) {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        if (lastLogin === yesterday.toDateString()) currentStreak++;
-        else currentStreak = 1;
-        
-        db.collection('users').doc(currentUser.uid).set({
-            lastLoginDate: today, streak: currentStreak
-        }, { merge: true });
-    }
-
-    if(currentStreak > 0) {
-        document.getElementById('streak-display').classList.remove('hidden');
-        document.getElementById('streak-count').innerText = currentStreak + " Day Streak";
-    }
-}
-
 function guestLogin() {
     isGuest = true;
-    userProfile = { role: 'guest' }; // No premium keys implies free
-    // Go to selection, guests can see both courses
+    userProfile = { role: 'guest' };
     showScreen('course-selection-screen');
 }
 
@@ -384,12 +259,8 @@ async function signup() {
         const cred = await auth.createUserWithEmailAndPassword(email, password);
         
         await db.collection('users').doc(cred.user.uid).set({
-            email: email,
-            username: username,
-            role: 'student',
-            joined: new Date(),
-            deviceId: currentDeviceId,
-            // Init empty FCPS data
+            email: email, username: username, role: 'student',
+            joined: new Date(), deviceId: currentDeviceId,
             solved: [], bookmarks: [], mistakes: [], isPremium: false
         });
         msg.innerText = "✅ Success!";
@@ -398,24 +269,21 @@ async function signup() {
 
 function logout() {
     auth.signOut().then(() => {
-        isGuest = false;
         window.location.reload();
     });
 }
 
 // ======================================================
-// 5. DATA LOADING & PROCESSING
+// 4. DATA LOADING & PROCESSING
 // ======================================================
 
-function loadQuestions(urlOverride) {
-    const url = urlOverride || GOOGLE_SHEET_URL; // Fallback
+function loadQuestions(sheetURL) {
+    document.getElementById('dynamic-menus').innerHTML = "<p style='padding:20px; text-align:center;'>Loading Course Data...</p>";
     
-    // Clear menus while loading
-    document.getElementById('dynamic-menus').innerHTML = "<p style='padding:10px;'>Loading Data...</p>";
-
-    Papa.parse(url, {
+    Papa.parse(sheetURL, {
         download: true, header: true, skipEmptyLines: true,
-        complete: function(results) { processData(results.data); }
+        complete: function(results) { processData(results.data); },
+        error: function(e) { alert("Data Load Error: " + e.message); }
     });
 }
 
@@ -426,9 +294,7 @@ function processData(data, reRenderOnly = false) {
         data.forEach((row, index) => {
             delete row.Book; delete row.Exam; delete row.Number;
             const qText = row.Question || row.Questions;
-            const correctVal = row.CorrectAnswer;
-
-            if (!qText || !correctVal) return;
+            if (!qText || !row.CorrectAnswer) return;
 
             const qSignature = String(qText).trim().toLowerCase();
             if (seen.has(qSignature)) return; 
@@ -437,7 +303,6 @@ function processData(data, reRenderOnly = false) {
             row._uid = "id_" + Math.abs(generateHash(qSignature));
             row.Question = qText; 
             row.SheetRow = index + 2; 
-
             row.Subject = row.Subject ? row.Subject.trim() : "General";
             row.Topic = row.Topic ? row.Topic.trim() : "Mixed";
             
@@ -466,9 +331,139 @@ function generateHash(str) {
     for (let i = 0; i < str.length; i++) hash = ((hash << 5) - hash) + str.charCodeAt(i) | 0;
     return hash;
 }
+// ======================================================
+// 5. USER DATA MANAGEMENT (ISOLATED)
+// ======================================================
+
+async function loadUserData() {
+    if (isGuest || !currentUser) return;
+
+    if (currentUser.displayName) {
+        const nameDisplay = document.getElementById('user-display');
+        if(nameDisplay) nameDisplay.innerText = currentUser.displayName;
+    }
+
+    try {
+        const statsBox = document.getElementById('quick-stats');
+        if(statsBox) statsBox.style.opacity = "0.5"; 
+
+        const userDoc = await db.collection('users').doc(currentUser.uid).get();
+        if(!userDoc.exists) return;
+        userProfile = userDoc.data();
+
+        // --- DYNAMIC LOADING: Use Keys for Current Course ---
+        userSolvedIDs = userProfile[getStoreKey('solved')] || [];
+        userBookmarks = userProfile[getStoreKey('bookmarks')] || [];
+        userMistakes = userProfile[getStoreKey('mistakes')] || []; 
+
+        checkStreak(userProfile);
+
+        // Stats Calculation
+        let totalAttempts = 0;
+        let totalCorrect = 0;
+        const statsObj = userProfile[getStoreKey('stats')] || {};
+        
+        Object.values(statsObj).forEach(s => {
+            totalAttempts += (s.total || 0);
+            totalCorrect += (s.correct || 0);
+        });
+        
+        const accuracy = totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0;
+
+        if(statsBox) {
+            statsBox.style.opacity = "1"; 
+            statsBox.innerHTML = `
+                <div style="margin-top:5px; font-size:14px; line-height:1.8;">
+                    <div>✅ ${currentCourse} Solved: <b style="color:var(--primary);">${userSolvedIDs.length}</b></div>
+                    <div>🎯 Accuracy: <b>${accuracy}%</b> <span style="font-size:11px; color:#666;">(${totalCorrect}/${totalAttempts})</span></div>
+                    <div style="color:var(--danger);">❌ Pending Mistakes: <b>${userMistakes.length}</b></div>
+                    <div style="color:#f59e0b;">⭐ Bookmarked: <b>${userBookmarks.length}</b></div>
+                </div>`;
+        }
+
+        updateBadgeButton(); 
+        checkPremiumExpiry(); // Check Expiry for THIS course
+
+        // Re-process questions to update 'solved' ticks in menus
+        if (allQuestions.length > 0) processData(allQuestions, true);
+
+    } catch (e) { console.error("Load Error:", e); }
+}
+
+function checkPremiumExpiry() {
+    if (!userProfile) return;
+    
+    const premKey = getStoreKey('isPremium');
+    const expKey = getStoreKey('expiryDate');
+    
+    const isPrem = userProfile[premKey];
+    const expiryRaw = userProfile[expKey];
+
+    if (!isPrem || !expiryRaw) {
+        setPremiumUI(false);
+        return;
+    }
+    
+    if (isDateActive(expiryRaw)) {
+        setPremiumUI(true);
+    } else {
+        // Expired logic
+        db.collection('users').doc(currentUser.uid).update({ [premKey]: false });
+        userProfile[premKey] = false;
+        setPremiumUI(false);
+        alert(`⚠️ Your ${currentCourse} Premium has expired.`);
+    }
+}
+
+function setPremiumUI(isActive) {
+    const badge = document.getElementById('premium-badge');
+    const btn = document.getElementById('get-premium-btn');
+    if(badge && btn) {
+        if(isActive) {
+            badge.classList.remove('hidden');
+            btn.classList.add('hidden');
+        } else {
+            badge.classList.add('hidden');
+            btn.classList.remove('hidden');
+        }
+    }
+}
+
+function isDateActive(dateInput) {
+    if(!dateInput) return false;
+    const now = new Date().getTime();
+    const d = parseDateRobust(dateInput);
+    if(!d) return false;
+    return now < d.getTime();
+}
+
+function checkStreak(data) {
+    const today = new Date().toDateString();
+    const lastLogin = data.lastLoginDate;
+    let currentStreak = data.streak || 0;
+
+    if (lastLogin !== today) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (lastLogin === yesterday.toDateString()) currentStreak++;
+        else currentStreak = 1;
+        
+        db.collection('users').doc(currentUser.uid).set({
+            lastLoginDate: today, streak: currentStreak
+        }, { merge: true });
+    }
+
+    if(currentStreak > 0) {
+        const display = document.getElementById('streak-display');
+        if(display) {
+            display.classList.remove('hidden');
+            document.getElementById('streak-count').innerText = currentStreak + " Day Streak";
+        }
+    }
+}
 
 // ======================================================
-// 6. UI RENDERERS
+// 6. UI RENDERERS (Menus)
 // ======================================================
 
 function renderMenus(subjects, map) {
@@ -490,7 +485,7 @@ function renderMenus(subjects, map) {
                     <span class="subj-stats">${solvedCount} / ${totalSubj}</span>
                 </div>
                 <div class="progress-bar-thin">
-                    <div class="fill" style="width:${pct}%"></div>
+                    <div class="fill" style="width:${pct}%; background:var(--primary);"></div>
                 </div>
             </summary>
         `;
@@ -526,7 +521,7 @@ function renderMenus(subjects, map) {
                         <span style="font-size:10px; color:#888;">${solvedTop}/${totalTop}</span>
                     </div>
                     <div class="topic-mini-track">
-                        <div class="topic-mini-fill" style="width:${percentTop}%"></div>
+                        <div class="topic-mini-fill" style="width:${percentTop}%; background:var(--primary) !important;"></div>
                     </div>
                 `;
                 gridContainer.appendChild(item);
@@ -599,7 +594,7 @@ function toggleSubjectAll(checkbox, subjName) {
 }
 
 // ======================================================
-// 7. STUDY LOGIC & START TESTS
+// 7. STUDY LOGIC & QUIZ ENGINE
 // ======================================================
 
 function setMode(mode) {
@@ -657,11 +652,9 @@ function startPractice(subject, topic) {
 function startMistakePractice() {
     if (userMistakes.length === 0) return alert("No mistakes pending!");
     filteredQuestions = allQuestions.filter(q => userMistakes.includes(q._uid));
-    
     currentMode = 'practice';
     isMistakeReview = true;
     currentIndex = 0;
-    
     showScreen('quiz-screen');
     renderPage();
     renderPracticeNavigator();
@@ -670,11 +663,9 @@ function startMistakePractice() {
 function startSavedQuestions() {
     if (userBookmarks.length === 0) return alert("No bookmarks!");
     filteredQuestions = allQuestions.filter(q => userBookmarks.includes(q._uid));
-    
     currentMode = 'practice';
     isMistakeReview = false;
     currentIndex = 0;
-    
     showScreen('quiz-screen');
     renderPage();
 }
@@ -729,10 +720,6 @@ function startTest() {
     renderPage();
 }
 
-// ======================================================
-// 8. QUIZ ENGINE
-// ======================================================
-
 function renderPage() {
     const container = document.getElementById('quiz-content-area');
     container.innerHTML = "";
@@ -786,7 +773,7 @@ function createQuestionCard(q, index, showNumber = true) {
         block.classList.add('is-flagged-card');
     }
 
-    // 1. HEADER (Number + Bookmark + Flag)
+    // HEADER
     const header = document.createElement('div');
     header.className = "question-card-header";
     
@@ -806,13 +793,13 @@ function createQuestionCard(q, index, showNumber = true) {
     `;
     block.appendChild(header);
 
-    // 2. Question Text
+    // Question
     const qText = document.createElement('div');
     qText.className = "test-q-text";
     qText.innerHTML = q.Question || "Missing Text";
     block.appendChild(qText);
 
-    // 3. Options
+    // Options
     const optionsDiv = document.createElement('div');
     optionsDiv.className = "options-group";
     optionsDiv.id = `opts-${index}`;
@@ -853,11 +840,12 @@ function createQuestionCard(q, index, showNumber = true) {
     return block;
 }
 
-// --- BOOKMARK TOGGLE (ISOLATED) ---
+// --- ACTIONS & SAVING (ISOLATED) ---
+
 async function toggleBookmark(uid, btn) {
     if (!currentUser || isGuest) return alert("Please log in to save bookmarks.");
     
-    const key = getStoreKey('bookmarks');
+    const key = getStoreKey('bookmarks'); // Saves to bookmarks OR MBBS_bookmarks
 
     if (userBookmarks.includes(uid)) {
         userBookmarks = userBookmarks.filter(id => id !== uid);
@@ -883,17 +871,11 @@ function toggleFlag(uid, btn, index) {
     
     if (testFlags[uid]) {
         delete testFlags[uid];
-        if(btn) { 
-            btn.innerHTML = "🏳️"; 
-            btn.classList.remove('flag-active'); 
-        }
+        if(btn) { btn.innerHTML = "🏳️"; btn.classList.remove('flag-active'); }
         if(card) card.classList.remove('is-flagged-card');
     } else {
         testFlags[uid] = true;
-        if(btn) { 
-            btn.innerHTML = "🚩"; 
-            btn.classList.add('flag-active'); 
-        }
+        if(btn) { btn.innerHTML = "🚩"; btn.classList.add('flag-active'); }
         if(card) card.classList.add('is-flagged-card');
     }
     renderNavigator();
@@ -932,14 +914,10 @@ function checkAnswer(selectedOption, btnElement, q) {
     renderPracticeNavigator();
 }
 
-// ======================================================
-// 9. DATABASE SAVING & SUBMISSION (ISOLATED)
-// ======================================================
-
 async function saveProgressToDB(q, isCorrect) {
     if (!currentUser || isGuest) return;
 
-    // Keys specific to current Course
+    // Keys specific to current Course (Isolation Logic)
     const sKey = getStoreKey('solved');
     const mKey = getStoreKey('mistakes');
     const statKey = getStoreKey('stats');
@@ -1017,7 +995,6 @@ function submitTest() {
     showScreen('result-screen');
     document.getElementById('final-score').innerText = `${pct}% (${score}/${filteredQuestions.length})`;
 }
-
 // ======================================================
 // 10. ADMIN & PREMIUM FEATURES
 // ======================================================
@@ -1078,8 +1055,7 @@ async function submitPaymentProof() {
             planRequested: selectedPlan, 
             image: compressedBase64, 
             status: 'pending', 
-            // Store which course they bought it for
-            targetCourse: currentCourse,
+            targetCourse: currentCourse, // SAVE WHICH COURSE
             timestamp: new Date()
         });
 
@@ -1112,16 +1088,9 @@ async function redeemKey() {
         const k = keyDoc.data();
         const keyId = keyDoc.id;
 
-        if (k.expiresAt) {
-            const expiryDate = k.expiresAt.toDate();
-            if (new Date() > expiryDate) throw new Error("This code has expired.");
-        }
-
+        if (k.expiresAt && new Date() > k.expiresAt.toDate()) throw new Error("This code has expired.");
         if (k.usedCount >= k.maxUses) throw new Error("This code has been fully redeemed.");
-
-        if (k.usersRedeemed && k.usersRedeemed.includes(currentUser.uid)) {
-            throw new Error("You have already used this code.");
-        }
+        if (k.usersRedeemed && k.usersRedeemed.includes(currentUser.uid)) throw new Error("You have already used this code.");
 
         // --- NEW: Course Check ---
         const target = k.targetCourse || currentCourse; // Use current if undefined
@@ -1159,7 +1128,6 @@ async function redeemKey() {
 
         alert(`✅ ${target} Unlocked!\nPlan: ${k.plan.replace('_',' ').toUpperCase()}\nExpires: ${formatDateHelper(newExpiry)}`);
         
-        // Instead of reload, just refresh data
         loadUserData();
         document.getElementById('premium-modal').classList.add('hidden');
 
@@ -1239,7 +1207,6 @@ async function loadAllUsers() {
     res.innerHTML = html;
 }
 
-// --- UPDATED ADMIN CARD (SHOWS DUAL STATUS) ---
 function renderAdminUserCard(doc) {
     const u = doc.data();
     
@@ -1297,7 +1264,6 @@ async function loadAdminPayments() {
         snap.forEach(doc => {
             const p = doc.data();
             const reqPlan = p.planRequested ? p.planRequested.replace('_', ' ').toUpperCase() : "UNKNOWN";
-            // Show which course they wanted
             const courseLabel = p.targetCourse ? `<span style="background:#0f172a; color:white; padding:2px 6px; border-radius:4px; font-size:10px;">${p.targetCourse}</span>` : "";
             
             const imageHtml = p.image 
@@ -1321,9 +1287,7 @@ async function loadAdminPayments() {
                         ${courseLabel}
                     </div>
                 </div>
-                
                 ${imageHtml}
-                
                 <div class="pay-action-box">
                     <label class="pay-action-label">Decide & Duration</label>
                     <div class="pay-controls-row">
@@ -1337,11 +1301,9 @@ async function loadAdminPayments() {
                             <option value="12_months" ${p.planRequested === '12_months' ? 'selected' : ''}>12 Months</option>
                             <option value="lifetime" ${p.planRequested === 'lifetime' ? 'selected' : ''}>Lifetime</option>
                         </select>
-                        
                         <button class="btn-pay-action btn-approve" onclick="approvePayment('${doc.id}','${p.uid}', '${p.targetCourse}')">
                             ✅ Approve
                         </button>
-                        
                         <button class="btn-pay-action btn-reject" onclick="rejectPayment('${doc.id}')">
                             ❌ Reject
                         </button>
@@ -1412,7 +1374,6 @@ async function approvePayment(docId, userId, requestedCourse) {
             : new Date(Date.now() + duration);
 
         const batch = db.batch();
-
         const userRef = db.collection('users').doc(userId);
         
         // Determine Prefix based on requested course (or default FCPS if missing)
