@@ -2,7 +2,11 @@
 // 1. CONFIGURATION & FIREBASE SETUP
 // ======================================================
 
-const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8aw1eGppF_fgvI5VAOO_3XEONyI-4QgWa0IgQg7K-VdxeFyn4XBpWT9tVDewbQ6PnMEQ80XpwbASh/pub?output=csv";
+// --- COURSE 1: FCPS (Sheet 1) ---
+const FCPS_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8aw1eGppF_fgvI5VAOO_3XEONyI-4QgWa0IgQg7K-VdxeFyn4XBpWT9tVDewbQ6PnMEQ80XpwbASh/pub?output=csv";
+
+// --- COURSE 2: MBBS (Sheet 2) ---
+const MBBS_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6fLWMz_k89yK_S8kfjqAGs9I_fGzBE-WQ-Ci8l-D5ownRGV0I1Tz-ifZZKBOTXZAx9bvs4wVuWLID/pub?output=csv";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAhrX36_mEA4a3VIuSq3rYYZi0PH5Ap_ks",
@@ -24,6 +28,9 @@ const db = firebase.firestore();
 let currentUser = null;
 let userProfile = null; 
 let isGuest = false;
+
+// --- NEW: ACTIVE COURSE TRACKER ---
+let currentCourse = localStorage.getItem('active_course') || 'FCPS'; 
 
 let allQuestions = [];
 let filteredQuestions = [];
@@ -136,7 +143,9 @@ async function checkLoginSecurity(user) {
         }
         
         showScreen('dashboard-screen');
-        loadQuestions(); 
+        
+        // --- CHANGED: Initialize Course System instead of just loading ---
+        initCourseSystem(); 
         
         if (userProfile && userProfile.role === 'admin') {
             const btn = document.getElementById('admin-btn');
@@ -148,7 +157,7 @@ async function checkLoginSecurity(user) {
         console.error("Auth Error:", e); 
         loadUserData();
         showScreen('dashboard-screen');
-        loadQuestions();
+        initCourseSystem();
     }
 }
 
@@ -156,189 +165,74 @@ function guestLogin() {
     isGuest = true;
     userProfile = { role: 'guest', isPremium: false };
     showScreen('dashboard-screen');
-    loadQuestions();
+    initCourseSystem(); // Load Course
     document.getElementById('user-display').innerText = "Guest User";
     document.getElementById('premium-badge').classList.add('hidden');
     document.getElementById('get-premium-btn').classList.remove('hidden');
     alert("👤 Guest Mode Active\n\n⚠️ Progress is NOT saved.\n🔒 Limit: 20 Questions per topic.");
 }
 
-async function login() {
-    const input = document.getElementById('email').value.trim().toLowerCase(); 
-    const p = document.getElementById('password').value;
-    const msg = document.getElementById('auth-msg');
-    if(!input || !p) return alert("Please enter email/username and password");
-    msg.innerText = "Verifying...";
-    
-    let emailToUse = input;
+// ======================================================
+// 4. COURSE SWITCHER SYSTEM (NEW)
+// ======================================================
 
-    if (!input.includes('@')) {
-        try {
-            const snap = await db.collection('users').where('username', '==', input).limit(1).get();
-            if (snap.empty) {
-                msg.innerText = "❌ Username not found.";
-                return;
-            }
-            emailToUse = snap.docs[0].data().email;
-        } catch (e) {
-            msg.innerText = "Login Error: " + e.message;
-            return;
-        }
-    }
-   auth.signInWithEmailAndPassword(emailToUse, p)
-        .catch(err => {
-            msg.innerText = "❌ " + err.message;
-        });
-}
-
-async function signup() {
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
-    const username = document.getElementById('reg-username').value.trim().toLowerCase().replace(/\s+/g, '');
-    const msg = document.getElementById('auth-msg');
-
-    if (!email || !password || !username) return alert("Please fill in all fields.");
-    if (username.length < 3) return alert("Username must be at least 3 characters.");
-
-    msg.innerText = "Checking availability...";
-
-    try {
-        const check = await db.collection('users').where('username', '==', username).get();
-        if (!check.empty) throw new Error("⚠️ Username is already taken.");
-
-        msg.innerText = "Creating account...";
-        const cred = await auth.createUserWithEmailAndPassword(email, password);
+function initCourseSystem() {
+    // 1. Inject UI if missing
+    if (!document.getElementById('course-selector')) {
+        const badge = document.querySelector('.user-badge');
         
-        await db.collection('users').doc(cred.user.uid).set({
-            email: email,
-            username: username,
-            role: 'student',
-            isPremium: false,
-            joined: new Date(),
-            deviceId: currentDeviceId,
-            solved: [], bookmarks: [], mistakes: [], stats: {}
-        });
-
-        msg.innerText = "✅ Success!";
-
-    } catch (e) {
-        msg.innerText = "Error: " + e.message;
-    }
-}
-
-function logout() {
-    auth.signOut().then(() => {
-        isGuest = false;
-        window.location.reload();
-    });
-}
-
-function checkPremiumExpiry() {
-    if (!userProfile || !userProfile.isPremium || !userProfile.expiryDate) {
-        document.getElementById('premium-badge').classList.add('hidden');
-        document.getElementById('get-premium-btn').classList.remove('hidden');
-        return;
+        // Create Selector
+        const select = document.createElement('select');
+        select.id = 'course-selector';
+        select.style.cssText = "padding: 6px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 12px; font-weight: bold; color: #0072ff; background: #eff6ff; margin-top: 5px; cursor: pointer; width: 100%; max-width: 200px;";
+        select.innerHTML = `
+            <option value="FCPS">📘 FCPS Part-1</option>
+            <option value="MBBS">📕 Final Year MBBS</option>
+        `;
+        select.value = currentCourse;
+        
+        // Handle Change
+        select.onchange = function() {
+            switchCourse(this.value);
+        };
+        
+        // Insert under the name/badge
+        if(badge) badge.appendChild(select);
     }
     
-    const now = new Date().getTime();
-    const expiry = userProfile.expiryDate.toMillis ? userProfile.expiryDate.toMillis() : new Date(userProfile.expiryDate).getTime();
+    // 2. Load the correct data for the active course
+    loadQuestions();
+}
 
-    if (now > expiry) {
-        db.collection('users').doc(currentUser.uid).update({ isPremium: false });
-        userProfile.isPremium = false;
-        document.getElementById('premium-badge').classList.add('hidden');
-        document.getElementById('get-premium-btn').classList.remove('hidden');
-        alert("⚠️ Your Premium Subscription has expired.");
-    } else {
-        document.getElementById('premium-badge').classList.remove('hidden');
-        document.getElementById('get-premium-btn').classList.add('hidden');
-    }
+function switchCourse(courseName) {
+    if(courseName === currentCourse) return;
+    
+    // Save preference
+    currentCourse = courseName;
+    localStorage.setItem('active_course', courseName);
+    
+    // Show Loading
+    document.getElementById('dynamic-menus').innerHTML = "<p style='padding:20px; color:#666;'>Switching Course...</p>";
+    
+    // Reload Data
+    loadQuestions();
 }
 
 // ======================================================
-// 4. USER DATA MANAGEMENT
-// ======================================================
-
-async function loadUserData() {
-    if (isGuest || !currentUser) return;
-
-    if (currentUser.displayName) {
-        const nameDisplay = document.getElementById('user-display');
-        if(nameDisplay) nameDisplay.innerText = currentUser.displayName;
-    }
-
-    try {
-        const statsBox = document.getElementById('quick-stats');
-        if(statsBox) statsBox.style.opacity = "0.5"; 
-
-        const userDoc = await db.collection('users').doc(currentUser.uid).get();
-        let userData = userDoc.exists ? userDoc.data() : {};
-
-        userBookmarks = userData.bookmarks || [];
-        userSolvedIDs = userData.solved || [];
-        userMistakes = userData.mistakes || []; 
-
-        checkStreak(userData);
-
-        let totalAttempts = 0;
-        let totalCorrect = 0;
-        
-        if (userData.stats) {
-            Object.values(userData.stats).forEach(s => {
-                totalAttempts += (s.total || 0);
-                totalCorrect += (s.correct || 0);
-            });
-        }
-        
-        const accuracy = totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0;
-
-        if(statsBox) {
-            statsBox.style.opacity = "1"; 
-            statsBox.innerHTML = `
-                <div style="margin-top:5px; font-size:14px; line-height:1.8;">
-                    <div>✅ Unique Solved: <b style="color:#2ecc71;">${userSolvedIDs.length}</b></div>
-                    <div>🎯 Accuracy: <b>${accuracy}%</b> <span style="font-size:11px; color:#666;">(${totalCorrect}/${totalAttempts})</span></div>
-                    <div style="color:#ef4444;">❌ Pending Mistakes: <b>${userMistakes.length}</b></div>
-                </div>`;
-        }
-
-        updateBadgeButton(); 
-
-        if (allQuestions.length > 0) processData(allQuestions, true);
-
-    } catch (e) { console.error("Load Error:", e); }
-}
-
-function checkStreak(data) {
-    const today = new Date().toDateString();
-    const lastLogin = data.lastLoginDate;
-    let currentStreak = data.streak || 0;
-
-    if (lastLogin !== today) {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        if (lastLogin === yesterday.toDateString()) currentStreak++;
-        else currentStreak = 1;
-        
-        db.collection('users').doc(currentUser.uid).set({
-            lastLoginDate: today, streak: currentStreak
-        }, { merge: true });
-    }
-
-    if(currentStreak > 0) {
-        document.getElementById('streak-display').classList.remove('hidden');
-        document.getElementById('streak-count').innerText = currentStreak + " Day Streak";
-    }
-}
-
-// ======================================================
-// 5. DATA LOADING & PROCESSING
+// 5. DATA LOADING & PROCESSING (UPDATED)
 // ======================================================
 
 function loadQuestions() {
-    Papa.parse(GOOGLE_SHEET_URL, {
+    // --- DECIDE WHICH LINK TO USE ---
+    const targetURL = (currentCourse === 'MBBS') ? MBBS_SHEET_URL : FCPS_SHEET_URL;
+
+    Papa.parse(targetURL, {
         download: true, header: true, skipEmptyLines: true,
-        complete: function(results) { processData(results.data); }
+        complete: function(results) { 
+            processData(results.data); 
+            // Re-calc stats for this specific course
+            loadUserData(); 
+        }
     });
 }
 
@@ -353,7 +247,8 @@ function processData(data, reRenderOnly = false) {
 
             if (!qText || !correctVal) return;
 
-            const qSignature = String(qText).trim().toLowerCase();
+            // Generate ID based on Text + Course (To prevent collisions)
+            const qSignature = currentCourse + "_" + String(qText).trim().toLowerCase();
             if (seen.has(qSignature)) return; 
             seen.add(qSignature);
 
@@ -393,12 +288,101 @@ function generateHash(str) {
 }
 
 // ======================================================
-// 6. UI RENDERERS
+// 6. USER STATS (COURSE AWARE)
+// ======================================================
+
+async function loadUserData() {
+    if (isGuest || !currentUser) return;
+
+    if (currentUser.displayName) {
+        const nameDisplay = document.getElementById('user-display');
+        if(nameDisplay) nameDisplay.innerText = currentUser.displayName;
+    }
+
+    try {
+        const statsBox = document.getElementById('quick-stats');
+        if(statsBox) statsBox.style.opacity = "0.5"; 
+
+        const userDoc = await db.collection('users').doc(currentUser.uid).get();
+        let userData = userDoc.exists ? userDoc.data() : {};
+
+        userBookmarks = userData.bookmarks || [];
+        userSolvedIDs = userData.solved || [];
+        userMistakes = userData.mistakes || []; 
+
+        checkStreak(userData);
+
+        // --- FILTER STATS FOR CURRENT COURSE ONLY ---
+        const currentCourseIDs = allQuestions.map(q => q._uid);
+        
+        const courseSolvedCount = userSolvedIDs.filter(id => currentCourseIDs.includes(id)).length;
+        const courseMistakeCount = userMistakes.filter(id => currentCourseIDs.includes(id)).length;
+
+        // Global Accuracy (across all courses) - simplifying for now
+        let totalAttempts = 0;
+        let totalCorrect = 0;
+        if (userData.stats) {
+            Object.values(userData.stats).forEach(s => {
+                totalAttempts += (s.total || 0);
+                totalCorrect += (s.correct || 0);
+            });
+        }
+        const accuracy = totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0;
+
+        if(statsBox) {
+            statsBox.style.opacity = "1"; 
+            statsBox.innerHTML = `
+                <div style="margin-top:5px; font-size:14px; line-height:1.8;">
+                    <div style="color:#64748b; font-size:10px; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">
+                        ${currentCourse === 'FCPS' ? '📘 FCPS Stats' : '📕 MBBS Stats'}
+                    </div>
+                    <div>✅ Solved: <b style="color:#2ecc71;">${courseSolvedCount}</b> <span style="font-size:11px; color:#999;">/ ${allQuestions.length}</span></div>
+                    <div>🎯 Global Accuracy: <b>${accuracy}%</b></div>
+                    <div style="color:#ef4444;">❌ Pending Mistakes: <b>${courseMistakeCount}</b></div>
+                </div>`;
+        }
+
+        updateBadgeButton(); 
+        // No need to processData here as loadQuestions handles it
+
+    } catch (e) { console.error("Load Error:", e); }
+}
+
+function checkStreak(data) {
+    const today = new Date().toDateString();
+    const lastLogin = data.lastLoginDate;
+    let currentStreak = data.streak || 0;
+
+    if (lastLogin !== today) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (lastLogin === yesterday.toDateString()) currentStreak++;
+        else currentStreak = 1;
+        
+        db.collection('users').doc(currentUser.uid).set({
+            lastLoginDate: today, streak: currentStreak
+        }, { merge: true });
+    }
+
+    if(currentStreak > 0) {
+        document.getElementById('streak-display').classList.remove('hidden');
+        document.getElementById('streak-count').innerText = currentStreak + " Day Streak";
+    }
+}
+
+// ======================================================
+// 7. UI RENDERERS & LOGIC
 // ======================================================
 
 function renderMenus(subjects, map) {
     const container = document.getElementById('dynamic-menus');
     container.innerHTML = "";
+    
+    if(allQuestions.length === 0) {
+        container.innerHTML = "<p style='padding:20px; text-align:center;'>No questions found in this course.</p>";
+        return;
+    }
+
     Array.from(subjects).sort().forEach(subj => {
         const subjQuestions = allQuestions.filter(q => q.Subject === subj);
         const solvedCount = subjQuestions.filter(q => userSolvedIDs.includes(q._uid)).length;
@@ -526,10 +510,6 @@ function toggleSubjectAll(checkbox, subjName) {
     });
 }
 
-// ======================================================
-// 7. STUDY LOGIC
-// ======================================================
-
 function setMode(mode) {
     currentMode = mode;
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -579,8 +559,13 @@ function startPractice(subject, topic) {
 }
 
 function startMistakePractice() {
-    if (userMistakes.length === 0) return alert("No mistakes pending!");
-    filteredQuestions = allQuestions.filter(q => userMistakes.includes(q._uid));
+    // FIX: Filter mistakes to ONLY show ones from the CURRENT COURSE
+    const currentCourseIDs = allQuestions.map(q => q._uid);
+    const relevantMistakes = userMistakes.filter(id => currentCourseIDs.includes(id));
+
+    if (relevantMistakes.length === 0) return alert(`No mistakes pending for ${currentCourse}!`);
+    
+    filteredQuestions = allQuestions.filter(q => relevantMistakes.includes(q._uid));
     
     currentMode = 'practice';
     isMistakeReview = true;
@@ -592,8 +577,13 @@ function startMistakePractice() {
 }
 
 function startSavedQuestions() {
-    if (userBookmarks.length === 0) return alert("No bookmarks!");
-    filteredQuestions = allQuestions.filter(q => userBookmarks.includes(q._uid));
+    // FIX: Filter bookmarks to ONLY show ones from the CURRENT COURSE
+    const currentCourseIDs = allQuestions.map(q => q._uid);
+    const relevantBookmarks = userBookmarks.filter(id => currentCourseIDs.includes(id));
+
+    if (relevantBookmarks.length === 0) return alert(`No bookmarks for ${currentCourse}!`);
+    
+    filteredQuestions = allQuestions.filter(q => relevantBookmarks.includes(q._uid));
     
     currentMode = 'practice';
     isMistakeReview = false;
@@ -943,6 +933,148 @@ function submitTest() {
 
     showScreen('result-screen');
     document.getElementById('final-score').innerText = `${pct}% (${score}/${filteredQuestions.length})`;
+}
+
+// ======================================================
+// 9. AUTH ROUTER & BASIC UTILS
+// ======================================================
+
+async function login() {
+    const input = document.getElementById('email').value.trim().toLowerCase(); 
+    const p = document.getElementById('password').value;
+    const msg = document.getElementById('auth-msg');
+    if(!input || !p) return alert("Please enter email/username and password");
+    msg.innerText = "Verifying...";
+    
+    let emailToUse = input;
+
+    if (!input.includes('@')) {
+        try {
+            const snap = await db.collection('users').where('username', '==', input).limit(1).get();
+            if (snap.empty) {
+                msg.innerText = "❌ Username not found.";
+                return;
+            }
+            emailToUse = snap.docs[0].data().email;
+        } catch (e) {
+            msg.innerText = "Login Error: " + e.message;
+            return;
+        }
+    }
+   auth.signInWithEmailAndPassword(emailToUse, p)
+        .catch(err => {
+            msg.innerText = "❌ " + err.message;
+        });
+}
+
+async function signup() {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const username = document.getElementById('reg-username').value.trim().toLowerCase().replace(/\s+/g, '');
+    const msg = document.getElementById('auth-msg');
+
+    if (!email || !password || !username) return alert("Please fill in all fields.");
+    if (username.length < 3) return alert("Username must be at least 3 characters.");
+
+    msg.innerText = "Checking availability...";
+
+    try {
+        const check = await db.collection('users').where('username', '==', username).get();
+        if (!check.empty) throw new Error("⚠️ Username is already taken.");
+
+        msg.innerText = "Creating account...";
+        const cred = await auth.createUserWithEmailAndPassword(email, password);
+        
+        await db.collection('users').doc(cred.user.uid).set({
+            email: email,
+            username: username,
+            role: 'student',
+            isPremium: false,
+            joined: new Date(),
+            deviceId: currentDeviceId,
+            solved: [], bookmarks: [], mistakes: [], stats: {}
+        });
+
+        msg.innerText = "✅ Success!";
+
+    } catch (e) {
+        msg.innerText = "Error: " + e.message;
+    }
+}
+
+function logout() {
+    auth.signOut().then(() => {
+        isGuest = false;
+        window.location.reload();
+    });
+}
+
+function handleAuthAction() {
+    if (isSignupMode) signup();
+    else login();
+}
+
+function toggleAuthMode() {
+    isSignupMode = !isSignupMode;
+    const title = document.getElementById('auth-title');
+    const btn = document.getElementById('main-auth-btn');
+    const toggleLink = document.getElementById('auth-toggle-link');
+    const toggleMsg = document.getElementById('auth-toggle-msg');
+    const userField = document.getElementById('signup-username-group');
+    const emailField = document.getElementById('email');
+
+    if (isSignupMode) {
+        title.innerText = "Create Account";
+        btn.innerText = "Sign Up";
+        toggleMsg.innerText = "Already have an account?";
+        toggleLink.innerText = "Log In here";
+        userField.classList.remove('hidden'); 
+        emailField.placeholder = "Email Address"; 
+    } else {
+        title.innerText = "Log In";
+        btn.innerText = "Log In";
+        toggleMsg.innerText = "New here?";
+        toggleLink.innerText = "Create New ID";
+        userField.classList.add('hidden'); 
+        emailField.placeholder = "Email or Username";
+    }
+}
+
+function goHome() { 
+    if(testTimer) clearInterval(testTimer);
+    
+    currentIndex = 0;
+    filteredQuestions = [];
+    currentMode = 'practice'; 
+    
+    showScreen('dashboard-screen'); 
+    loadUserData(); 
+    
+    const searchInput = document.getElementById('global-search');
+    if(searchInput) searchInput.value = "";
+    const results = document.getElementById('search-results');
+    if(results) results.style.display = 'none';
+}
+
+function resetPassword() {
+    const email = document.getElementById('email').value;
+    if (!email) return alert("Please enter your email address in the box above first.");
+    
+    auth.sendPasswordResetEmail(email)
+        .then(() => alert("📧 Password reset email sent! Check your inbox."))
+        .catch(e => alert("Error: " + e.message));
+}
+
+window.onload = () => {
+    if(localStorage.getItem('fcps-theme')==='dark') toggleTheme();
+}
+
+function parseDateRobust(input) {
+    if (!input) return null;
+    if (input.seconds) return new Date(input.seconds * 1000);
+    if (input instanceof Date) return input;
+    const d = new Date(input);
+    return isNaN(d.getTime()) ? null : d;
 }
 
 // ======================================================
@@ -1947,34 +2079,27 @@ function openReportModal(qId) {
     document.getElementById('report-modal').classList.remove('hidden');
 }
 
-// --- UPDATED REPORT SUBMISSION WITH ROW NUMBER ---
 async function submitReportFinal() {
     const qId = document.getElementById('report-q-id').value;
     const reason = document.getElementById('report-text').value.trim();
-    
     if(!reason) return alert("Please describe the issue.");
-    
     const qObj = allQuestions.find(q => q._uid === qId);
-    
     try {
         await db.collection('reports').add({
             questionID: qId,
             questionText: qObj ? qObj.Question : "Unknown",
-            // This is the new line adding the Row Number:
             sheetRow: qObj ? qObj.SheetRow : "N/A", 
             reportReason: reason,
             reportedBy: currentUser ? (currentUser.email || currentUser.uid) : 'Guest',
             timestamp: new Date(),
             status: 'pending' 
         });
-        
         alert("✅ Report Sent! Thank you.");
         document.getElementById('report-modal').classList.add('hidden');
     } catch (e) {
         alert("Error sending report: " + e.message);
     }
 }
-// ------------------------------------------------
 
 function submitReport() {
     const r = document.getElementById('report-reason').value;
@@ -2121,6 +2246,7 @@ function startSingleQuestionPractice(question) {
     filteredQuestions = [question]; 
     currentMode = 'practice';
     currentIndex = 0;
+    
     showScreen('quiz-screen'); 
     renderPage();
     renderPracticeNavigator();
