@@ -2168,3 +2168,78 @@ button.secondary {
 [data-theme="dark"] .course-card[onclick*="MBBS"]:hover {
     background: rgba(16, 185, 129, 0.1);
 }
+
+/* =========================================
+   NAVIGATOR STYLING (Compact Grid)
+   ========================================= */
+
+/* The Container */
+.nav-grid, #practice-nav-container {
+    display: grid;
+    /* This creates a responsive grid where items are at least 35px wide */
+    grid-template-columns: repeat(auto-fill, minmax(35px, 1fr));
+    gap: 6px; /* Small gap between buttons */
+    padding: 10px;
+    max-height: 300px; /* Limit height */
+    overflow-y: auto;  /* Add scrollbar if there are too many questions */
+}
+
+/* The Buttons */
+.nav-btn {
+    width: 35px;       /* Fixed small width */
+    height: 35px;      /* Fixed small height */
+    font-size: 12px;   /* Small text */
+    font-weight: bold;
+    padding: 0;        /* Remove default padding */
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: white;
+    color: #475569;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+/* Hover Effect */
+.nav-btn:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+/* --- STATES --- */
+
+/* Currently Active Question */
+.nav-btn.current {
+    background: #0072ff !important;
+    color: white !important;
+    border-color: #0072ff !important;
+    transform: scale(1.1);
+}
+
+/* Flagged Question */
+.nav-btn.flagged {
+    border-color: #ef4444;
+    color: #ef4444;
+    background: #fef2f2;
+}
+
+/* Answered Question (Exam Mode) */
+.nav-btn.answered {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+/* Correct/Wrong (Practice Mode) */
+.nav-btn.correct-indicator {
+    background: #dcfce7 !important;
+    color: #166534 !important;
+    border-color: #166534 !important;
+}
+
+.nav-btn.wrong-indicator {
+    background: #fee2e2 !important;
+    color: #991b1b !important;
+    border-color: #991b1b !important;
+}
