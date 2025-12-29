@@ -319,7 +319,7 @@
 
 <div id="report-modal" class="modal-overlay hidden">
     <div class="joinCard" style="max-width: 400px; padding: 25px;">
-        <h3 style="margin-top:0; color:#ef4444; display:flex; align-items:center; gap:10px;">
+        <h3 style="margin-top:0; color:#ef4444; display:flex; align-items:center; gap:15px;">
             <span>🚩</span> Report Issue
         </h3>
         <p style="font-size:13px; color:#666; margin-bottom:15px;">
@@ -349,7 +349,7 @@
         <div class="modal-body-scroll" style="flex: 1; overflow-y: auto; min-height: 0; padding: 10px 25px;">
             
             <div class="prem-tabs" style="display:flex; background:#f1f5f9; padding:4px; border-radius:10px; margin: 15px 0;">
-                <button onclick="switchPremTab('manual')" class="prem-tab-btn active" id="tab-btn-manual" style="flex:1; border:none; padding:10px; border-radius:8px; cursor:pointer;">Upload Proof</button>
+                <button onclick="switchPremTab('manual')" class="prem-tab-btn active" id="tab-btn-manual" style="flex:1; border:none; padding:10px; border-radius:8px; cursor:pointer;">Buy Premium</button>
                 <button onclick="switchPremTab('code')" class="prem-tab-btn" id="tab-btn-code" style="flex:1; border:none; padding:10px; border-radius:8px; cursor:pointer;">Redeem Code</button>
             </div>
 
@@ -375,7 +375,7 @@
                     <div>Title: <b>Hassaan Shahid</b></div>
                 </div>
 
-                <label style="font-size:13px; font-weight:700; color:#1e293b; display:block; margin:20px 0 8px 0;">2. Upload Proof:</label>
+                <label style="font-size:13px; font-weight:700; color:#1e293b; display:block; margin:20px 0 8px 0;">2. Upload Receipt:</label>
                 <input type="file" id="pay-proof" accept="image/*" style="font-size:12px; width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:8px;">
                 <input type="hidden" id="selected-plan-value" value=""> 
                 <input type="hidden" id="target-course-payment" value="">
@@ -453,15 +453,15 @@
                 </div>
 
                 <div>
-                    <label style="font-size:13px; font-weight:600; color:#1e293b; display:block; margin-bottom:6px;">Medical Institution</label>
+                    <label style="font-size:13px; font-weight:600; color:#1e293b; display:block; margin-bottom:6px;">Medical Institution / Working Hospital</label>
                     <input type="text" id="edit-college" placeholder="e.g. KEMU" style="width:100%; padding:12px; border:1px solid #cbd5e1; border-radius:10px; font-size:14px; background:white;">
                 </div>
 
                 <div>
-                    <label style="font-size:13px; font-weight:600; color:#1e293b; display:block; margin-bottom:6px;">Target Exam</label>
+                    <label style="font-size:13px; font-weight:600; color:#1e293b; display:block; margin-bottom:6px;">Preparing For Exam</label>
                     <select id="edit-exam" style="width:100%; padding:12px; border:1px solid #cbd5e1; border-radius:10px; font-size:14px; background:white; cursor:pointer;">
-                        <option value="FCPS-1">FCPS Part 1</option>
-                        <option value="MD/MS">MD / MS</option>
+                        <option value="FCPS-1">FCPS</option>
+                        <option value="MRCP/MRCS">MCRS / MRCP</option>
                         <option value="MBBS">MBBS</option>
                         <option value="Other">Other</option>
                     </select>
@@ -575,3 +575,4 @@
 <script src="script.js"></script>
 </body>
 </html>
+
