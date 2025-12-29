@@ -27,7 +27,13 @@ const firebaseConfig = {
   appId: "1:949920276784:web:c9af3432814c0f80e028f5"
 };
 
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+// Initialize Firebase (Safety Check)
+if (typeof firebase !== 'undefined' && !firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+} else if (typeof firebase === 'undefined') {
+    alert("CRITICAL ERROR: Firebase SDK not loaded in HTML. Check your internet connection or index.html imports.");
+}
+
 const auth = firebase.auth();
 const db = firebase.firestore();
 
@@ -78,7 +84,7 @@ const PLAN_DURATIONS = {
 };
 
 // ======================================================
-// 3. AUTHENTICATION & ROUTING
+// 3. AUTHENTICATION & ROUTING (FIXED)
 // ======================================================
 
 auth.onAuthStateChanged(async (user) => {
@@ -87,17 +93,21 @@ auth.onAuthStateChanged(async (user) => {
         currentUser = user;
         isGuest = false;
         
-        // Hide Auth
-        document.getElementById('auth-screen').classList.add('hidden');
-        document.getElementById('auth-screen').classList.remove('active');
+        // Hide Auth, Show Course Selection immediately to prevent "stuck" feeling
+        showScreen('course-selection-screen'); 
+        
+        // Hide Auth UI explicitly
+        const authScreen = document.getElementById('auth-screen');
+        if(authScreen) {
+            authScreen.classList.add('hidden');
+            authScreen.classList.remove('active');
+        }
         
         await checkLoginSecurity(user);
         
-        // --- STEP 1: Show Course Selection Screen ---
-        // Safety Check: If user forgot to update HTML, fallback to dashboard
+        // Safety Check: If HTML is missing the new screen, fallback
         if(document.getElementById('course-selection-screen')) {
-            showScreen('course-selection-screen'); 
-            updateCourseSelectionUI(); 
+            updateCourseSelectionUI();
         } else {
             console.warn("Course Selection Screen missing. Loading default.");
             selectCourse('FCPS');
@@ -108,12 +118,6 @@ auth.onAuthStateChanged(async (user) => {
             console.log("🔒 No user signed in.");
             currentUser = null;
             userProfile = null;
-            
-            document.getElementById('dashboard-screen').classList.add('hidden');
-            document.getElementById('dashboard-screen').classList.remove('active');
-            if(document.getElementById('course-selection-screen')) {
-                document.getElementById('course-selection-screen').classList.add('hidden');
-            }
             
             showScreen('auth-screen');
         }
@@ -157,7 +161,10 @@ async function checkLoginSecurity(user) {
             if(btn) btn.classList.remove('hidden');
         }
 
-    } catch (e) { console.error("Auth Error:", e); }
+    } catch (e) { 
+        console.error("Auth Error:", e); 
+        alert("Login Error: " + e.message); // Surface error to user
+    }
 }
 
 // --- NEW: COURSE SELECTION LOGIC ---
@@ -207,8 +214,8 @@ function selectCourse(courseName) {
     allQuestions = [];
     filteredQuestions = [];
     
-    loadQuestions(config.sheet); // Load specific sheet
-    loadUserData(); // Load specific user data
+    loadQuestions(config.sheet); // Dynamic URL
+    loadUserData(); // Dynamic Prefix Loading
 }
 
 function returnToCourseSelection() {
@@ -229,7 +236,7 @@ function guestLogin() {
     isGuest = true;
     userProfile = { role: 'guest' };
     
-    // Fallback if course screen missing
+    // Force UI Update
     if(document.getElementById('course-selection-screen')) {
         showScreen('course-selection-screen');
     } else {
@@ -246,21 +253,32 @@ async function login() {
     const input = document.getElementById('email').value.trim().toLowerCase();
     const p = document.getElementById('password').value;
     const msg = document.getElementById('auth-msg');
+    
     if(!input || !p) return alert("Please enter credentials");
     msg.innerText = "Verifying...";
    
     let emailToUse = input;
 
+    // Username Lookup Logic
     if (!input.includes('@')) {
-        db.collection('users').where('username', '==', input).limit(1).get()
-        .then(snap => {
-            if (snap.empty) { msg.innerText = "❌ Username not found."; return; }
+        try {
+            const snap = await db.collection('users').where('username', '==', input).limit(1).get();
+            if (snap.empty) {
+                msg.innerText = "❌ Username not found.";
+                return;
+            }
             emailToUse = snap.docs[0].data().email;
-            auth.signInWithEmailAndPassword(emailToUse, p).catch(err => msg.innerText = "❌ " + err.message);
-        });
-    } else {
-       auth.signInWithEmailAndPassword(emailToUse, p).catch(err => msg.innerText = "❌ " + err.message);
+        } catch (e) {
+            console.error("Username lookup failed:", e);
+            msg.innerText = "Login Error: " + e.message;
+            return;
+        }
     }
+    
+    auth.signInWithEmailAndPassword(emailToUse, p)
+        .catch(err => {
+            msg.innerText = "❌ " + err.message;
+        });
 }
 
 async function signup() {
@@ -270,27 +288,75 @@ async function signup() {
     const msg = document.getElementById('auth-msg');
 
     if (!email || !password || !username) return alert("Please fill fields.");
-    msg.innerText = "Creating account...";
+    if (username.length < 3) return alert("Username must be at least 3 characters.");
+
+    msg.innerText = "Checking availability...";
 
     try {
+        // 1. Check Username
         const check = await db.collection('users').where('username', '==', username).get();
         if (!check.empty) throw new Error("⚠️ Username taken.");
 
+        msg.innerText = "Creating account...";
+        
+        // 2. Create Auth
         const cred = await auth.createUserWithEmailAndPassword(email, password);
         
+        // 3. Create DB Profile
         await db.collection('users').doc(cred.user.uid).set({
-            email: email, username: username, role: 'student',
-            joined: new Date(), deviceId: currentDeviceId,
+            email: email,
+            username: username,
+            role: 'student',
+            joined: new Date(),
+            deviceId: currentDeviceId,
             solved: [], bookmarks: [], mistakes: [], isPremium: false
         });
+
         msg.innerText = "✅ Success!";
-    } catch (e) { msg.innerText = "Error: " + e.message; }
+        // onAuthStateChanged will handle the rest
+
+    } catch (e) {
+        msg.innerText = "Error: " + e.message;
+    }
 }
 
 function logout() {
     auth.signOut().then(() => {
         window.location.reload();
     });
+}
+
+let isSignupMode = false;
+
+function toggleAuthMode() {
+    isSignupMode = !isSignupMode;
+    const title = document.getElementById('auth-title');
+    const btn = document.getElementById('main-auth-btn');
+    const toggleLink = document.getElementById('auth-toggle-link');
+    const toggleMsg = document.getElementById('auth-toggle-msg');
+    const userField = document.getElementById('signup-username-group');
+    const emailField = document.getElementById('email');
+
+    if (isSignupMode) {
+        title.innerText = "Create Account";
+        btn.innerText = "Sign Up";
+        toggleMsg.innerText = "Already have an account?";
+        toggleLink.innerText = "Log In here";
+        userField.classList.remove('hidden'); 
+        emailField.placeholder = "Email Address"; 
+    } else {
+        title.innerText = "Log In";
+        btn.innerText = "Log In";
+        toggleMsg.innerText = "New here?";
+        toggleLink.innerText = "Create New ID";
+        userField.classList.add('hidden'); 
+        emailField.placeholder = "Email or Username";
+    }
+}
+
+function handleAuthAction() {
+    if (isSignupMode) signup();
+    else login();
 }
 
 // ======================================================
@@ -1437,17 +1503,26 @@ async function adminLookupUser(targetId) {
     const res = document.getElementById('admin-user-result');
     res.innerHTML = "Searching...";
     
-    let doc = await db.collection('users').doc(input).get();
-    if(!doc.exists) {
-        const s = await db.collection('users').where('email','==',input).limit(1).get();
-        if(!s.empty) doc = s.docs[0];
+    let doc = null;
+
+    let directDoc = await db.collection('users').doc(input).get();
+    if(directDoc.exists) {
+        doc = directDoc;
+    } 
+    else {
+        let s = await db.collection('users').where('email','==',input).limit(1).get();
+        if(!s.empty) {
+            doc = s.docs[0];
+        } 
         else {
-            const u = await db.collection('users').where('username','==',input.toLowerCase()).limit(1).get();
-            if(!u.empty) doc = u.docs[0];
+            let u = await db.collection('users').where('username','==',input.toLowerCase()).limit(1).get();
+            if(!u.empty) {
+                doc = u.docs[0];
+            }
         }
     }
 
-    if(!doc || !doc.exists) { res.innerHTML = "Not found"; return; }
+    if(!doc || !doc.exists) { res.innerHTML = "Not found (Check Email, Username or UID)"; return; }
     res.innerHTML = renderAdminUserCard(doc); 
 }
 
