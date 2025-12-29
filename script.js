@@ -1019,6 +1019,68 @@ function toggleFlag(uid, btn, index) {
     renderNavigator();
 }
 
+// ==========================================
+// FIX 2: QUESTION NAVIGATORS
+// ==========================================
+
+function renderNavigator() {
+    // Target the ID found in your HTML: <div id="nav-grid">
+    const nav = document.getElementById('nav-grid'); 
+    if (!nav) return;
+    nav.innerHTML = "";
+
+    filteredQuestions.forEach((q, idx) => {
+        const btn = document.createElement('button');
+        btn.className = "nav-btn"; // Ensure you have CSS for this class
+        btn.innerText = idx + 1;
+        
+        // Style styling based on state
+        if (currentIndex === idx) btn.classList.add('current');
+        if (testFlags[q._uid]) btn.classList.add('flagged');
+        if (testAnswers[q._uid]) btn.classList.add('answered');
+
+        btn.onclick = () => {
+            currentIndex = idx;
+            renderPage();
+        };
+        nav.appendChild(btn);
+    });
+}
+
+function renderPracticeNavigator() {
+    // Target the ID found in your HTML: <div id="practice-nav-container">
+    const nav = document.getElementById('practice-nav-container');
+    if (!nav) return;
+    
+    nav.classList.remove('hidden'); // Make sure it's visible
+    nav.innerHTML = "";
+
+    // In practice mode, we create a simple horizontal scroller or grid
+    filteredQuestions.forEach((q, idx) => {
+        const btn = document.createElement('button');
+        btn.className = "nav-btn";
+        btn.innerText = idx + 1;
+
+        if (currentIndex === idx) btn.classList.add('current');
+        
+        // Show Red/Green if previously attempted
+        if (userSolvedIDs.includes(q._uid)) {
+            btn.style.borderColor = "#10b981"; // Green
+            btn.style.color = "#10b981";
+        }
+        if (userMistakes.includes(q._uid)) {
+            btn.style.borderColor = "#ef4444"; // Red
+            btn.style.color = "#ef4444";
+        }
+
+        btn.onclick = () => {
+            currentIndex = idx;
+            renderPage();
+        };
+        nav.appendChild(btn);
+    });
+}
+
 // ======================================================
 // 9. DATABASE SAVING & SUBMISSION (UPDATED PREFIX)
 // ======================================================
@@ -1378,7 +1440,17 @@ async function loadAllUsers() {
 
 function renderUserRow(u, extraLabel = "") {
     const isAdmin = u.role === 'admin';
-    const isPrem = u.isPremium; // Legacy check for quick view
+    
+    // FIX: Check both FCPS and MBBS variables
+    const fcpsPrem = u.isPremium; 
+    const mbbsPrem = u.MBBS_isPremium;
+    
+    let badgeHTML = "";
+    if (fcpsPrem && mbbsPrem) badgeHTML = `<span class="status-badge badge-premium" style="background:purple; color:white;">ALL ACCESS</span>`;
+    else if (fcpsPrem) badgeHTML = `<span class="status-badge badge-premium">FCPS Premium</span>`;
+    else if (mbbsPrem) badgeHTML = `<span class="status-badge badge-premium" style="background:#dcfce7; color:#166534;">MBBS Premium</span>`;
+    else badgeHTML = `<span class="status-badge badge-free">Free User</span>`;
+
     return `
     <div class="user-list-item ${isAdmin ? "is-admin-row" : ""}">
         <div class="user-info-group">
@@ -1387,7 +1459,7 @@ function renderUserRow(u, extraLabel = "") {
                 ${u.username ? `(@${u.username})` : ""} ${extraLabel}
             </div>
             <div class="user-meta-row">
-                <span class="status-badge ${isPrem ? 'badge-premium' : 'badge-free'}">${isPrem ? 'Prem (FCPS)' : 'Free'}</span>
+                ${badgeHTML}
                 <span style="border-left:1px solid #cbd5e1; padding-left:10px;">Joined: ${formatDateHelper(u.joined)}</span>
             </div>
         </div>
@@ -1533,21 +1605,60 @@ function renderAdminUserCard(doc) {
     const u = doc.data();
     const fcpsActive = u.isPremium && isDateActive(u.expiryDate);
     const mbbsActive = u.MBBS_isPremium && isDateActive(u.MBBS_expiryDate);
+    const isBanned = u.disabled === true;
 
     return `
     <div class="user-card">
         <h3>${u.email}</h3>
-        <p>FCPS: ${fcpsActive ? '✅' : '❌'}</p>
-        <p>MBBS: ${mbbsActive ? '✅' : '❌'}</p>
+        <p style="font-size:12px; color:#666;">UID: ${doc.id}</p>
         
-        <div style="margin-top:10px;">
-            <select id="adm-c-${doc.id}"><option value="FCPS">FCPS</option><option value="MBBS">MBBS</option></select>
-            <select id="adm-p-${doc.id}"><option value="1_month">1 Month</option><option value="lifetime">Lifetime</option></select>
-            <button onclick="adminGrantPremium('${doc.id}')">Grant</button>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:15px 0;">
+            <div style="background:#f8fafc; padding:10px; border-radius:8px;">
+                <strong>FCPS Status</strong><br>
+                ${fcpsActive ? '✅ Active' : '🔒 Free'}
+            </div>
+            <div style="background:#f8fafc; padding:10px; border-radius:8px;">
+                <strong>MBBS Status</strong><br>
+                ${mbbsActive ? '✅ Active' : '🔒 Free'}
+            </div>
+        </div>
+        
+        <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
+
+        <h4>Grant Subscription</h4>
+        <div style="display:flex; gap:5px; flex-wrap:wrap; align-items: center;">
+            <select id="adm-c-${doc.id}" style="padding:5px; border:1px solid #ccc; border-radius:4px;">
+                <option value="FCPS">FCPS Part 1</option>
+                <option value="MBBS">MBBS Final Year</option>
+            </select>
+            
+            <select id="adm-p-${doc.id}" style="padding:5px; border:1px solid #ccc; border-radius:4px;">
+                <option value="1_day">1 Day</option>
+                <option value="1_week">1 Week</option>
+                <option value="15_days">15 Days</option>
+                <option value="1_month">1 Month</option>
+                <option value="3_months">3 Months</option>
+                <option value="6_months">6 Months</option>
+                <option value="12_months">12 Months</option>
+                <option value="lifetime">Lifetime</option>
+            </select>
+            
+            <button onclick="adminGrantPremium('${doc.id}')" style="background:#10b981; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Grant</button>
+        </div>
+
+        <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
+
+        <h4>Danger Zone</h4>
+        <div style="display:flex; gap:10px;">
+            <button onclick="adminRevokePremium('${doc.id}')" style="background:#f59e0b; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">🚫 Revoke All</button>
+            
+            ${isBanned 
+                ? `<button onclick="adminToggleBan('${doc.id}', false)" style="background:#10b981; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">✅ Unban User</button>`
+                : `<button onclick="adminToggleBan('${doc.id}', true)" style="background:#ef4444; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">⛔ Ban User</button>`
+            }
         </div>
     </div>`;
 }
-
 async function adminGrantPremium(uid) {
     const course = document.getElementById(`adm-c-${uid}`).value;
     const plan = document.getElementById(`adm-p-${uid}`).value;
@@ -1950,5 +2061,35 @@ function parseDateRobust(input) {
     if (input instanceof Date) return input;
     const d = new Date(input);
     return isNaN(d.getTime()) ? null : d;
+}
+
+// ==========================================
+// FIX 1: NAVIGATION & EXIT LOGIC
+// ==========================================
+
+function goHome() {
+    // 1. Stop the Exam Timer
+    if (testTimer) {
+        clearInterval(testTimer);
+        testTimer = null;
+    }
+
+    // 2. Reset Mode & State
+    currentMode = 'practice';
+    testAnswers = {};
+    testFlags = {};
+    
+    // 3. Reset UI Elements
+    const timerEl = document.getElementById('timer');
+    if(timerEl) timerEl.classList.add('hidden');
+    
+    const sidebar = document.getElementById('test-sidebar');
+    if(sidebar) sidebar.classList.remove('active');
+    
+    const practiceNav = document.getElementById('practice-nav-container');
+    if(practiceNav) practiceNav.classList.add('hidden');
+
+    // 4. Navigate back to Dashboard
+    showScreen('dashboard-screen');
 }
 
