@@ -2,10 +2,10 @@
 // 1. CONFIGURATION & FIREBASE SETUP
 // ======================================================
 
-// --- COURSE 1: FCPS (Use the original Sheet Link) ---
+// --- COURSE 1: FCPS (Sheet 1) ---
 const FCPS_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8aw1eGppF_fgvI5VAOO_3XEONyI-4QgWa0IgQg7K-VdxeFyn4XBpWT9tVDewbQ6PnMEQ80XpwbASh/pub?output=csv";
 
-// --- COURSE 2: MBBS (Use the new Sheet Link) ---
+// --- COURSE 2: MBBS (Sheet 2) ---
 const MBBS_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6fLWMz_k89yK_S8kfjqAGs9I_fGzBE-WQ-Ci8l-D5ownRGV0I1Tz-ifZZKBOTXZAx9bvs4wVuWLID/pub?output=csv";
 
 const firebaseConfig = {
@@ -30,7 +30,7 @@ let userProfile = null;
 let isGuest = false;
 
 // --- ACTIVE COURSE TRACKER ---
-// We check LocalStorage to remember what they studied last time
+// We use localStorage to remember the last course the user studied
 let currentCourse = localStorage.getItem('active_course') || 'FCPS'; 
 
 let allQuestions = [];
@@ -102,12 +102,13 @@ async function checkLoginSecurity(user) {
         const doc = await docRef.get();
 
         if (!doc.exists) {
-            // New User: Create with empty subscriptions
+            // New User
             await docRef.set({
                 email: user.email,
                 deviceId: currentDeviceId,
                 role: 'student',
-                subscriptions: {}, // New Field for multiple courses
+                // New field for multiple subscriptions
+                subscriptions: {}, 
                 joined: new Date(),
                 solved: [], bookmarks: [], mistakes: [], stats: {}
             }, { merge: true });
@@ -117,26 +118,31 @@ async function checkLoginSecurity(user) {
             const data = doc.data();
             const updates = {};
             
-            // Basic updates
-            if (!data.email || data.email !== user.email) updates.email = user.email;
-            if (!data.joined) updates.joined = user.metadata.creationTime ? new Date(user.metadata.creationTime) : new Date();
-            
-            // --- MIGRATION FIX: Convert old Premium to FCPS Subscription ---
-            // This fixes the issue where you have premium but don't see it.
+            if (!data.email || data.email !== user.email) {
+                updates.email = user.email;
+                data.email = user.email; 
+            }
+
+            if (!data.joined) {
+                const creationTime = user.metadata.creationTime ? new Date(user.metadata.creationTime) : new Date();
+                updates.joined = creationTime;
+                data.joined = creationTime;
+            }
+
+            // --- IMPORTANT: AUTO-MIGRATION FOR PREMIUM ---
+            // If user has old "isPremium" but no "subscriptions", migrate them to FCPS subscription
             if (data.isPremium === true && (!data.subscriptions || !data.subscriptions['FCPS'])) {
-                console.log("🔄 Migrating old Premium to FCPS Subscription...");
+                console.log("🔄 Migrating legacy Premium to FCPS Subscription...");
                 const existingSubs = data.subscriptions || {};
                 
-                // Use existing expiry or default to 1 year if missing
+                // Use existing expiry or default to 1 year
                 const oldExpiry = data.expiryDate ? (data.expiryDate.toDate ? data.expiryDate.toDate() : new Date(data.expiryDate)) : new Date(Date.now() + 31536000000);
                 
                 existingSubs['FCPS'] = oldExpiry;
                 updates.subscriptions = existingSubs;
-                
-                // We keep 'isPremium' as a flag for backward compatibility if needed, 
-                // but primarily use subscriptions now.
+                // We do NOT delete isPremium yet to be safe, but we prioritize subscriptions
             }
-            // ---------------------------------------------------------------
+            // ----------------------------------------------
 
             if (Object.keys(updates).length > 0) {
                 await docRef.update(updates);
@@ -150,7 +156,7 @@ async function checkLoginSecurity(user) {
 
             if (!data.deviceId) await docRef.update({ deviceId: currentDeviceId });
             
-            // Reload data after potential updates
+            // Reload user data after updates
             const freshDoc = await docRef.get();
             userProfile = freshDoc.data();
             loadUserData();
@@ -158,15 +164,15 @@ async function checkLoginSecurity(user) {
         
         showScreen('dashboard-screen');
         
-        // Initialize the correct course logic
-        initCourseSystem(); 
+        // Initialize the Course System
+        initCourseSystem();
         
         if (userProfile && userProfile.role === 'admin') {
             const btn = document.getElementById('admin-btn');
             if(btn) btn.classList.remove('hidden');
         }
         
-        // Check if premium for the DEFAULT course
+        // Check Premium for the currently selected course
         checkPremiumStatusForCurrentCourse();
 
     } catch (e) { 
@@ -189,11 +195,11 @@ function guestLogin() {
 }
 
 // ======================================================
-// 4. COURSE SWITCHER SYSTEM
+// 4. COURSE SWITCHER SYSTEM (NEW FEATURE)
 // ======================================================
 
 function initCourseSystem() {
-    // Inject the Dropdown if it's missing
+    // 1. Check if Dropdown exists, if not, inject it
     if (!document.getElementById('course-selector')) {
         const badge = document.querySelector('.user-badge');
         
@@ -211,41 +217,45 @@ function initCourseSystem() {
             switchCourse(this.value);
         };
         
+        // Insert it into the header
         if(badge) badge.appendChild(select);
     }
     
-    // Load data for the selected course
+    // 2. Load the data for the active course
     loadQuestions();
 }
 
 function switchCourse(courseName) {
     if(courseName === currentCourse) return;
     
+    // Update State
     currentCourse = courseName;
     localStorage.setItem('active_course', courseName);
     
-    // Clear menus while loading
+    // Show Loading in Menu
     document.getElementById('dynamic-menus').innerHTML = "<p style='padding:20px; color:#666;'>Switching Course...</p>";
     
-    // Reload
+    // Load New Data
     loadQuestions();
     
-    // Check if user has paid for THIS specific course
+    // Update Premium UI (Buttons/Badges) for this specific course
     checkPremiumStatusForCurrentCourse();
 }
 
 // ======================================================
-// 5. DATA LOADING & ID GENERATION (PROGRESS FIX)
+// 5. DATA LOADING & PROCESSING (FIXED FOR PROGRESS)
 // ======================================================
 
 function loadQuestions() {
+    // Determine URL based on selection
     const targetURL = (currentCourse === 'MBBS') ? MBBS_SHEET_URL : FCPS_SHEET_URL;
-    
+
     Papa.parse(targetURL, {
         download: true, header: true, skipEmptyLines: true,
         complete: function(results) { 
             processData(results.data); 
-            loadUserData(); // Re-calculate stats for new data
+            // Refresh stats to show only relevant progress
+            loadUserData(); 
         }
     });
 }
@@ -265,22 +275,24 @@ function processData(data, reRenderOnly = false) {
             if (seen.has(qSignature)) return; 
             seen.add(qSignature);
 
-            // --- CRITICAL PROGRESS FIX ---
+            // --- CRITICAL FIX FOR PROGRESS ---
             let uniqueID = "";
-            
             if (currentCourse === 'FCPS') {
-                // FOR FCPS: Use the OLD ID format to keep your 1624 questions saved
+                // If FCPS, use the OLD format. This brings back your 1624 questions.
                 uniqueID = "id_" + Math.abs(generateHash(qSignature));
             } else {
-                // FOR MBBS: Use a NEW ID format so it doesn't mix with FCPS
+                // If MBBS (or new courses), use NEW format to keep them separate.
                 uniqueID = "MBBS_id_" + Math.abs(generateHash(qSignature));
             }
 
             row._uid = uniqueID;
             row.Question = qText; 
             row.SheetRow = index + 2; 
-            row.Subject = row.Subject ? row.Subject.trim() : "General";
-            row.Topic = row.Topic ? row.Topic.trim() : "Mixed";
+
+            const subj = row.Subject ? row.Subject.trim() : "General";
+            const topic = row.Topic ? row.Topic.trim() : "Mixed";
+            row.Subject = subj; 
+            row.Topic = topic;
             
             allQuestions.push(row);
         });
@@ -316,43 +328,42 @@ function isPremiumForCurrentCourse() {
     if (isGuest || !userProfile) return false;
     if (userProfile.role === 'admin') return true;
 
-    // Check the 'subscriptions' map
+    // Check the specific subscription for the active course
     const subs = userProfile.subscriptions || {};
     const expiry = subs[currentCourse];
 
     if (!expiry) return false;
 
-    // Convert date and check
-    const expiryTime = parseDateRobust(expiry).getTime();
-    return new Date().getTime() < expiryTime;
+    // Convert to Date object properly
+    const expiryDate = parseDateRobust(expiry);
+    return new Date().getTime() < expiryDate.getTime();
 }
 
 function checkPremiumStatusForCurrentCourse() {
     const isPro = isPremiumForCurrentCourse();
     
     if (isPro) {
-        // HIDE Buy Button, SHOW Badge
+        // If Pro: Show Badge with Course Name, Hide Buy Button
         document.getElementById('premium-badge').classList.remove('hidden');
-        document.getElementById('premium-badge').innerText = `PRO (${currentCourse})`; // Show which pro they have
+        document.getElementById('premium-badge').innerText = `PRO (${currentCourse})`;
         document.getElementById('get-premium-btn').classList.add('hidden');
     } else {
-        // SHOW Buy Button, HIDE Badge
+        // If Free: Hide Badge, Show Buy Button
         document.getElementById('premium-badge').classList.add('hidden');
         document.getElementById('get-premium-btn').classList.remove('hidden');
     }
 }
 
-// --- UPDATED PREMIUM MODAL (With Course Selection) ---
+// --- UPDATED: Open Premium Modal with Course Selector ---
 function openPremiumModal() {
     const modal = document.getElementById('premium-modal');
     modal.classList.remove('hidden');
     
-    // Inject Course Selector inside the Buy Modal
+    // Inject the Course Selector into the Manual Payment Tab
     let courseSelect = document.getElementById('prem-course-select');
     
     if(!courseSelect) {
         const container = document.getElementById('prem-content-manual');
-        
         const label = document.createElement('label');
         label.style.cssText = "font-size:13px; font-weight:700; color:#1e293b; display:block; margin-bottom:5px;";
         label.innerText = "Select Course to Buy:";
@@ -360,30 +371,32 @@ function openPremiumModal() {
         courseSelect = document.createElement('select');
         courseSelect.id = 'prem-course-select';
         courseSelect.style.cssText = "width:100%; padding:10px; border:2px solid #0072ff; border-radius:8px; margin-bottom:15px; background:#eff6ff; font-weight:bold;";
-        
         courseSelect.innerHTML = `
             <option value="FCPS">📘 FCPS Part-1</option>
             <option value="MBBS">📕 Final Year MBBS</option>
         `;
         
-        // Insert at the top
         container.insertBefore(courseSelect, container.firstChild);
         container.insertBefore(label, courseSelect);
     }
     
-    // Auto-select the course user is currently viewing
+    // Auto-select the current course
     if(courseSelect) {
-        courseSelect.value = currentCourse; 
+        courseSelect.value = currentCourse;
     }
 }
 
 // ======================================================
-// 7. USER STATS
+// 7. USER STATS (FILTERED)
 // ======================================================
 
 async function loadUserData() {
     if (isGuest || !currentUser) return;
-    if (currentUser.displayName) document.getElementById('user-display').innerText = currentUser.displayName;
+
+    if (currentUser.displayName) {
+        const nameDisplay = document.getElementById('user-display');
+        if(nameDisplay) nameDisplay.innerText = currentUser.displayName;
+    }
 
     try {
         const statsBox = document.getElementById('quick-stats');
@@ -391,29 +404,33 @@ async function loadUserData() {
 
         const userDoc = await db.collection('users').doc(currentUser.uid).get();
         let userData = userDoc.exists ? userDoc.data() : {};
-        userProfile = userData; // Sync global profile
+        userProfile = userData; // Keep global profile synced
 
         userBookmarks = userData.bookmarks || [];
         userSolvedIDs = userData.solved || [];
         userMistakes = userData.mistakes || []; 
 
         checkStreak(userData);
-        checkPremiumStatusForCurrentCourse(); // Important: Re-check premium on data load
+        checkPremiumStatusForCurrentCourse(); // Check premium again after fresh data
 
-        // --- FILTER STATS FOR CURRENT COURSE ---
+        // --- FILTERING LOGIC: Show only stats for current course ---
+        // 1. Get all IDs valid for the current sheet
         const currentCourseIDs = allQuestions.map(q => q._uid);
         
+        // 2. Count intersections
         const courseSolvedCount = userSolvedIDs.filter(id => currentCourseIDs.includes(id)).length;
         const courseMistakeCount = userMistakes.filter(id => currentCourseIDs.includes(id)).length;
 
-        // Global Accuracy
-        let totalAttempts = 0; let totalCorrect = 0;
+        let totalAttempts = 0;
+        let totalCorrect = 0;
+        
         if (userData.stats) {
             Object.values(userData.stats).forEach(s => {
                 totalAttempts += (s.total || 0);
                 totalCorrect += (s.correct || 0);
             });
         }
+        
         const accuracy = totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0;
 
         if(statsBox) {
@@ -428,9 +445,9 @@ async function loadUserData() {
                     <div style="color:#ef4444;">❌ Pending Mistakes: <b>${courseMistakeCount}</b></div>
                 </div>`;
         }
+
         updateBadgeButton(); 
-        
-        // Ensure data is processed if missing
+
         if (allQuestions.length > 0 && !document.querySelector('.subject-dropdown-card')) {
             processData(allQuestions, true);
         }
@@ -442,11 +459,18 @@ function checkStreak(data) {
     const today = new Date().toDateString();
     const lastLogin = data.lastLoginDate;
     let currentStreak = data.streak || 0;
+
     if (lastLogin !== today) {
-        const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-        if (lastLogin === yesterday.toDateString()) currentStreak++; else currentStreak = 1;
-        db.collection('users').doc(currentUser.uid).set({ lastLoginDate: today, streak: currentStreak }, { merge: true });
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (lastLogin === yesterday.toDateString()) currentStreak++;
+        else currentStreak = 1;
+        
+        db.collection('users').doc(currentUser.uid).set({
+            lastLoginDate: today, streak: currentStreak
+        }, { merge: true });
     }
+
     if(currentStreak > 0) {
         document.getElementById('streak-display').classList.remove('hidden');
         document.getElementById('streak-count').innerText = currentStreak + " Day Streak";
@@ -461,7 +485,7 @@ function renderMenus(subjects, map) {
     const container = document.getElementById('dynamic-menus');
     container.innerHTML = "";
     
-    if(allQuestions.length === 0) {
+    if (allQuestions.length === 0) {
         container.innerHTML = "<p style='padding:20px; text-align:center;'>No questions found in this course.</p>";
         return;
     }
@@ -474,14 +498,22 @@ function renderMenus(subjects, map) {
 
         const details = document.createElement('details');
         details.className = "subject-dropdown-card";
+        
         details.innerHTML = `
             <summary class="subject-summary">
-                <div class="summary-header"><span class="subj-name">${subj}</span><span class="subj-stats">${solvedCount} / ${totalSubj}</span></div>
-                <div class="progress-bar-thin"><div class="fill" style="width:${pct}%"></div></div>
-            </summary>`;
+                <div class="summary-header">
+                    <span class="subj-name">${subj}</span>
+                    <span class="subj-stats">${solvedCount} / ${totalSubj}</span>
+                </div>
+                <div class="progress-bar-thin">
+                    <div class="fill" style="width:${pct}%"></div>
+                </div>
+            </summary>
+        `;
 
         const contentDiv = document.createElement('div');
         contentDiv.className = "dropdown-content";
+
         const allBtn = document.createElement('div');
         allBtn.className = "practice-all-row";
         allBtn.innerHTML = `<span>Practice All ${subj}</span> <span>⭐</span>`;
@@ -489,9 +521,11 @@ function renderMenus(subjects, map) {
         contentDiv.appendChild(allBtn);
 
         const sortedTopics = Array.from(map[subj] || []).sort();
+        
         if (sortedTopics.length > 0) {
             const gridContainer = document.createElement('div');
             gridContainer.className = "topics-text-grid";
+            
             sortedTopics.forEach(topic => {
                 const topQuestions = subjQuestions.filter(q => q.Topic === topic);
                 const totalTop = topQuestions.length;
@@ -501,15 +535,23 @@ function renderMenus(subjects, map) {
                 const item = document.createElement('div');
                 item.className = "topic-item-container";
                 item.onclick = () => startPractice(subj, topic);
+
                 item.innerHTML = `
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span class="topic-name">${topic}</span><span style="font-size:10px; color:#888;">${solvedTop}/${totalTop}</span>
+                        <span class="topic-name">${topic}</span>
+                        <span style="font-size:10px; color:#888;">${solvedTop}/${totalTop}</span>
                     </div>
-                    <div class="topic-mini-track"><div class="topic-mini-fill" style="width:${percentTop}%"></div></div>`;
+                    <div class="topic-mini-track">
+                        <div class="topic-mini-fill" style="width:${percentTop}%"></div>
+                    </div>
+                `;
                 gridContainer.appendChild(item);
             });
             contentDiv.appendChild(gridContainer);
+        } else {
+            contentDiv.innerHTML += `<div style="text-align:center; padding:10px; opacity:0.5;">(No specific topics)</div>`;
         }
+
         details.appendChild(contentDiv);
         container.appendChild(details);
     });
@@ -519,24 +561,32 @@ function renderTestFilters(subjects, map) {
     const container = document.getElementById('filter-container');
     if (!container) return; 
     container.innerHTML = "";
+    
     const sortedSubjects = Array.from(subjects).sort();
+
     sortedSubjects.forEach(subj => {
         const details = document.createElement('details');
         details.className = "subject-dropdown-card"; 
+
         details.innerHTML = `
             <summary class="subject-summary">
-                <div class="summary-header"><span class="subj-name">${subj}</span>
+                <div class="summary-header">
+                    <span class="subj-name">${subj}</span>
                     <label class="select-all-label" onclick="event.stopPropagation()">
                         <input type="checkbox" onchange="toggleSubjectAll(this, '${subj}')"> Select All
                     </label>
                 </div>
-            </summary>`;
+            </summary>
+        `;
+
         const contentDiv = document.createElement('div');
         contentDiv.className = "dropdown-content";
         const sortedTopics = Array.from(map[subj] || []).sort();
+        
         if (sortedTopics.length > 0) {
             const gridContainer = document.createElement('div');
             gridContainer.className = "topics-text-grid"; 
+            
             sortedTopics.forEach(topic => {
                 const item = document.createElement('div');
                 item.className = "topic-text-item exam-selectable"; 
@@ -545,7 +595,9 @@ function renderTestFilters(subjects, map) {
                 item.dataset.topic = topic;
                 item.onclick = function() {
                     this.classList.toggle('selected');
-                    if(!this.classList.contains('selected')) details.querySelector('input[type="checkbox"]').checked = false;
+                    if(!this.classList.contains('selected')) {
+                        details.querySelector('input[type="checkbox"]').checked = false;
+                    }
                 };
                 gridContainer.appendChild(item);
             });
@@ -560,20 +612,23 @@ function toggleSubjectAll(checkbox, subjName) {
     const header = checkbox.closest('.subject-dropdown-card');
     const items = header.querySelectorAll('.exam-selectable');
     items.forEach(item => {
-        if (checkbox.checked) item.classList.add('selected'); else item.classList.remove('selected');
+        if (checkbox.checked) item.classList.add('selected');
+        else item.classList.remove('selected');
     });
 }
 
 // ======================================================
-// 9. STUDY MODES
+// 9. STUDY LOGIC
 // ======================================================
 
 function setMode(mode) {
     currentMode = mode;
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     if(event && event.target) event.target.classList.add('active');
+    
     document.getElementById('test-settings').classList.toggle('hidden', mode !== 'test');
     document.getElementById('dynamic-menus').classList.toggle('hidden', mode === 'test');
+    
     const filterControls = document.getElementById('practice-filter-controls');
     if(filterControls) filterControls.style.display = (mode === 'test') ? 'none' : 'flex';
 }
@@ -581,13 +636,14 @@ function setMode(mode) {
 function startPractice(subject, topic) {
     let pool = allQuestions.filter(q => q.Subject === subject && (!topic || q.Topic === topic));
     
-    // --- PREMIUM CHECK ---
     const isPrem = isPremiumForCurrentCourse();
-    
-    if (!isPrem && pool.length > 20) {
-        pool = pool.slice(0, 20);
-        if(currentIndex === 0) alert(`🔒 Free Mode (${currentCourse}): Limited to 20 questions.\nGo Premium to unlock.`);
+    if (!isPrem) {
+        if (pool.length > 20) {
+            pool = pool.slice(0, 20);
+            if(currentIndex === 0) alert(`🔒 Free Mode (${currentCourse}): Limited to 20 questions.\nGo Premium to unlock full bank.`);
+        }
     }
+
     if (pool.length === 0) return alert("No questions available.");
 
     const onlyUnattempted = document.getElementById('unattempted-only').checked;
@@ -595,45 +651,55 @@ function startPractice(subject, topic) {
         pool = pool.filter(q => !userSolvedIDs.includes(q._uid));
         if (pool.length === 0) return alert("You have solved all questions in this section!");
     }
+
     filteredQuestions = pool;
+    
     let startIndex = 0;
     if (!onlyUnattempted) {
         startIndex = filteredQuestions.findIndex(q => !userSolvedIDs.includes(q._uid));
         if (startIndex === -1) startIndex = 0;
     }
+
     currentMode = 'practice';
     isMistakeReview = false;
     currentIndex = startIndex;
+    
     showScreen('quiz-screen');
     renderPage();
     renderPracticeNavigator();
 }
 
 function startMistakePractice() {
+    // FIX: Filter mistakes to ONLY show ones from the CURRENT COURSE
     const currentCourseIDs = allQuestions.map(q => q._uid);
     const relevantMistakes = userMistakes.filter(id => currentCourseIDs.includes(id));
 
     if (relevantMistakes.length === 0) return alert(`No mistakes pending for ${currentCourse}!`);
     
     filteredQuestions = allQuestions.filter(q => relevantMistakes.includes(q._uid));
+    
     currentMode = 'practice';
     isMistakeReview = true;
     currentIndex = 0;
+    
     showScreen('quiz-screen');
     renderPage();
     renderPracticeNavigator();
 }
 
 function startSavedQuestions() {
+    // FIX: Filter bookmarks to ONLY show ones from the CURRENT COURSE
     const currentCourseIDs = allQuestions.map(q => q._uid);
     const relevantBookmarks = userBookmarks.filter(id => currentCourseIDs.includes(id));
 
     if (relevantBookmarks.length === 0) return alert(`No bookmarks for ${currentCourse}!`);
     
     filteredQuestions = allQuestions.filter(q => relevantBookmarks.includes(q._uid));
+    
     currentMode = 'practice';
     isMistakeReview = false;
     currentIndex = 0;
+    
     showScreen('quiz-screen');
     renderPage();
 }
@@ -641,15 +707,18 @@ function startSavedQuestions() {
 function startTest() {
     const isAdmin = userProfile && userProfile.role === 'admin';
     const isPrem = isPremiumForCurrentCourse();
-    
+
     let count = parseInt(document.getElementById('q-count').value);
     
-    if (!isGuest && !isPrem && !isAdmin && count > 20) {
-        count = 20;
-        alert(`🔒 Free Plan Limit: Exams for ${currentCourse} are capped at 20 questions.`);
+    if (!isGuest && !isPrem && !isAdmin) {
+        if (count > 20) {
+            count = 20;
+            alert(`🔒 Free Plan Limit: Exams for ${currentCourse} are capped at 20 questions.`);
+        }
     }
 
     const mins = parseInt(document.getElementById('t-limit').value);
+    
     const selectedElements = document.querySelectorAll('.exam-selectable.selected');
     let pool = [];
 
@@ -663,52 +732,65 @@ function startTest() {
     }
 
     if(pool.length === 0) return alert("No questions found.");
+    
     filteredQuestions = pool.sort(() => Math.random() - 0.5).slice(0, count);
+    
     currentMode = 'test';
     currentIndex = 0;
     testAnswers = {};
     testFlags = {}; 
     testTimeRemaining = mins * 60;
+    
     showScreen('quiz-screen');
     document.getElementById('timer').classList.remove('hidden');
     document.getElementById('test-sidebar').classList.add('active');
+    
     renderNavigator();
+
     clearInterval(testTimer);
     testTimer = setInterval(updateTimer, 1000);
     renderPage();
 }
 
 // ======================================================
-// 10. QUIZ RENDERERS
+// 10. QUIZ ENGINE
 // ======================================================
 
 function renderPage() {
     const container = document.getElementById('quiz-content-area');
     container.innerHTML = "";
     window.scrollTo(0,0);
+
     const prevBtn = document.getElementById('prev-btn');
     const nextBtn = document.getElementById('next-btn');
     const submitBtn = document.getElementById('submit-btn');
+    
     const flagBtn = document.getElementById('flag-btn'); 
     if(flagBtn) flagBtn.classList.add('hidden'); 
+    
     prevBtn.classList.toggle('hidden', currentIndex === 0);
 
     if (currentMode === 'practice') {
         document.getElementById('timer').classList.add('hidden');
         document.getElementById('test-sidebar').classList.remove('active'); 
         submitBtn.classList.add('hidden');
+        
         if (currentIndex < filteredQuestions.length - 1) nextBtn.classList.remove('hidden');
         else nextBtn.classList.add('hidden');
+        
         container.appendChild(createQuestionCard(filteredQuestions[currentIndex], currentIndex, false));
         renderPracticeNavigator(); 
+
     } else {
         document.getElementById('timer').classList.remove('hidden');
         document.getElementById('test-sidebar').classList.add('active');
+
         const start = currentIndex;
         const end = Math.min(start + 5, filteredQuestions.length);
         for (let i = start; i < end; i++) {
             container.appendChild(createQuestionCard(filteredQuestions[i], i, true));
         }
+        
         if (end === filteredQuestions.length) {
             nextBtn.classList.add('hidden');
             submitBtn.classList.remove('hidden');
@@ -716,6 +798,7 @@ function renderPage() {
             nextBtn.classList.remove('hidden');
             submitBtn.classList.add('hidden');
         }
+        
         renderNavigator(); 
     }
 }
@@ -726,11 +809,23 @@ function createQuestionCard(q, index, showNumber = true) {
     block.id = `q-card-${index}`;
     block.style.position = "relative"; 
 
+    // --- BUTTON INJECTION ---
     if(currentMode === 'test') {
         const flagDiv = document.createElement('div');
         const isFlagged = testFlags[q._uid];
         flagDiv.innerHTML = isFlagged ? "🚩" : "🏳️";
-        flagDiv.style.cssText = `position: absolute; top: 15px; right: 15px; cursor: pointer; font-size: 20px; z-index: 10; opacity: ${isFlagged ? '1' : '0.4'}; transition: all 0.2s;`;
+        
+        flagDiv.style.cssText = `
+            position: absolute; 
+            top: 15px; 
+            right: 15px; 
+            cursor: pointer; 
+            font-size: 20px; 
+            z-index: 10;
+            opacity: ${isFlagged ? '1' : '0.4'};
+            transition: all 0.2s;
+        `;
+        
         flagDiv.title = "Flag Question";
         flagDiv.onclick = (e) => {
             e.stopPropagation(); 
@@ -739,11 +834,23 @@ function createQuestionCard(q, index, showNumber = true) {
             flagDiv.style.opacity = testFlags[q._uid] ? '1' : '0.4';
         };
         block.appendChild(flagDiv);
-    } else if (currentMode === 'practice') {
+    } 
+    else if (currentMode === 'practice') {
         const bookmarkDiv = document.createElement('div');
         const isBookmarked = userBookmarks.includes(q._uid);
         bookmarkDiv.innerHTML = isBookmarked ? "⭐" : "☆"; 
-        bookmarkDiv.style.cssText = `position: absolute; top: 15px; right: 15px; cursor: pointer; font-size: 24px; z-index: 10; color: ${isBookmarked ? '#ffd700' : '#cbd5e1'}; transition: all 0.2s;`;
+        
+        bookmarkDiv.style.cssText = `
+            position: absolute; 
+            top: 15px; 
+            right: 15px; 
+            cursor: pointer; 
+            font-size: 24px; 
+            z-index: 10;
+            color: ${isBookmarked ? '#ffd700' : '#cbd5e1'};
+            transition: all 0.2s;
+        `;
+        
         bookmarkDiv.title = "Bookmark Question";
         bookmarkDiv.onclick = (e) => {
             e.stopPropagation(); 
@@ -755,14 +862,17 @@ function createQuestionCard(q, index, showNumber = true) {
         block.appendChild(bookmarkDiv);
     }
 
+    // 1. Question Text
     const qText = document.createElement('div');
     qText.className = "test-q-text";
     qText.innerHTML = `${showNumber ? (index + 1) + ". " : ""}${q.Question || "Missing Text"}`;
     block.appendChild(qText);
 
+    // 2. Options
     const optionsDiv = document.createElement('div');
     optionsDiv.className = "options-group";
     optionsDiv.id = `opts-${index}`;
+
     let opts = [q.OptionA, q.OptionB, q.OptionC, q.OptionD, q.OptionE].filter(o => o && o.trim() !== "");
 
     opts.forEach(opt => {
@@ -770,16 +880,30 @@ function createQuestionCard(q, index, showNumber = true) {
         btn.className = "option-btn";
         btn.id = `btn-${index}-${opt}`;
         btn.innerHTML = `<span class="opt-text">${opt}</span><span class="elim-eye">👁️</span>`;
-        btn.querySelector('.elim-eye').onclick = (e) => { e.stopPropagation(); btn.classList.toggle('eliminated'); };
+        
+        btn.querySelector('.elim-eye').onclick = (e) => {
+            e.stopPropagation();
+            btn.classList.toggle('eliminated');
+        };
+
         btn.onclick = (e) => {
             if (e.target.classList.contains('elim-eye')) return;
             if (btn.classList.contains('eliminated')) btn.classList.remove('eliminated');
             checkAnswer(opt, btn, q);
         };
-        btn.addEventListener('contextmenu', (e) => { e.preventDefault(); btn.classList.toggle('eliminated'); });
-        if (typeof testAnswers !== 'undefined' && testAnswers[q._uid] === opt) btn.classList.add('selected');
+
+        btn.addEventListener('contextmenu', (e) => {
+            e.preventDefault(); 
+            btn.classList.toggle('eliminated');
+        });
+
+        if (typeof testAnswers !== 'undefined' && testAnswers[q._uid] === opt) {
+            btn.classList.add('selected');
+        }
+
         optionsDiv.appendChild(btn);
     });
+
     block.appendChild(optionsDiv);
     return block;
 }
@@ -793,14 +917,18 @@ function checkAnswer(selectedOption, btnElement, q) {
         renderNavigator();
         return;
     }
+
+    // PRACTICE MODE
     let correctData = (q.CorrectAnswer || "").trim();
     let userText = String(selectedOption).trim();
     let isCorrect = false;
+
     if (userText.toLowerCase() === correctData.toLowerCase()) isCorrect = true;
     else {
         const map = {'A': q.OptionA, 'B': q.OptionB, 'C': q.OptionC, 'D': q.OptionD, 'E': q.OptionE};
         if (map[correctData] === userText) isCorrect = true;
     }
+
     if (isCorrect) {
         btnElement.classList.remove('wrong');
         btnElement.classList.add('correct');
@@ -814,24 +942,41 @@ function checkAnswer(selectedOption, btnElement, q) {
 }
 
 function toggleFlagWithID(uid) {
-    if(testFlags[uid]) delete testFlags[uid]; else testFlags[uid] = true;
+    if(testFlags[uid]) delete testFlags[uid];
+    else testFlags[uid] = true;
     renderNavigator();
 }
 
+function toggleFlag() {
+    const q = filteredQuestions[currentIndex];
+    toggleFlagWithID(q._uid);
+}
+
+// --- BOOKMARK LOGIC ---
 async function toggleBookmark(uid) {
-    if (!currentUser || isGuest) return alert("Please log in to save bookmarks.");
+    if (!currentUser || isGuest) {
+        return alert("Please log in to save bookmarks.");
+    }
+    
     const idx = userBookmarks.indexOf(uid);
     if (idx > -1) {
+        // Remove
         userBookmarks.splice(idx, 1);
-        await db.collection('users').doc(currentUser.uid).update({ bookmarks: firebase.firestore.FieldValue.arrayRemove(uid) });
+        await db.collection('users').doc(currentUser.uid).update({
+            bookmarks: firebase.firestore.FieldValue.arrayRemove(uid)
+        });
     } else {
+        // Add
         userBookmarks.push(uid);
-        await db.collection('users').doc(currentUser.uid).update({ bookmarks: firebase.firestore.FieldValue.arrayUnion(uid) });
+        await db.collection('users').doc(currentUser.uid).update({
+            bookmarks: firebase.firestore.FieldValue.arrayUnion(uid)
+        });
     }
 }
 
 async function saveProgressToDB(q, isCorrect) {
     if (!currentUser) return;
+
     if (isCorrect) {
         if (!userSolvedIDs.includes(q._uid)) {
             userSolvedIDs.push(q._uid);
@@ -843,7 +988,9 @@ async function saveProgressToDB(q, isCorrect) {
         }
         if (isMistakeReview) {
             userMistakes = userMistakes.filter(id => id !== q._uid);
-            db.collection('users').doc(currentUser.uid).update({ mistakes: firebase.firestore.FieldValue.arrayRemove(q._uid) });
+            db.collection('users').doc(currentUser.uid).update({
+                mistakes: firebase.firestore.FieldValue.arrayRemove(q._uid)
+            });
         }
     } else {
         if (!userMistakes.includes(q._uid) && !userSolvedIDs.includes(q._uid)) {
@@ -868,48 +1015,74 @@ function updateTimer() {
 function submitTest() {
     clearInterval(testTimer);
     let score = 0;
+    
     const uniqueSubjects = [...new Set(filteredQuestions.map(q => q.Subject))];
     const examSubject = uniqueSubjects.length === 1 ? uniqueSubjects[0] : "Mixed Subjects";
+
     filteredQuestions.forEach(q => {
         const user = testAnswers[q._uid];
         const correct = getCorrectLetter(q);
         const correctText = getOptionText(q, correct);
         if(user === correctText) {
             score++;
-            if(currentUser && !isGuest) db.collection('users').doc(currentUser.uid).update({ solved: firebase.firestore.FieldValue.arrayUnion(q._uid) });
+            if(currentUser && !isGuest) {
+                db.collection('users').doc(currentUser.uid).update({ solved: firebase.firestore.FieldValue.arrayUnion(q._uid) });
+            }
         }
     });
+
     const pct = Math.round((score/filteredQuestions.length)*100);
+    
     if(currentUser && !isGuest) {
         db.collection('users').doc(currentUser.uid).collection('results').add({
-            date: new Date(), score: pct, total: filteredQuestions.length, subject: examSubject
+            date: new Date(), 
+            score: pct, 
+            total: filteredQuestions.length,
+            subject: examSubject
         });
     }
+
     showScreen('result-screen');
     document.getElementById('final-score').innerText = `${pct}% (${score}/${filteredQuestions.length})`;
 }
 
 // ======================================================
-// 11. ADMIN & PAYMENT
+// 11. ADMIN & PREMIUM FEATURES
 // ======================================================
 
 async function redeemKey() {
     const codeInput = document.getElementById('activation-code').value.trim().toUpperCase();
     const btn = event.target;
+    
     if (!codeInput) return alert("Please enter a code.");
-    btn.innerText = "Verifying..."; btn.disabled = true;
+    
+    btn.innerText = "Verifying...";
+    btn.disabled = true;
+
     try {
         const snapshot = await db.collection('activation_keys').where('code', '==', codeInput).get();
+
         if (snapshot.empty) throw new Error("Invalid Code.");
+
         const keyDoc = snapshot.docs[0];
         const k = keyDoc.data();
-        if (k.expiresAt && new Date() > k.expiresAt.toDate()) throw new Error("Expired Code.");
-        if (k.usedCount >= k.maxUses) throw new Error("Code Redeemed.");
-        if (k.usersRedeemed && k.usersRedeemed.includes(currentUser.uid)) throw new Error("Already used.");
-        
+        const keyId = keyDoc.id;
+
+        if (k.expiresAt) {
+            const expiryDate = k.expiresAt.toDate();
+            if (new Date() > expiryDate) throw new Error("This code has expired.");
+        }
+
+        if (k.usedCount >= k.maxUses) throw new Error("This code has been fully redeemed.");
+
+        if (k.usersRedeemed && k.usersRedeemed.includes(currentUser.uid)) {
+            throw new Error("You have already used this code.");
+        }
+
         const duration = PLAN_DURATIONS[k.plan] || 2592000000; 
         let newExpiry = (k.plan === 'lifetime') ? new Date("2100-01-01") : new Date(Date.now() + duration);
         
+        // --- GRANT PREMIUM to Specific Course ---
         const courseToGrant = k.course || 'FCPS'; 
 
         const batch = db.batch();
@@ -919,15 +1092,29 @@ async function redeemKey() {
         updateData[`subscriptions.${courseToGrant}`] = newExpiry;
         batch.update(userRef, updateData);
 
-        batch.update(db.collection('activation_keys').doc(keyDoc.id), { usedCount: firebase.firestore.FieldValue.increment(1), usersRedeemed: firebase.firestore.FieldValue.arrayUnion(currentUser.uid), lastUsedAt: new Date() });
+        const keyRef = db.collection('activation_keys').doc(keyId);
+        batch.update(keyRef, {
+            usedCount: firebase.firestore.FieldValue.increment(1),
+            usersRedeemed: firebase.firestore.FieldValue.arrayUnion(currentUser.uid),
+            lastUsedAt: new Date()
+        });
+
         await batch.commit();
-        alert(`✅ Code Redeemed!\nCourse: ${courseToGrant}\nPlan: ${k.plan}`);
+
+        alert(`✅ Code Redeemed!\nCourse: ${courseToGrant}\nPlan: ${k.plan.replace('_',' ').toUpperCase()}\nExpires: ${formatDateHelper(newExpiry)}`);
         window.location.reload();
-    } catch (e) { alert("❌ " + e.message); btn.innerText = "Unlock Now"; btn.disabled = false; }
+
+    } catch (e) {
+        alert("❌ " + e.message);
+        btn.innerText = "Unlock Now";
+        btn.disabled = false;
+    }
 }
 
 function selectPlan(planValue, element) {
-    document.querySelectorAll('.price-item').forEach(item => item.classList.remove('selected'));
+    document.querySelectorAll('.price-item').forEach(item => {
+        item.classList.remove('selected');
+    });
     element.classList.add('selected');
     document.getElementById('selected-plan-value').value = planValue;
 }
@@ -937,16 +1124,35 @@ function compressImage(file) {
         const reader = new FileReader();
         reader.readAsDataURL(file);
         reader.onload = (event) => {
-            const img = new Image(); img.src = event.target.result;
+            const img = new Image();
+            img.src = event.target.result;
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                const MAX = 800; let w = img.width; let h = img.height;
-                if (w>h && w>MAX) { h *= MAX/w; w=MAX; } else if (h>MAX) { w *= MAX/h; h=MAX; }
-                canvas.width = w; canvas.height = h;
-                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                const MAX_WIDTH = 800; 
+                const MAX_HEIGHT = 800;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                } else {
+                    if (height > MAX_HEIGHT) {
+                        width *= MAX_HEIGHT / height;
+                        height = MAX_HEIGHT;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
                 resolve(canvas.toDataURL('image/jpeg', 0.7));
             }
-        }; reader.onerror = reject;
+        }
+        reader.onerror = (err) => reject(err);
     });
 }
 
@@ -956,109 +1162,561 @@ async function submitPaymentProof() {
     const selectedCourse = document.getElementById('prem-course-select') ? document.getElementById('prem-course-select').value : currentCourse;
     const file = document.getElementById('pay-proof').files[0];
     
-    if(!selectedPlan || !file) return alert("Select plan and upload proof.");
+    if(!selectedPlan || !file) return alert("❌ Please select a plan and upload proof.");
+
     const btn = event.target;
-    btn.innerText = "Uploading..."; btn.disabled = true;
+    const originalText = btn.innerText;
+    btn.innerText = "Compressing & Uploading...";
+    btn.disabled = true;
+
     try {
         const imgStr = await compressImage(file);
+        const autoTID = "MANUAL_" + Math.random().toString(36).substr(2, 6).toUpperCase();
+
         await db.collection('payment_requests').add({
-            uid: currentUser.uid, email: currentUser.email, tid: "MANUAL_"+Math.random().toString(36).substr(2,6).toUpperCase(),
+            uid: currentUser.uid, 
+            email: currentUser.email, 
+            tid: autoTID, 
             planRequested: selectedPlan, 
             courseRequested: selectedCourse, // SAVING COURSE NAME
-            image: imgStr, status: 'pending', timestamp: new Date()
+            image: imgStr, 
+            status: 'pending', 
+            timestamp: new Date()
         });
-        alert(`✅ Request Sent for ${selectedCourse}!`);
+
+        alert(`✅ Request Sent for ${selectedCourse}! Admin will approve soon.`);
         document.getElementById('premium-modal').classList.add('hidden');
-    } catch (e) { alert("Error: " + e.message); } 
-    finally { btn.innerText = "Submit Request"; btn.disabled = false; }
+
+    } catch (e) {
+        alert("Error: " + e.message);
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
 }
 
 function openAdminPanel() {
     if (!currentUser) return;
     db.collection('users').doc(currentUser.uid).get().then(doc => {
-        if (doc.data().role === 'admin') { showScreen('admin-screen'); switchAdminTab('reports'); }
-        else alert("⛔ Access Denied.");
+        if (doc.data().role === 'admin') {
+            showScreen('admin-screen');
+            switchAdminTab('reports');
+        } else {
+            alert("⛔ Access Denied.");
+        }
     });
 }
+
 function switchAdminTab(tab) {
     document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
     if(event) event.target.classList.add('active');
-    ['reports','payments','keys','users'].forEach(t => document.getElementById('tab-'+t).classList.add('hidden'));
+    
+    ['reports', 'payments', 'keys', 'users'].forEach(t => document.getElementById('tab-'+t).classList.add('hidden'));
     document.getElementById('tab-'+tab).classList.remove('hidden');
-    if(tab==='reports') loadAdminReports(); else if(tab==='payments') loadAdminPayments();
-    else if(tab==='keys') loadAdminKeys(); else if(tab==='users') loadAllUsers();
+    
+    if(tab==='reports') loadAdminReports();
+    if(tab==='payments') loadAdminPayments();
+    if(tab==='keys') loadAdminKeys();
+    if(tab==='users') loadAllUsers();
 }
 
 async function loadAdminReports() {
-    const list = document.getElementById('admin-reports-list'); list.innerHTML = "Loading...";
-    const snap = await db.collection('reports').orderBy('timestamp','desc').limit(20).get();
-    if(snap.empty) return list.innerHTML = "<p>No reports.</p>";
-    let html=""; snap.forEach(doc=>{ const r=doc.data(); html+=`<div class="report-card"><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span style="background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold;">Row: ${r.sheetRow||'N/A'}</span><span style="font-size:10px; color:#94a3b8;">${formatDateHelper(r.timestamp)}</span></div><b>${r.questionText}</b><br><span style="color:red">${r.reportReason}</span><button onclick="deleteReport('${doc.id}')">Resolve</button></div>`; });
+    const list = document.getElementById('admin-reports-list');
+    list.innerHTML = "Loading reports...";
+    const snap = await db.collection('reports').orderBy('timestamp', 'desc').limit(20).get();
+    
+    if (snap.empty) {
+        list.innerHTML = "<p style='padding:15px; text-align:center;'>No reports found.</p>";
+        return;
+    }
+    
+    let html = "";
+    snap.forEach(doc => {
+        const r = doc.data();
+        html += `<div class="report-card">
+            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                <span style="background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold;">
+                    Row: ${r.sheetRow || 'N/A'}
+                </span>
+                <span style="font-size:10px; color:#94a3b8;">${formatDateHelper(r.timestamp)}</span>
+            </div>
+            <strong>${r.questionText.substr(0, 50)}...</strong><br>
+            <span style="color:red; font-size:12px;">Reason: ${r.reportReason}</span><br>
+            <small>By: ${r.reportedBy}</small><br>
+            <button onclick="deleteReport('${doc.id}')" style="margin-top:5px; padding:2px 8px; font-size:10px;">Resolve/Delete</button>
+        </div>`;
+    });
     list.innerHTML = html;
 }
-function deleteReport(id){ db.collection('reports').doc(id).delete().then(()=>loadAdminReports()); }
 
+async function loadAllUsers() {
+    const res = document.getElementById('admin-user-result');
+    res.innerHTML = "Loading users...";
+    
+    let snap;
+    try {
+        snap = await db.collection('users').orderBy('joined', 'desc').limit(500).get();
+    } catch (e) {
+        snap = await db.collection('users').limit(500).get();
+    }
+    
+    const usersByEmail = {};
+    const noEmailAdmins = []; 
+
+    let hiddenGuests = 0;
+
+    snap.forEach(doc => {
+        const u = doc.data();
+        u.id = doc.id;
+        
+        if (u.role === 'guest') {
+            hiddenGuests++;
+            return; 
+        }
+
+        if (!u.email || u.email === "undefined") {
+            if (u.role === 'admin' || u.isPremium) {
+                noEmailAdmins.push(u);
+            }
+        } else {
+            if (!usersByEmail[u.email]) usersByEmail[u.email] = [];
+            usersByEmail[u.email].push(u);
+        }
+    });
+
+    let html = "<div style='background:white; border-radius:12px; overflow:hidden;'>";
+    let count = 0;
+
+    Object.keys(usersByEmail).forEach(email => {
+        const accounts = usersByEmail[email];
+        accounts.sort((a, b) => (a.role === 'admin' ? -1 : 1));
+        html += renderUserRow(accounts[0]);
+        count++;
+    });
+
+    noEmailAdmins.forEach(u => {
+        const label = `<span style="color:red; font-weight:bold;">(Email Missing)</span>`;
+        html += renderUserRow(u, label);
+        count++;
+    });
+
+    if(count === 0) html += "<div style='padding:15px;'>No registered users found.</div>";
+    
+    res.innerHTML = `
+    <div style="padding:10px; color:#666; font-size:12px; border-bottom:1px solid #eee; display:flex; justify-content:space-between;">
+        <span><b>${count}</b> Registered Users</span>
+        <span style="color:#94a3b8;">(Hidden Guests: ${hiddenGuests})</span>
+    </div>` + html + "</div>";
+}
+
+function renderUserRow(u, extraLabel = "") {
+    const isAdmin = u.role === 'admin';
+    
+    // Check subscriptions object instead of single flag
+    const subs = u.subscriptions || {};
+    const isPrem = (subs['FCPS'] || subs['MBBS']); // Considered premium if they have at least one
+    
+    const roleBadgeClass = isAdmin ? 'badge-admin' : 'badge-student';
+    const roleText = isAdmin ? 'Admin' : 'Student';
+    
+    const planBadgeClass = isPrem ? 'badge-premium' : 'badge-free';
+    const planText = isPrem ? 'Premium' : 'Free';
+    const rowClass = isAdmin ? "is-admin-row" : "";
+    
+    let dateStr = "N/A";
+    if(u.joined) {
+        const d = u.joined.seconds ? new Date(u.joined.seconds * 1000) : new Date(u.joined);
+        if(!isNaN(d.getTime())) dateStr = formatDateHelper(d);
+    }
+
+    const usernameDisplay = u.username ? `<span style="color:#64748b; font-size:12px; margin-left:5px;">(@${u.username})</span>` : "";
+
+    return `
+    <div class="user-list-item ${rowClass}">
+        <div class="user-info-group">
+            <div class="user-email-text">
+                ${isAdmin ? '⭐' : ''} ${u.email || "Unknown User"} 
+                ${usernameDisplay} ${extraLabel}
+            </div>
+            
+            <div class="user-meta-row">
+                <span class="status-badge ${roleBadgeClass}">${roleText}</span>
+                <span class="status-badge ${planBadgeClass}">${planText}</span>
+                <span style="border-left:1px solid #cbd5e1; padding-left:10px;">Joined: ${dateStr}</span>
+            </div>
+        </div>
+
+        <button class="btn-manage-user" onclick="adminLookupUser('${u.id}')">
+            ⚙️ Manage
+        </button>
+    </div>`;
+}
+
+function deleteReport(id) { db.collection('reports').doc(id).delete().then(()=>loadAdminReports()); }
+
+async function loadAdminPayments() {
+    const list = document.getElementById('admin-payments-list');
+    list.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">Loading requests...</div>';
+    
+    try {
+        const snap = await db.collection('payment_requests')
+            .where('status','==','pending')
+            .orderBy('timestamp', 'desc') 
+            .get();
+        
+        if(snap.empty) { 
+            list.innerHTML = "<div style='padding:30px; text-align:center; color:#94a3b8; font-style:italic;'>No pending payment requests.</div>"; 
+            return; 
+        }
+
+        let html = "";
+        snap.forEach(doc => {
+            const p = doc.data();
+            const reqPlan = p.planRequested ? p.planRequested.replace('_', ' ').toUpperCase() : "UNKNOWN";
+            // Show course name in the card
+            const reqCourse = p.courseRequested || "FCPS";
+            
+            const imageHtml = p.image 
+                ? `<div class="pay-proof-container" onclick="viewFullReceipt('${p.image.replace(/'/g, "\\'")}')">
+                     <img src="${p.image}" class="pay-proof-img" alt="Receipt">
+                     <span class="view-receipt-text">🔍 Click to View Full Receipt</span>
+                   </div>`
+                : `<div style="padding:15px; background:#fff1f2; color:#be123c; border-radius:8px; font-size:12px; text-align:center; margin-bottom:15px;">
+                     ⚠️ No Screenshot Uploaded
+                   </div>`;
+
+            html += `
+            <div class="admin-payment-card" id="card-${doc.id}">
+                <div class="pay-card-header">
+                    <div>
+                        <span class="pay-user-email">${p.email || "Unknown User"}</span>
+                        <div style="font-size:11px; color:#94a3b8;">UID: ${p.uid}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <span class="pay-plan-badge" style="background:#dbeafe; color:#1e40af;">${reqCourse}</span>
+                        <br>
+                        <span class="pay-plan-badge" style="margin-top:4px; display:inline-block;">${reqPlan}</span>
+                    </div>
+                </div>
+                
+                ${imageHtml}
+                
+                <div class="pay-action-box">
+                    <label class="pay-action-label">Decide & Duration</label>
+                    <div class="pay-controls-row">
+                        <select id="dur-${doc.id}" class="pay-select">
+                            <option value="1_day" ${p.planRequested === '1_day' ? 'selected' : ''}>1 Day</option>
+                            <option value="1_week" ${p.planRequested === '1_week' ? 'selected' : ''}>1 Week</option>
+                            <option value="15_days" ${p.planRequested === '15_days' ? 'selected' : ''}>15 Days</option>
+                            <option value="1_month" ${p.planRequested === '1_month' ? 'selected' : ''}>1 Month</option>
+                            <option value="3_months" ${p.planRequested === '3_months' ? 'selected' : ''}>3 Months</option>
+                            <option value="6_months" ${p.planRequested === '6_months' ? 'selected' : ''}>6 Months</option>
+                            <option value="12_months" ${p.planRequested === '12_months' ? 'selected' : ''}>12 Months</option>
+                            <option value="lifetime" ${p.planRequested === 'lifetime' ? 'selected' : ''}>Lifetime</option>
+                        </select>
+                        
+                        <button class="btn-pay-action btn-approve" onclick="approvePayment('${doc.id}','${p.uid}')">
+                            ✅ Approve
+                        </button>
+                        
+                        <button class="btn-pay-action btn-reject" onclick="rejectPayment('${doc.id}')">
+                            ❌ Reject
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+        });
+        list.innerHTML = html;
+        
+    } catch (e) {
+        console.error(e);
+        list.innerHTML = `<div style="color:red; padding:20px;">Error loading payments: ${e.message}</div>`;
+    }
+}
+
+function viewFullReceipt(base64Image) {
+    const w = window.open("");
+    if(w) {
+        w.document.write(`
+            <html>
+                <head><title>Payment Receipt</title></head>
+                <body style="margin:0; background:#0f172a; display:flex; justify-content:center; align-items:center; height:100vh;">
+                    <img src="${base64Image}" style="max-width:100%; max-height:100vh; box-shadow:0 0 20px rgba(0,0,0,0.5);">
+                </body>
+            </html>
+        `);
+    } else {
+        alert("⚠️ Pop-up blocked! Please allow pop-ups to view the receipt.");
+    }
+}
+
+async function rejectPayment(docId) {
+    if(!confirm("Are you sure you want to REJECT this request?")) return;
+    const card = document.getElementById(`card-${docId}`);
+    if(card) card.style.opacity = "0.5";
+    try {
+        await db.collection('payment_requests').doc(docId).update({
+            status: 'rejected',
+            rejectedAt: new Date()
+        });
+        if(card) card.remove();
+        const list = document.getElementById('admin-payments-list');
+        if(list.children.length === 0) loadAdminPayments();
+    } catch (e) {
+        alert("Error: " + e.message);
+        if(card) card.style.opacity = "1";
+    }
+}
+
+// --- UPDATED ADMIN APPROVE (GRANTS SPECIFIC COURSE) ---
 async function approvePayment(docId, userId) {
     const btn = event.target;
-    btn.innerText = "Saving..."; btn.disabled = true;
+    btn.innerText = "Saving to DB...";
+    btn.disabled = true;
+
     try {
         const select = document.getElementById(`dur-${docId}`);
         const planKey = select.value; 
         const duration = PLAN_DURATIONS[planKey];
-        if (!duration) throw new Error("Invalid Plan");
+        
+        if (!duration) throw new Error("Invalid Plan Duration");
 
+        // Fetch request to get the course
         const reqDoc = await db.collection('payment_requests').doc(docId).get();
         const reqData = reqDoc.data();
-        const course = reqData.courseRequested || 'FCPS';
+        const courseToGrant = reqData.courseRequested || 'FCPS';
 
-        let newExpiry = (planKey === 'lifetime') ? new Date("2100-01-01") : new Date(Date.now() + duration);
+        let newExpiry = (planKey === 'lifetime') 
+            ? new Date("2100-01-01") 
+            : new Date(Date.now() + duration);
 
         const batch = db.batch();
         const userRef = db.collection('users').doc(userId);
         
+        // Update subscription map
         const updateData = {};
-        updateData[`subscriptions.${course}`] = newExpiry;
+        updateData[`subscriptions.${courseToGrant}`] = newExpiry;
         
         batch.update(userRef, updateData);
         batch.update(db.collection('payment_requests').doc(docId), { status: 'approved', approvedAt: new Date() });
 
         await batch.commit();
-        alert(`✅ Approved ${course} for user!`);
+
+        alert(`✅ Approved ${courseToGrant} for user!\nExpires: ${formatDateHelper(newExpiry)}`);
         loadAdminPayments(); 
+
     } catch (e) {
-        alert("Error: " + e.message); btn.innerText = "Approve"; btn.disabled = false;
+        console.error(e);
+        alert("Database Save Failed: " + e.message);
+        btn.innerText = "Approve";
+        btn.disabled = false;
     }
 }
 
-async function loadAdminPayments() {
-    const list = document.getElementById('admin-payments-list');
-    list.innerHTML = 'Loading...';
+async function generateAdminKey() {
+    const plan = document.getElementById('key-plan').value;
+    const customCode = document.getElementById('key-custom-code').value.trim().toUpperCase();
+    const limit = parseInt(document.getElementById('key-limit').value) || 1;
+    const expiryInput = document.getElementById('key-expiry').value; 
+
+    let code = customCode;
+    if (!code) {
+        code = 'KEY-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+    }
+
+    const check = await db.collection('activation_keys').where('code', '==', code).get();
+    if (!check.empty) {
+        return alert("❌ Error: This code already exists!");
+    }
+
+    const keyData = {
+        code: code,
+        plan: plan,
+        maxUses: limit,
+        usedCount: 0,
+        usersRedeemed: [], 
+        createdAt: new Date(),
+        active: true
+    };
+
+    if (expiryInput) {
+        keyData.expiresAt = new Date(expiryInput + "T23:59:59");
+    } else {
+        keyData.expiresAt = null; 
+    }
+
+    await db.collection('activation_keys').add(keyData);
+    
+    alert(`✅ Key Created: ${code}\nLimit: ${limit} Users`);
+    
+    document.getElementById('key-custom-code').value = "";
+    document.getElementById('key-limit').value = "1";
+    document.getElementById('key-expiry').value = "";
+    
+    loadAdminKeys();
+}
+
+async function loadAdminKeys() {
+    const list = document.getElementById('admin-keys-list');
+    list.innerHTML = "Loading...";
+    
+    const snap = await db.collection('activation_keys').orderBy('createdAt', 'desc').limit(20).get();
+    
+    if (snap.empty) {
+        list.innerHTML = "<p style='color:#666; text-align:center;'>No keys generated yet.</p>";
+        return;
+    }
+
+    let html = `<table style="width:100%; border-collapse:collapse; font-size:12px; background:white;">
+        <tr style="background:#f1f5f9; text-align:left;">
+            <th style="padding:10px; border-bottom:2px solid #e2e8f0;">Code</th>
+            <th style="padding:10px; border-bottom:2px solid #e2e8f0;">Plan</th>
+            <th style="padding:10px; border-bottom:2px solid #e2e8f0;">Usage</th>
+            <th style="padding:10px; border-bottom:2px solid #e2e8f0;">Expires</th>
+            <th style="padding:10px; border-bottom:2px solid #e2e8f0;">Action</th>
+        </tr>`;
+
+    snap.forEach(doc => {
+        const k = doc.data();
+        
+        const isFull = k.usedCount >= k.maxUses;
+        const isExpired = k.expiresAt && new Date() > k.expiresAt.toDate();
+        let statusColor = "#10b981"; 
+        
+        if (isFull) statusColor = "#ef4444"; 
+        else if (isExpired) statusColor = "#94a3b8"; 
+
+        const expiryStr = k.expiresAt ? formatDateHelper(k.expiresAt) : "Never";
+
+        html += `
+        <tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:10px; font-weight:bold; color:#2563eb;">${k.code}</td>
+            <td style="padding:10px;">${k.plan.replace('_',' ')}</td>
+            <td style="padding:10px;">
+                <span style="color:${statusColor}; font-weight:bold;">${k.usedCount} / ${k.maxUses}</span>
+            </td>
+            <td style="padding:10px;">${expiryStr}</td>
+            <td style="padding:10px;">
+                <button onclick="deleteKey('${doc.id}')" style="padding:2px 6px; font-size:10px; color:red; border:1px solid red; background:white; border-radius:4px; cursor:pointer;">Delete</button>
+            </td>
+        </tr>`;
+    });
+    list.innerHTML = html + "</table>";
+}
+
+function deleteKey(id) {
+    if(!confirm("Delete this key permanently?")) return;
+    db.collection('activation_keys').doc(id).delete().then(() => loadAdminKeys());
+}
+
+async function adminLookupUser(targetId) {
+    const input = targetId || document.getElementById('admin-user-input').value.trim();
+    const res = document.getElementById('admin-user-result');
+    res.innerHTML = "Searching...";
+    
+    let doc = null;
+
+    let directDoc = await db.collection('users').doc(input).get();
+    if(directDoc.exists) {
+        doc = directDoc;
+    } 
+    else {
+        let s = await db.collection('users').where('email','==',input).limit(1).get();
+        if(!s.empty) {
+            doc = s.docs[0];
+        } 
+        else {
+            let u = await db.collection('users').where('username','==',input.toLowerCase()).limit(1).get();
+            if(!u.empty) {
+                doc = u.docs[0];
+            }
+        }
+    }
+
+    if(!doc) { res.innerHTML = "Not found (Check Email, Username or UID)"; return; }
+    res.innerHTML = renderAdminUserCard(doc); 
+}
+
+function renderAdminUserCard(doc) {
+    const u = doc.data();
+    return `
+    <div class="user-card">
+        <h3>${u.email}</h3>
+        <p style="color:#0072ff; font-weight:bold;">@${u.username || "no-username"}</p>
+        <p>Premium: ${u.subscriptions ? Object.keys(u.subscriptions).join(', ') : 'None'}</p>
+        <p>Role: ${u.role}</p>
+        
+        <div style="margin-top:10px; padding-top:10px; border-top:1px solid #eee;">
+            <label style="font-size:12px; font-weight:bold;">Manage Subscription:</label>
+            <div style="display:flex; gap:5px; margin-top:5px; flex-wrap:wrap;">
+                <select id="admin-grant-course-${doc.id}" style="padding:5px; border-radius:5px; border:1px solid #ccc;">
+                    <option value="FCPS">FCPS</option>
+                    <option value="MBBS">MBBS</option>
+                </select>
+                
+                <select id="admin-grant-plan-${doc.id}" style="padding:5px; border-radius:5px; border:1px solid #ccc;">
+                  <option value="1_day">1 Day</option>
+                  <option value="1_week">1 Week</option>
+                  <option value="1_month">1 Month</option>
+                  <option value="6_months">6 Months</option>
+                  <option value="lifetime">Lifetime</option>
+                </select>
+                <button onclick="adminGrantPremium('${doc.id}')" style="background:#d97706; color:white; padding:5px 10px; margin:0; font-size:12px;">
+                    Grant
+                </button>
+            </div>
+        </div>
+        
+        <div style="display:flex; gap:10px; margin-top:15px;">
+            <button onclick="adminToggleBan('${doc.id}', ${!u.disabled})" style="background:${u.disabled?'green':'red'}; color:white; flex:1;">
+                ${u.disabled?'Unban':'Ban User'}
+            </button>
+            <button onclick="adminRevokePremium('${doc.id}')" style="background:#64748b; color:white; flex:1;">
+                Revoke All
+            </button>
+        </div>
+    </div>`;
+}
+async function adminGrantPremium(uid) {
+    const courseSelect = document.getElementById(`admin-grant-course-${uid}`);
+    const planSelect = document.getElementById(`admin-grant-plan-${uid}`);
+    
+    const course = courseSelect.value;
+    const planKey = planSelect.value;
+    const duration = PLAN_DURATIONS[planKey];
+
+    if (!duration) return alert("Invalid plan selected");
+    if(!confirm(`Grant '${planKey}' for ${course} to this user?`)) return;
+
     try {
-        const snap = await db.collection('payment_requests').where('status','==','pending').orderBy('timestamp', 'desc').get();
-        if(snap.empty) { list.innerHTML = "No pending requests."; return; }
-        let html = "";
-        snap.forEach(doc => {
-            const p = doc.data();
-            const course = p.courseRequested || 'FCPS';
-            const imgHtml = p.image ? `<div class="pay-proof-container" onclick="viewFullReceipt('${p.image.replace(/'/g,"\\'")}')"><img src="${p.image}" class="pay-proof-img"><span>Click to View</span></div>` : "No Image";
-            html += `<div class="admin-payment-card" id="card-${doc.id}">
-                <div class="pay-card-header">
-                    <div><span class="pay-user-email">${p.email}</span><small>UID:${p.uid}</small></div>
-                    <div style="text-align:right"><span class="pay-plan-badge">${course}</span><br><small>${p.planRequested}</small></div>
-                </div>
-                ${imgHtml}
-                <div class="pay-action-box"><div class="pay-controls-row">
-                    <select id="dur-${doc.id}" class="pay-select">
-                        <option value="1_day">1 Day</option><option value="1_week">1 Week</option><option value="1_month">1 Month</option>
-                        <option value="6_months">6 Months</option><option value="lifetime">Lifetime</option>
-                    </select>
-                    <button class="btn-pay-action btn-approve" onclick="approvePayment('${doc.id}','${p.uid}')">Approve</button>
-                    <button class="btn-pay-action btn-reject" onclick="rejectPayment('${doc.id}')">Reject</button>
-                </div></div>
-            </div>`;
-        });
-        list.innerHTML = html;
-    } catch (e) { list.innerHTML = "Error: " + e.message; }
+        let newExpiry = (planKey === 'lifetime') 
+            ? new Date("2100-01-01") 
+            : new Date(Date.now() + duration);
+
+        const updateData = {};
+        updateData[`subscriptions.${course}`] = newExpiry;
+
+        await db.collection('users').doc(uid).update(updateData);
+
+        alert("✅ Premium Saved to Database!");
+        adminLookupUser(uid); 
+
+    } catch (e) {
+        alert("Error: " + e.message);
+    }
+}
+
+async function adminRevokePremium(uid) {
+    if(!confirm("Revoke ALL subscriptions for this user?")) return;
+    await db.collection('users').doc(uid).update({ subscriptions: {} });
+    alert("🚫 Revoked All Premium");
+    adminLookupUser(uid); 
+}
+
+async function adminToggleBan(uid, newStatus) {
+    await db.collection('users').doc(uid).update({ disabled: newStatus });
+    alert("Status Updated");
+    adminLookupUser(uid); 
 }
 
 // ======================================================
@@ -1139,14 +1797,16 @@ async function openProfileModal() {
     const planElem = document.getElementById('profile-plan');
     const expiryElem = document.getElementById('profile-expiry');
     const subs = freshData.subscriptions || {};
-    const fcpsExp = subs['FCPS'];
     
-    if (fcpsExp && new Date() < parseDateRobust(fcpsExp)) {
-        planElem.innerText = "PREMIUM (FCPS)";
-        expiryElem.innerText = formatDateHelper(fcpsExp);
+    // Show status for the currently active course
+    const currentExp = subs[currentCourse];
+    
+    if (currentExp && new Date() < parseDateRobust(currentExp)) {
+        planElem.innerText = `PREMIUM (${currentCourse})`;
+        expiryElem.innerText = formatDateHelper(currentExp);
         expiryElem.style.color = "#10b981";
     } else {
-        planElem.innerText = "Free Plan";
+        planElem.innerText = `Free Plan (${currentCourse})`;
         expiryElem.innerText = "-";
         expiryElem.style.color = "#64748b";
     }
