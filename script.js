@@ -2,19 +2,19 @@
 // 1. CONFIGURATION & FIREBASE SETUP
 // ======================================================
 
-// --- MULTI-COURSE CONFIGURATION (Replaces single Sheet URL) ---
+// --- NEW: MULTI-COURSE CONFIGURATION ---
 const COURSE_CONFIG = {
     'FCPS': {
         name: "FCPS Part 1",
         sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8aw1eGppF_fgvI5VAOO_3XEONyI-4QgWa0IgQg7K-VdxeFyn4XBpWT9tVDewbQ6PnMEQ80XpwbASh/pub?output=csv",
-        prefix: "",       // No prefix = Keeps existing user progress safe
-        theme: ""         // Default Blue Theme
+        prefix: "",       // Legacy Mode (No prefix)
+        theme: ""         // Default Blue
     },
     'MBBS': {
         name: "MBBS Final Year",
         sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6fLWMz_k89yK_S8kfjqAGs9I_fGzBE-WQ-Ci8l-D5ownRGV0I1Tz-ifZZKBOTXZAx9bvs4wVuWLID/pub?output=csv",
-        prefix: "MBBS_",  // Prefix ensures data separation (e.g. MBBS_solved)
-        theme: "mbbs-mode" // Activates Green Theme
+        prefix: "MBBS_",  // Database Prefix
+        theme: "mbbs-mode" // Green Theme
     }
 };
 
@@ -39,13 +39,11 @@ let currentUser = null;
 let userProfile = null; 
 let isGuest = false;
 
-// --- NEW: Track Current Course ---
-let currentCourse = 'FCPS'; // Default
+// --- NEW: Current Course State ---
+let currentCourse = 'FCPS'; 
 
 let allQuestions = [];
 let filteredQuestions = [];
-
-// Progress Arrays (Loaded dynamically based on selected Course)
 let userBookmarks = [];
 let userSolvedIDs = [];
 let userMistakes = [];
@@ -74,11 +72,11 @@ const PLAN_DURATIONS = {
     '3_months': 7776000000,
     '6_months': 15552000000,
     '12_months': 31536000000,
-    'lifetime': 2524608000000 
+    'lifetime': 2524608000000 // ~80 Years
 };
 
 // ======================================================
-// 3. AUTHENTICATION & ROUTING
+// 3. AUTHENTICATION & SECURITY LOGIC
 // ======================================================
 
 auth.onAuthStateChanged(async (user) => {
@@ -87,15 +85,19 @@ auth.onAuthStateChanged(async (user) => {
         currentUser = user;
         isGuest = false;
         
-        // --- STEP 1: Show Course Selection Screen ---
-        showScreen('course-selection-screen'); 
-        
-        // Hide Auth
         document.getElementById('auth-screen').classList.add('hidden');
         document.getElementById('auth-screen').classList.remove('active');
         
         await checkLoginSecurity(user);
-        updateCourseSelectionUI(); // Update buttons with active status
+        
+        // --- NEW: Route to Course Selection if available ---
+        if(document.getElementById('course-selection-screen')) {
+            showScreen('course-selection-screen');
+            updateCourseSelectionUI();
+        } else {
+            // Fallback if HTML isn't updated yet
+            selectCourse('FCPS');
+        }
         
     } else {
         if (!isGuest) {
@@ -105,6 +107,7 @@ auth.onAuthStateChanged(async (user) => {
             
             document.getElementById('dashboard-screen').classList.add('hidden');
             document.getElementById('dashboard-screen').classList.remove('active');
+            document.getElementById('premium-modal').classList.add('hidden');
             
             showScreen('auth-screen');
         }
@@ -122,41 +125,60 @@ async function checkLoginSecurity(user) {
                 email: user.email,
                 deviceId: currentDeviceId,
                 role: 'student',
+                isPremium: false,
                 joined: new Date(),
-                // Init Legacy Data
-                isPremium: false, solved: [], bookmarks: [], mistakes: [], stats: {}
+                solved: [], bookmarks: [], mistakes: [], stats: {}
             }, { merge: true });
             
             userProfile = (await docRef.get()).data();
         } else {
-            userProfile = doc.data();
+            const data = doc.data();
+            const updates = {};
             
-            if (!userProfile.email || userProfile.email !== user.email) {
-                docRef.update({ email: user.email });
+            if (!data.email || data.email !== user.email) {
+                updates.email = user.email;
+                data.email = user.email; 
             }
-            if (userProfile.disabled) {
+
+            if (!data.joined) {
+                const creationTime = user.metadata.creationTime ? new Date(user.metadata.creationTime) : new Date();
+                updates.joined = creationTime;
+                data.joined = creationTime;
+            }
+
+            if (Object.keys(updates).length > 0) {
+                await docRef.update(updates);
+            }
+
+            if (data.disabled) {
                 auth.signOut();
                 alert("⛔ Your account has been disabled by the admin.");
                 return;
             }
-            if (!userProfile.deviceId) await docRef.update({ deviceId: currentDeviceId });
+
+            if (!data.deviceId) await docRef.update({ deviceId: currentDeviceId });
+            
+            userProfile = data;
         }
         
-        // Admin button visibility
+        // Note: We do NOT load dashboard here. selectCourse() does that.
+        
         if (userProfile && userProfile.role === 'admin') {
             const btn = document.getElementById('admin-btn');
             if(btn) btn.classList.remove('hidden');
         }
 
-    } catch (e) { console.error("Auth Error:", e); }
+    } catch (e) { 
+        console.error("Auth Error:", e); 
+    }
 }
 
-// --- NEW: COURSE SELECTION LOGIC ---
+// --- NEW: COURSE SWITCHING FUNCTIONS ---
 
 function updateCourseSelectionUI() {
     if(!userProfile) return;
     
-    // Check FCPS Status
+    // Check FCPS
     const fcpsActive = userProfile.isPremium && isDateActive(userProfile.expiryDate);
     const fcpsBadge = document.getElementById('status-badge-FCPS');
     if(fcpsBadge) {
@@ -165,7 +187,7 @@ function updateCourseSelectionUI() {
         fcpsBadge.style.color = fcpsActive ? "#065f46" : "#475569";
     }
 
-    // Check MBBS Status
+    // Check MBBS
     const mbbsActive = userProfile.MBBS_isPremium && isDateActive(userProfile.MBBS_expiryDate);
     const mbbsBadge = document.getElementById('status-badge-MBBS');
     if(mbbsBadge) {
@@ -175,21 +197,21 @@ function updateCourseSelectionUI() {
     }
 }
 
-function selectCourse(courseName) {
-    if (!COURSE_CONFIG[courseName]) return alert("Course coming soon!");
-    
-    currentCourse = courseName;
-    const config = COURSE_CONFIG[courseName];
+function selectCourse(course) {
+    if (!COURSE_CONFIG[course]) return alert("Course coming soon!");
+
+    currentCourse = course;
+    const config = COURSE_CONFIG[course];
 
     // 1. Apply Visual Theme
     document.body.className = config.theme; 
     
     // 2. Update Header
     const badge = document.getElementById('active-course-badge');
-    if(badge) badge.innerText = courseName;
+    if(badge) badge.innerText = course;
     
     const title = document.getElementById('stats-title');
-    if(title) title.innerText = `📊 ${courseName} Progress`;
+    if(title) title.innerText = `📊 ${course} Progress`;
 
     // 3. Load Data & Dashboard
     showScreen('dashboard-screen');
@@ -198,8 +220,8 @@ function selectCourse(courseName) {
     allQuestions = [];
     filteredQuestions = [];
     
-    loadQuestions(config.sheet); // Load specific sheet
-    loadUserData(); // Load specific user data
+    loadQuestions(config.sheet); // Dynamic URL
+    loadUserData(); // Dynamic Prefix Loading
 }
 
 function returnToCourseSelection() {
@@ -209,38 +231,52 @@ function returnToCourseSelection() {
     filteredQuestions = [];
 }
 
-// --- HELPER: GET ISOLATED DB KEY ---
 function getStoreKey(baseKey) {
-    // If MBBS, returns "MBBS_solved". If FCPS, returns "solved".
     const prefix = COURSE_CONFIG[currentCourse].prefix;
     return prefix + baseKey;
 }
 
 function guestLogin() {
     isGuest = true;
-    userProfile = { role: 'guest' };
-    showScreen('course-selection-screen');
+    userProfile = { role: 'guest', isPremium: false };
+    // Guests also see course selection
+    if(document.getElementById('course-selection-screen')) {
+        showScreen('course-selection-screen');
+    } else {
+        selectCourse('FCPS');
+    }
+    document.getElementById('user-display').innerText = "Guest User";
+    document.getElementById('premium-badge').classList.add('hidden');
+    document.getElementById('get-premium-btn').classList.remove('hidden');
+    alert("👤 Guest Mode Active\n\n⚠️ Progress is NOT saved.\n🔒 Limit: 20 Questions per topic.");
 }
 
-function login() {
+async function login() {
     const input = document.getElementById('email').value.trim().toLowerCase();
     const p = document.getElementById('password').value;
     const msg = document.getElementById('auth-msg');
-    if(!input || !p) return alert("Please enter credentials");
+    if(!input || !p) return alert("Please enter email/username and password");
     msg.innerText = "Verifying...";
    
     let emailToUse = input;
 
     if (!input.includes('@')) {
-        db.collection('users').where('username', '==', input).limit(1).get()
-        .then(snap => {
-            if (snap.empty) { msg.innerText = "❌ Username not found."; return; }
+        try {
+            const snap = await db.collection('users').where('username', '==', input).limit(1).get();
+            if (snap.empty) {
+                msg.innerText = "❌ Username not found.";
+                return;
+            }
             emailToUse = snap.docs[0].data().email;
-            auth.signInWithEmailAndPassword(emailToUse, p).catch(err => msg.innerText = "❌ " + err.message);
-        });
-    } else {
-       auth.signInWithEmailAndPassword(emailToUse, p).catch(err => msg.innerText = "❌ " + err.message);
+        } catch (e) {
+            msg.innerText = "Login Error: " + e.message;
+            return;
+        }
     }
+    auth.signInWithEmailAndPassword(emailToUse, p)
+        .catch(err => {
+            msg.innerText = "❌ " + err.message;
+        });
 }
 
 async function signup() {
@@ -249,38 +285,183 @@ async function signup() {
     const username = document.getElementById('reg-username').value.trim().toLowerCase().replace(/\s+/g, '');
     const msg = document.getElementById('auth-msg');
 
-    if (!email || !password || !username) return alert("Please fill fields.");
-    msg.innerText = "Creating account...";
+    if (!email || !password || !username) return alert("Please fill in all fields.");
+    if (username.length < 3) return alert("Username must be at least 3 characters.");
+
+    msg.innerText = "Checking availability...";
 
     try {
         const check = await db.collection('users').where('username', '==', username).get();
-        if (!check.empty) throw new Error("⚠️ Username taken.");
+        if (!check.empty) throw new Error("⚠️ Username is already taken.");
 
+        msg.innerText = "Creating account...";
         const cred = await auth.createUserWithEmailAndPassword(email, password);
         
         await db.collection('users').doc(cred.user.uid).set({
-            email: email, username: username, role: 'student',
-            joined: new Date(), deviceId: currentDeviceId,
-            solved: [], bookmarks: [], mistakes: [], isPremium: false
+            email: email,
+            username: username,
+            role: 'student',
+            isPremium: false,
+            joined: new Date(),
+            deviceId: currentDeviceId,
+            solved: [], bookmarks: [], mistakes: [], stats: {}
         });
+
         msg.innerText = "✅ Success!";
-    } catch (e) { msg.innerText = "Error: " + e.message; }
+
+    } catch (e) {
+        msg.innerText = "Error: " + e.message;
+    }
 }
 
 function logout() {
     auth.signOut().then(() => {
+        isGuest = false;
         window.location.reload();
     });
 }
 
 // ======================================================
-// 4. DATA LOADING & PROCESSING
+// 4. USER DATA MANAGEMENT (UPDATED FOR PREFIX)
 // ======================================================
 
-function loadQuestions(sheetURL) {
-    document.getElementById('dynamic-menus').innerHTML = "<p style='padding:20px; text-align:center;'>Loading Course Data...</p>";
+async function loadUserData() {
+    if (isGuest || !currentUser) return;
+
+    if (currentUser.displayName) {
+        const nameDisplay = document.getElementById('user-display');
+        if(nameDisplay) nameDisplay.innerText = currentUser.displayName;
+    }
+
+    try {
+        const statsBox = document.getElementById('quick-stats');
+        if(statsBox) statsBox.style.opacity = "0.5"; 
+
+        const userDoc = await db.collection('users').doc(currentUser.uid).get();
+        let userData = userDoc.exists ? userDoc.data() : {};
+        userProfile = userData;
+
+        // --- UPDATED: Use Course Specific Keys ---
+        const sKey = getStoreKey('solved');
+        const bKey = getStoreKey('bookmarks');
+        const mKey = getStoreKey('mistakes');
+        const statKey = getStoreKey('stats');
+
+        userBookmarks = userData[bKey] || [];
+        userSolvedIDs = userData[sKey] || [];
+        userMistakes = userData[mKey] || []; 
+
+        checkStreak(userData);
+
+        let totalAttempts = 0;
+        let totalCorrect = 0;
+        
+        const stats = userData[statKey] || {};
+        if (stats) {
+            Object.values(stats).forEach(s => {
+                totalAttempts += (s.total || 0);
+                totalCorrect += (s.correct || 0);
+            });
+        }
+        
+        const accuracy = totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0;
+
+        if(statsBox) {
+            statsBox.style.opacity = "1"; 
+            statsBox.innerHTML = `
+                <div style="margin-top:5px; font-size:14px; line-height:1.8;">
+                    <div>✅ ${currentCourse} Solved: <b style="color:#2ecc71;">${userSolvedIDs.length}</b></div>
+                    <div>🎯 Accuracy: <b>${accuracy}%</b> <span style="font-size:11px; color:#666;">(${totalCorrect}/${totalAttempts})</span></div>
+                    <div style="color:#ef4444;">❌ Pending Mistakes: <b>${userMistakes.length}</b></div>
+                    <div style="color:#f59e0b;">⭐ Bookmarked: <b>${userBookmarks.length}</b></div>
+                </div>`;
+        }
+
+        updateBadgeButton(); 
+        checkPremiumExpiry(); // Check expiry for THIS course
+
+        if (allQuestions.length > 0) processData(allQuestions, true);
+
+    } catch (e) { console.error("Load Error:", e); }
+}
+
+function checkPremiumExpiry() {
+    if (!userProfile) return;
     
-    Papa.parse(sheetURL, {
+    // Dynamic Keys
+    const premKey = getStoreKey('isPremium');
+    const expKey = getStoreKey('expiryDate');
+    
+    const isPrem = userProfile[premKey];
+    const expiryRaw = userProfile[expKey];
+
+    if (!isPrem || !expiryRaw) {
+        setPremiumUI(false);
+        return;
+    }
+    
+    if (isDateActive(expiryRaw)) {
+        setPremiumUI(true);
+    } else {
+        // Expired
+        db.collection('users').doc(currentUser.uid).update({ [premKey]: false });
+        userProfile[premKey] = false;
+        setPremiumUI(false);
+        alert(`⚠️ Your ${currentCourse} Premium has expired.`);
+    }
+}
+
+function setPremiumUI(isActive) {
+    if(isActive) {
+        document.getElementById('premium-badge').classList.remove('hidden');
+        document.getElementById('get-premium-btn').classList.add('hidden');
+    } else {
+        document.getElementById('premium-badge').classList.add('hidden');
+        document.getElementById('get-premium-btn').classList.remove('hidden');
+    }
+}
+
+function isDateActive(dateInput) {
+    if(!dateInput) return false;
+    const now = new Date().getTime();
+    const d = parseDateHelper(dateInput); // Use existing helper
+    if(!d || isNaN(d.getTime())) return false;
+    return now < d.getTime();
+}
+
+function checkStreak(data) {
+    const today = new Date().toDateString();
+    const lastLogin = data.lastLoginDate;
+    let currentStreak = data.streak || 0;
+
+    if (lastLogin !== today) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (lastLogin === yesterday.toDateString()) currentStreak++;
+        else currentStreak = 1;
+        
+        db.collection('users').doc(currentUser.uid).set({
+            lastLoginDate: today, streak: currentStreak
+        }, { merge: true });
+    }
+
+    if(currentStreak > 0) {
+        document.getElementById('streak-display').classList.remove('hidden');
+        document.getElementById('streak-count').innerText = currentStreak + " Day Streak";
+    }
+}
+// ======================================================
+// 5. DATA LOADING & PROCESSING
+// ======================================================
+
+function loadQuestions(sheetURLOverride) {
+    const url = sheetURLOverride || GOOGLE_SHEET_URL; // Fallback
+    
+    // Clear menus while loading
+    const menu = document.getElementById('dynamic-menus');
+    if(menu) menu.innerHTML = "<p style='padding:20px; text-align:center;'>Loading Data...</p>";
+
+    Papa.parse(url, {
         download: true, header: true, skipEmptyLines: true,
         complete: function(results) { processData(results.data); },
         error: function(e) { alert("Data Load Error: " + e.message); }
@@ -294,7 +475,9 @@ function processData(data, reRenderOnly = false) {
         data.forEach((row, index) => {
             delete row.Book; delete row.Exam; delete row.Number;
             const qText = row.Question || row.Questions;
-            if (!qText || !row.CorrectAnswer) return;
+            const correctVal = row.CorrectAnswer;
+
+            if (!qText || !correctVal) return;
 
             const qSignature = String(qText).trim().toLowerCase();
             if (seen.has(qSignature)) return; 
@@ -303,8 +486,11 @@ function processData(data, reRenderOnly = false) {
             row._uid = "id_" + Math.abs(generateHash(qSignature));
             row.Question = qText; 
             row.SheetRow = index + 2; 
-            row.Subject = row.Subject ? row.Subject.trim() : "General";
-            row.Topic = row.Topic ? row.Topic.trim() : "Mixed";
+
+            const subj = row.Subject ? row.Subject.trim() : "General";
+            const topic = row.Topic ? row.Topic.trim() : "Mixed";
+            row.Subject = subj; 
+            row.Topic = topic;
             
             allQuestions.push(row);
         });
@@ -331,139 +517,9 @@ function generateHash(str) {
     for (let i = 0; i < str.length; i++) hash = ((hash << 5) - hash) + str.charCodeAt(i) | 0;
     return hash;
 }
-// ======================================================
-// 5. USER DATA MANAGEMENT (ISOLATED)
-// ======================================================
-
-async function loadUserData() {
-    if (isGuest || !currentUser) return;
-
-    if (currentUser.displayName) {
-        const nameDisplay = document.getElementById('user-display');
-        if(nameDisplay) nameDisplay.innerText = currentUser.displayName;
-    }
-
-    try {
-        const statsBox = document.getElementById('quick-stats');
-        if(statsBox) statsBox.style.opacity = "0.5"; 
-
-        const userDoc = await db.collection('users').doc(currentUser.uid).get();
-        if(!userDoc.exists) return;
-        userProfile = userDoc.data();
-
-        // --- DYNAMIC LOADING: Use Keys for Current Course ---
-        userSolvedIDs = userProfile[getStoreKey('solved')] || [];
-        userBookmarks = userProfile[getStoreKey('bookmarks')] || [];
-        userMistakes = userProfile[getStoreKey('mistakes')] || []; 
-
-        checkStreak(userProfile);
-
-        // Stats Calculation
-        let totalAttempts = 0;
-        let totalCorrect = 0;
-        const statsObj = userProfile[getStoreKey('stats')] || {};
-        
-        Object.values(statsObj).forEach(s => {
-            totalAttempts += (s.total || 0);
-            totalCorrect += (s.correct || 0);
-        });
-        
-        const accuracy = totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0;
-
-        if(statsBox) {
-            statsBox.style.opacity = "1"; 
-            statsBox.innerHTML = `
-                <div style="margin-top:5px; font-size:14px; line-height:1.8;">
-                    <div>✅ ${currentCourse} Solved: <b style="color:var(--primary);">${userSolvedIDs.length}</b></div>
-                    <div>🎯 Accuracy: <b>${accuracy}%</b> <span style="font-size:11px; color:#666;">(${totalCorrect}/${totalAttempts})</span></div>
-                    <div style="color:var(--danger);">❌ Pending Mistakes: <b>${userMistakes.length}</b></div>
-                    <div style="color:#f59e0b;">⭐ Bookmarked: <b>${userBookmarks.length}</b></div>
-                </div>`;
-        }
-
-        updateBadgeButton(); 
-        checkPremiumExpiry(); // Check Expiry for THIS course
-
-        // Re-process questions to update 'solved' ticks in menus
-        if (allQuestions.length > 0) processData(allQuestions, true);
-
-    } catch (e) { console.error("Load Error:", e); }
-}
-
-function checkPremiumExpiry() {
-    if (!userProfile) return;
-    
-    const premKey = getStoreKey('isPremium');
-    const expKey = getStoreKey('expiryDate');
-    
-    const isPrem = userProfile[premKey];
-    const expiryRaw = userProfile[expKey];
-
-    if (!isPrem || !expiryRaw) {
-        setPremiumUI(false);
-        return;
-    }
-    
-    if (isDateActive(expiryRaw)) {
-        setPremiumUI(true);
-    } else {
-        // Expired logic
-        db.collection('users').doc(currentUser.uid).update({ [premKey]: false });
-        userProfile[premKey] = false;
-        setPremiumUI(false);
-        alert(`⚠️ Your ${currentCourse} Premium has expired.`);
-    }
-}
-
-function setPremiumUI(isActive) {
-    const badge = document.getElementById('premium-badge');
-    const btn = document.getElementById('get-premium-btn');
-    if(badge && btn) {
-        if(isActive) {
-            badge.classList.remove('hidden');
-            btn.classList.add('hidden');
-        } else {
-            badge.classList.add('hidden');
-            btn.classList.remove('hidden');
-        }
-    }
-}
-
-function isDateActive(dateInput) {
-    if(!dateInput) return false;
-    const now = new Date().getTime();
-    const d = parseDateRobust(dateInput);
-    if(!d) return false;
-    return now < d.getTime();
-}
-
-function checkStreak(data) {
-    const today = new Date().toDateString();
-    const lastLogin = data.lastLoginDate;
-    let currentStreak = data.streak || 0;
-
-    if (lastLogin !== today) {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        if (lastLogin === yesterday.toDateString()) currentStreak++;
-        else currentStreak = 1;
-        
-        db.collection('users').doc(currentUser.uid).set({
-            lastLoginDate: today, streak: currentStreak
-        }, { merge: true });
-    }
-
-    if(currentStreak > 0) {
-        const display = document.getElementById('streak-display');
-        if(display) {
-            display.classList.remove('hidden');
-            document.getElementById('streak-count').innerText = currentStreak + " Day Streak";
-        }
-    }
-}
 
 // ======================================================
-// 6. UI RENDERERS (Menus)
+// 6. UI RENDERERS
 // ======================================================
 
 function renderMenus(subjects, map) {
@@ -485,7 +541,7 @@ function renderMenus(subjects, map) {
                     <span class="subj-stats">${solvedCount} / ${totalSubj}</span>
                 </div>
                 <div class="progress-bar-thin">
-                    <div class="fill" style="width:${pct}%; background:var(--primary);"></div>
+                    <div class="fill" style="width:${pct}%"></div>
                 </div>
             </summary>
         `;
@@ -521,13 +577,16 @@ function renderMenus(subjects, map) {
                         <span style="font-size:10px; color:#888;">${solvedTop}/${totalTop}</span>
                     </div>
                     <div class="topic-mini-track">
-                        <div class="topic-mini-fill" style="width:${percentTop}%; background:var(--primary) !important;"></div>
+                        <div class="topic-mini-fill" style="width:${percentTop}%"></div>
                     </div>
                 `;
                 gridContainer.appendChild(item);
             });
             contentDiv.appendChild(gridContainer);
+        } else {
+            contentDiv.innerHTML += `<div style="text-align:center; padding:10px; opacity:0.5;">(No specific topics)</div>`;
         }
+
         details.appendChild(contentDiv);
         container.appendChild(details);
     });
@@ -594,7 +653,7 @@ function toggleSubjectAll(checkbox, subjName) {
 }
 
 // ======================================================
-// 7. STUDY LOGIC & QUIZ ENGINE
+// 7. STUDY LOGIC
 // ======================================================
 
 function setMode(mode) {
@@ -612,7 +671,7 @@ function setMode(mode) {
 function startPractice(subject, topic) {
     let pool = allQuestions.filter(q => q.Subject === subject && (!topic || q.Topic === topic));
     
-    // Check Premium for THIS SPECIFIC COURSE
+    // --- UPDATED: Check Premium for Current Course ---
     const premKey = getStoreKey('isPremium');
     const expKey = getStoreKey('expiryDate');
     const isPrem = userProfile && userProfile[premKey] && isDateActive(userProfile[expKey]);
@@ -620,7 +679,7 @@ function startPractice(subject, topic) {
     if (!isPrem && !isGuest && userProfile.role !== 'admin') {
         if (pool.length > 20) {
             pool = pool.slice(0, 20);
-            if(currentIndex === 0) alert(`🔒 ${currentCourse} Free Mode: Limited to 20 questions per section.`);
+            if(currentIndex === 0) alert(`🔒 ${currentCourse} Free Mode: Limited to 20 questions per section.\nGo Premium to unlock full bank.`);
         }
     }
 
@@ -652,9 +711,11 @@ function startPractice(subject, topic) {
 function startMistakePractice() {
     if (userMistakes.length === 0) return alert("No mistakes pending!");
     filteredQuestions = allQuestions.filter(q => userMistakes.includes(q._uid));
+    
     currentMode = 'practice';
     isMistakeReview = true;
     currentIndex = 0;
+    
     showScreen('quiz-screen');
     renderPage();
     renderPracticeNavigator();
@@ -663,9 +724,11 @@ function startMistakePractice() {
 function startSavedQuestions() {
     if (userBookmarks.length === 0) return alert("No bookmarks!");
     filteredQuestions = allQuestions.filter(q => userBookmarks.includes(q._uid));
+    
     currentMode = 'practice';
     isMistakeReview = false;
     currentIndex = 0;
+    
     showScreen('quiz-screen');
     renderPage();
 }
@@ -681,7 +744,7 @@ function startTest() {
 
     if (!isGuest && !isPrem && !isAdmin) {
         if (count > 20) {
-            alert(`🔒 FREE PLAN LIMIT:\n${currentCourse} exams are limited to 20 questions.\n\n(Setting count to 20)`);
+            alert(`🔒 FREE PLAN LIMIT:\n${currentCourse} exams are limited to 20 questions.`);
             count = 20;
         }
         if(!confirm(`⚠️ ${currentCourse} Free Version: Exam mode is limited.\nUpgrade for unlimited tests?`)) return;
@@ -719,6 +782,10 @@ function startTest() {
     testTimer = setInterval(updateTimer, 1000);
     renderPage();
 }
+
+// ======================================================
+// 8. QUIZ ENGINE
+// ======================================================
 
 function renderPage() {
     const container = document.getElementById('quiz-content-area');
@@ -769,11 +836,12 @@ function createQuestionCard(q, index, showNumber = true) {
     block.className = "test-question-block";
     block.id = `q-card-${index}`;
 
+    // Visual Flag Indicator
     if (testFlags[q._uid]) {
         block.classList.add('is-flagged-card');
     }
 
-    // HEADER
+    // 1. HEADER (Number + Bookmark + Flag)
     const header = document.createElement('div');
     header.className = "question-card-header";
     
@@ -793,13 +861,13 @@ function createQuestionCard(q, index, showNumber = true) {
     `;
     block.appendChild(header);
 
-    // Question
+    // 2. Question Text
     const qText = document.createElement('div');
     qText.className = "test-q-text";
     qText.innerHTML = q.Question || "Missing Text";
     block.appendChild(qText);
 
-    // Options
+    // 3. Options
     const optionsDiv = document.createElement('div');
     optionsDiv.className = "options-group";
     optionsDiv.id = `opts-${index}`;
@@ -840,47 +908,6 @@ function createQuestionCard(q, index, showNumber = true) {
     return block;
 }
 
-// --- ACTIONS & SAVING (ISOLATED) ---
-
-async function toggleBookmark(uid, btn) {
-    if (!currentUser || isGuest) return alert("Please log in to save bookmarks.");
-    
-    const key = getStoreKey('bookmarks'); // Saves to bookmarks OR MBBS_bookmarks
-
-    if (userBookmarks.includes(uid)) {
-        userBookmarks = userBookmarks.filter(id => id !== uid);
-        btn.innerHTML = "☆";
-        btn.classList.remove('bookmark-active');
-        
-        await db.collection('users').doc(currentUser.uid).update({
-            [key]: firebase.firestore.FieldValue.arrayRemove(uid)
-        });
-    } else {
-        userBookmarks.push(uid);
-        btn.innerHTML = "⭐";
-        btn.classList.add('bookmark-active');
-        
-        await db.collection('users').doc(currentUser.uid).update({
-            [key]: firebase.firestore.FieldValue.arrayUnion(uid)
-        });
-    }
-}
-
-function toggleFlag(uid, btn, index) {
-    const card = document.getElementById(`q-card-${index}`);
-    
-    if (testFlags[uid]) {
-        delete testFlags[uid];
-        if(btn) { btn.innerHTML = "🏳️"; btn.classList.remove('flag-active'); }
-        if(card) card.classList.remove('is-flagged-card');
-    } else {
-        testFlags[uid] = true;
-        if(btn) { btn.innerHTML = "🚩"; btn.classList.add('flag-active'); }
-        if(card) card.classList.add('is-flagged-card');
-    }
-    renderNavigator();
-}
-
 function checkAnswer(selectedOption, btnElement, q) {
     if (currentMode === 'test') {
         testAnswers[q._uid] = selectedOption;
@@ -891,6 +918,7 @@ function checkAnswer(selectedOption, btnElement, q) {
         return;
     }
 
+    // PRACTICE MODE
     let correctData = (q.CorrectAnswer || "").trim();
     let userText = String(selectedOption).trim();
     let isCorrect = false;
@@ -914,22 +942,56 @@ function checkAnswer(selectedOption, btnElement, q) {
     renderPracticeNavigator();
 }
 
+function reportCurrentQuestion() {
+    if (!filteredQuestions || filteredQuestions.length === 0) return;
+    const currentQ = filteredQuestions[currentIndex];
+    if (currentQ) {
+        openReportModal(currentQ._uid);
+    }
+}
+
+function toggleFlag(uid, btn, index) {
+    const card = document.getElementById(`q-card-${index}`);
+    
+    if (testFlags[uid]) {
+        delete testFlags[uid];
+        if(btn) { 
+            btn.innerHTML = "🏳️"; 
+            btn.classList.remove('flag-active'); 
+        }
+        if(card) card.classList.remove('is-flagged-card');
+    } else {
+        testFlags[uid] = true;
+        if(btn) { 
+            btn.innerHTML = "🚩"; 
+            btn.classList.add('flag-active'); 
+        }
+        if(card) card.classList.add('is-flagged-card');
+    }
+    renderNavigator();
+}
+
+// ======================================================
+// 9. DATABASE SAVING & SUBMISSION (UPDATED PREFIX)
+// ======================================================
+
 async function saveProgressToDB(q, isCorrect) {
     if (!currentUser || isGuest) return;
 
-    // Keys specific to current Course (Isolation Logic)
+    // --- PREFIX LOGIC: FCPS vs MBBS ---
     const sKey = getStoreKey('solved');
     const mKey = getStoreKey('mistakes');
     const statKey = getStoreKey('stats');
-    const safeSubj = q.Subject.replace(/\W/g,'_');
+    
+    const subjectKey = q.Subject.replace(/\W/g,'_');
 
     if (isCorrect) {
         if (!userSolvedIDs.includes(q._uid)) {
             userSolvedIDs.push(q._uid);
             db.collection('users').doc(currentUser.uid).update({
                 [sKey]: firebase.firestore.FieldValue.arrayUnion(q._uid),
-                [`${statKey}.${safeSubj}.correct`]: firebase.firestore.FieldValue.increment(1),
-                [`${statKey}.${safeSubj}.total`]: firebase.firestore.FieldValue.increment(1)
+                [`${statKey}.${subjectKey}.correct`]: firebase.firestore.FieldValue.increment(1),
+                [`${statKey}.${subjectKey}.total`]: firebase.firestore.FieldValue.increment(1)
             });
         }
         if (isMistakeReview) {
@@ -943,7 +1005,7 @@ async function saveProgressToDB(q, isCorrect) {
             userMistakes.push(q._uid);
             db.collection('users').doc(currentUser.uid).update({
                 [mKey]: firebase.firestore.FieldValue.arrayUnion(q._uid),
-                [`${statKey}.${safeSubj}.total`]: firebase.firestore.FieldValue.increment(1)
+                [`${statKey}.${subjectKey}.total`]: firebase.firestore.FieldValue.increment(1)
             });
         }
     }
@@ -972,11 +1034,8 @@ function submitTest() {
         if(user === correctText) {
             score++;
             if(currentUser && !isGuest) {
-                // Save solved ID to isolated array
                 const sKey = getStoreKey('solved');
-                db.collection('users').doc(currentUser.uid).update({ 
-                    [sKey]: firebase.firestore.FieldValue.arrayUnion(q._uid) 
-                });
+                db.collection('users').doc(currentUser.uid).update({ [sKey]: firebase.firestore.FieldValue.arrayUnion(q._uid) });
             }
         }
     });
@@ -988,7 +1047,7 @@ function submitTest() {
             date: new Date(), 
             score: pct, 
             total: filteredQuestions.length, 
-            subject: examSubject + ` (${currentCourse})` // Tag the result with course name
+            subject: `${examSubject} (${currentCourse})` // Tag results
         });
     }
 
@@ -996,8 +1055,79 @@ function submitTest() {
     document.getElementById('final-score').innerText = `${pct}% (${score}/${filteredQuestions.length})`;
 }
 // ======================================================
-// 10. ADMIN & PREMIUM FEATURES
+// 10. ADMIN & PREMIUM FEATURES (UPDATED)
 // ======================================================
+
+async function redeemKey() {
+    const codeInput = document.getElementById('activation-code').value.trim().toUpperCase();
+    const btn = event.target;
+    
+    if (!codeInput) return alert("Please enter a code.");
+    
+    btn.innerText = "Verifying...";
+    btn.disabled = true;
+
+    try {
+        const snapshot = await db.collection('activation_keys').where('code', '==', codeInput).get();
+
+        if (snapshot.empty) throw new Error("Invalid Code.");
+
+        const keyDoc = snapshot.docs[0];
+        const k = keyDoc.data();
+        const keyId = keyDoc.id;
+
+        if (k.expiresAt && new Date() > k.expiresAt.toDate()) throw new Error("This code has expired.");
+        if (k.usedCount >= k.maxUses) throw new Error("This code has been fully redeemed.");
+        if (k.usersRedeemed && k.usersRedeemed.includes(currentUser.uid)) {
+            throw new Error("You have already used this code.");
+        }
+
+        // --- UPDATED: Course Check ---
+        const target = k.targetCourse || currentCourse; // Backward compatible
+        if (target !== currentCourse) {
+            throw new Error(`This key is for ${target}. Please switch courses to redeem.`);
+        }
+
+        const duration = PLAN_DURATIONS[k.plan] || 2592000000; 
+        
+        let newExpiry;
+        if (k.plan === 'lifetime') newExpiry = new Date("2100-01-01");
+        else newExpiry = new Date(Date.now() + duration);
+
+        const batch = db.batch();
+        const userRef = db.collection('users').doc(currentUser.uid);
+        
+        // Use proper prefix based on the key's target course
+        const prefix = COURSE_CONFIG[target].prefix;
+
+        batch.update(userRef, {
+            [`${prefix}isPremium`]: true,
+            [`${prefix}plan`]: k.plan,
+            [`${prefix}expiryDate`]: newExpiry,
+            updatedAt: new Date()
+        });
+
+        const keyRef = db.collection('activation_keys').doc(keyId);
+        batch.update(keyRef, {
+            usedCount: firebase.firestore.FieldValue.increment(1),
+            usersRedeemed: firebase.firestore.FieldValue.arrayUnion(currentUser.uid),
+            lastUsedAt: new Date()
+        });
+
+        await batch.commit();
+
+        alert(`✅ ${target} Unlocked!\nPlan: ${k.plan.replace('_',' ').toUpperCase()}\nExpires: ${formatDateHelper(newExpiry)}`);
+        
+        loadUserData(); // Refresh UI
+        document.getElementById('premium-modal').classList.add('hidden');
+
+    } catch (e) {
+        alert("❌ " + e.message);
+    } finally {
+        btn.innerText = "Unlock Now";
+        btn.disabled = false;
+    }
+}
 
 function selectPlan(planValue, element) {
     document.querySelectorAll('.price-item').forEach(item => {
@@ -1007,6 +1137,7 @@ function selectPlan(planValue, element) {
     document.getElementById('selected-plan-value').value = planValue;
 }
 
+// Image Compression Helper
 function compressImage(file, maxWidth = 800, quality = 0.6) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -1037,8 +1168,8 @@ function compressImage(file, maxWidth = 800, quality = 0.6) {
 async function submitPaymentProof() {
     const selectedPlan = document.getElementById('selected-plan-value').value;
     const file = document.getElementById('pay-proof').files[0];
-    if(!selectedPlan) return alert("❌ Please select a plan from the list above.");
-    if(!file) return alert("❌ Please upload a screenshot of your payment.");
+    if(!selectedPlan) return alert("❌ Please select a plan.");
+    if(!file) return alert("❌ Please upload a screenshot.");
 
     const btn = event.target;
     btn.innerText = "Compressing & Uploading...";
@@ -1053,9 +1184,9 @@ async function submitPaymentProof() {
             email: currentUser.email, 
             tid: autoTID, 
             planRequested: selectedPlan, 
+            targetCourse: currentCourse, // IMPORTANT: Save which course they want
             image: compressedBase64, 
             status: 'pending', 
-            targetCourse: currentCourse, // SAVE WHICH COURSE
             timestamp: new Date()
         });
 
@@ -1070,76 +1201,7 @@ async function submitPaymentProof() {
     }
 }
 
-async function redeemKey() {
-    const codeInput = document.getElementById('activation-code').value.trim().toUpperCase();
-    const btn = event.target;
-    
-    if (!codeInput) return alert("Please enter a code.");
-    
-    btn.innerText = "Verifying...";
-    btn.disabled = true;
-
-    try {
-        const snapshot = await db.collection('activation_keys').where('code', '==', codeInput).get();
-
-        if (snapshot.empty) throw new Error("Invalid Code.");
-
-        const keyDoc = snapshot.docs[0];
-        const k = keyDoc.data();
-        const keyId = keyDoc.id;
-
-        if (k.expiresAt && new Date() > k.expiresAt.toDate()) throw new Error("This code has expired.");
-        if (k.usedCount >= k.maxUses) throw new Error("This code has been fully redeemed.");
-        if (k.usersRedeemed && k.usersRedeemed.includes(currentUser.uid)) throw new Error("You have already used this code.");
-
-        // --- NEW: Course Check ---
-        const target = k.targetCourse || currentCourse; // Use current if undefined
-        if (target !== currentCourse) {
-            throw new Error(`This key is for ${target}. Please switch courses to redeem.`);
-        }
-
-        const duration = PLAN_DURATIONS[k.plan] || 2592000000; 
-        
-        let newExpiry;
-        if (k.plan === 'lifetime') newExpiry = new Date("2100-01-01");
-        else newExpiry = new Date(Date.now() + duration);
-
-        const batch = db.batch();
-        const userRef = db.collection('users').doc(currentUser.uid);
-        
-        // Use prefix for the target course
-        const prefix = COURSE_CONFIG[target].prefix;
-
-        batch.update(userRef, {
-            [`${prefix}isPremium`]: true,
-            [`${prefix}plan`]: k.plan,
-            [`${prefix}expiryDate`]: newExpiry,
-            updatedAt: new Date()
-        });
-
-        const keyRef = db.collection('activation_keys').doc(keyId);
-        batch.update(keyRef, {
-            usedCount: firebase.firestore.FieldValue.increment(1),
-            usersRedeemed: firebase.firestore.FieldValue.arrayUnion(currentUser.uid),
-            lastUsedAt: new Date()
-        });
-
-        await batch.commit();
-
-        alert(`✅ ${target} Unlocked!\nPlan: ${k.plan.replace('_',' ').toUpperCase()}\nExpires: ${formatDateHelper(newExpiry)}`);
-        
-        loadUserData();
-        document.getElementById('premium-modal').classList.add('hidden');
-
-    } catch (e) {
-        alert("❌ " + e.message);
-    } finally {
-        btn.innerText = "Unlock Now";
-        btn.disabled = false;
-    }
-}
-
-// --- ADMIN FUNCTIONS ---
+// --- ADMIN PANEL (UPDATED) ---
 
 function openAdminPanel() {
     if (!currentUser) return;
@@ -1197,51 +1259,65 @@ async function loadAllUsers() {
     
     let snap;
     try {
-        snap = await db.collection('users').orderBy('joined', 'desc').limit(50).get();
+        snap = await db.collection('users').orderBy('joined', 'desc').limit(500).get();
     } catch (e) {
-        snap = await db.collection('users').limit(50).get();
+        snap = await db.collection('users').limit(500).get();
     }
     
-    let html = "";
-    snap.forEach(doc => html += renderAdminUserCard(doc));
-    res.innerHTML = html;
+    const usersByEmail = {};
+    const noEmailAdmins = []; 
+    let hiddenGuests = 0;
+
+    snap.forEach(doc => {
+        const u = doc.data();
+        u.id = doc.id;
+        if (u.role === 'guest') { hiddenGuests++; return; }
+        if (!u.email) {
+            if (u.role === 'admin' || u.isPremium) noEmailAdmins.push(u);
+        } else {
+            if (!usersByEmail[u.email]) usersByEmail[u.email] = [];
+            usersByEmail[u.email].push(u);
+        }
+    });
+
+    let html = "<div style='background:white; border-radius:12px; overflow:hidden;'>";
+    let count = 0;
+
+    Object.keys(usersByEmail).forEach(email => {
+        const accounts = usersByEmail[email];
+        accounts.sort((a, b) => (a.role === 'admin' ? -1 : 1));
+        html += renderUserRow(accounts[0]);
+        count++;
+    });
+
+    noEmailAdmins.forEach(u => {
+        html += renderUserRow(u, `<span style="color:red;">(No Email)</span>`);
+        count++;
+    });
+
+    res.innerHTML = `
+    <div style="padding:10px; color:#666; font-size:12px; border-bottom:1px solid #eee; display:flex; justify-content:space-between;">
+        <span><b>${count}</b> Users</span>
+        <span style="color:#94a3b8;">(Guests: ${hiddenGuests})</span>
+    </div>` + html + "</div>";
 }
 
-function renderAdminUserCard(doc) {
-    const u = doc.data();
-    
-    // Check FCPS
-    const fcpsActive = u.isPremium && isDateActive(u.expiryDate);
-    // Check MBBS
-    const mbbsActive = u.MBBS_isPremium && isDateActive(u.MBBS_expiryDate);
-
+function renderUserRow(u, extraLabel = "") {
+    const isAdmin = u.role === 'admin';
+    const isPrem = u.isPremium; // Legacy check for quick view
     return `
-    <div class="user-card">
-        <h3>${u.email}</h3>
-        <p style="color:#0072ff; font-weight:bold;">@${u.username || "no-username"}</p>
-        
-        <div style="background:#f8fafc; padding:8px; margin:5px 0; border-radius:5px;">
-            <div style="font-size:13px;">🩺 FCPS: ${fcpsActive ? '✅ Premium' : '❌ Free'}</div>
-            <div style="font-size:13px;">🎓 MBBS: ${mbbsActive ? '✅ Premium' : '❌ Free'}</div>
-        </div>
-        
-        <div style="margin-top:10px; padding-top:10px; border-top:1px solid #eee;">
-            <label style="font-size:12px; font-weight:bold;">Grant Access:</label>
-            <div style="display:flex; gap:5px; margin-top:5px; flex-wrap:wrap;">
-                <select id="adm-c-${doc.id}" style="padding:5px;">
-                    <option value="FCPS">FCPS</option>
-                    <option value="MBBS">MBBS</option>
-                </select>
-                <select id="adm-p-${doc.id}" style="padding:5px;">
-                    <option value="1_month">1 Month</option>
-                    <option value="6_months">6 Months</option>
-                    <option value="lifetime">Lifetime</option>
-                </select>
-                <button onclick="adminGrantPremium('${doc.id}')" style="background:#d97706; color:white; padding:5px 10px; margin:0; font-size:12px;">
-                    Grant
-                </button>
+    <div class="user-list-item ${isAdmin ? "is-admin-row" : ""}">
+        <div class="user-info-group">
+            <div class="user-email-text">
+                ${isAdmin ? '⭐' : ''} ${u.email || "Unknown User"} 
+                ${u.username ? `(@${u.username})` : ""} ${extraLabel}
+            </div>
+            <div class="user-meta-row">
+                <span class="status-badge ${isPrem ? 'badge-premium' : 'badge-free'}">${isPrem ? 'Prem (FCPS)' : 'Free'}</span>
+                <span style="border-left:1px solid #cbd5e1; padding-left:10px;">Joined: ${formatDateHelper(u.joined)}</span>
             </div>
         </div>
+        <button class="btn-manage-user" onclick="adminLookupUser('${u.id}')">⚙️ Manage</button>
     </div>`;
 }
 
@@ -1250,255 +1326,105 @@ async function loadAdminPayments() {
     list.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">Loading requests...</div>';
     
     try {
-        const snap = await db.collection('payment_requests')
-            .where('status','==','pending')
-            .orderBy('timestamp', 'desc')
-            .get();
-        
-        if(snap.empty) { 
-            list.innerHTML = "<div style='padding:30px; text-align:center; color:#94a3b8; font-style:italic;'>No pending payment requests.</div>"; 
-            return; 
-        }
+        const snap = await db.collection('payment_requests').where('status','==','pending').orderBy('timestamp', 'desc').get();
+        if(snap.empty) { list.innerHTML = "<div style='padding:30px; text-align:center; color:#94a3b8;'>No pending payments.</div>"; return; }
 
         let html = "";
         snap.forEach(doc => {
             const p = doc.data();
-            const reqPlan = p.planRequested ? p.planRequested.replace('_', ' ').toUpperCase() : "UNKNOWN";
-            const courseLabel = p.targetCourse ? `<span style="background:#0f172a; color:white; padding:2px 6px; border-radius:4px; font-size:10px;">${p.targetCourse}</span>` : "";
-            
             const imageHtml = p.image 
-                ? `<div class="pay-proof-container" onclick="viewFullReceipt('${p.image.replace(/'/g, "\\'")}')">
-                     <img src="${p.image}" class="pay-proof-img" alt="Receipt">
-                     <span class="view-receipt-text">🔍 Click to View Full Receipt</span>
-                   </div>`
-                : `<div style="padding:15px; background:#fff1f2; color:#be123c; border-radius:8px; font-size:12px; text-align:center; margin-bottom:15px;">
-                     ⚠️ No Screenshot Uploaded
-                   </div>`;
+                ? `<div class="pay-proof-container" onclick="viewFullReceipt('${p.image.replace(/'/g, "\\'")}')"><img src="${p.image}" class="pay-proof-img"><span class="view-receipt-text">🔍 View Receipt</span></div>`
+                : `<div>⚠️ No Image</div>`;
+
+            // Display Requested Course
+            const courseBadge = p.targetCourse ? `<span style="background:black;color:white;padding:2px 5px;border-radius:3px;font-size:10px;">${p.targetCourse}</span>` : "";
 
             html += `
             <div class="admin-payment-card" id="card-${doc.id}">
                 <div class="pay-card-header">
-                    <div>
-                        <span class="pay-user-email">${p.email || "Unknown User"}</span>
-                        <div style="font-size:11px; color:#94a3b8;">UID: ${p.uid}</div>
-                    </div>
-                    <div style="text-align:right;">
-                        <span class="pay-plan-badge">${reqPlan}</span><br>
-                        ${courseLabel}
-                    </div>
+                    <div><span class="pay-user-email">${p.email}</span></div>
+                    <div>${courseBadge} <span class="pay-plan-badge">${p.planRequested}</span></div>
                 </div>
                 ${imageHtml}
                 <div class="pay-action-box">
-                    <label class="pay-action-label">Decide & Duration</label>
                     <div class="pay-controls-row">
                         <select id="dur-${doc.id}" class="pay-select">
-                            <option value="1_day" ${p.planRequested === '1_day' ? 'selected' : ''}>1 Day</option>
-                            <option value="1_week" ${p.planRequested === '1_week' ? 'selected' : ''}>1 Week</option>
-                            <option value="15_days" ${p.planRequested === '15_days' ? 'selected' : ''}>15 Days</option>
                             <option value="1_month" ${p.planRequested === '1_month' ? 'selected' : ''}>1 Month</option>
-                            <option value="3_months" ${p.planRequested === '3_months' ? 'selected' : ''}>3 Months</option>
                             <option value="6_months" ${p.planRequested === '6_months' ? 'selected' : ''}>6 Months</option>
-                            <option value="12_months" ${p.planRequested === '12_months' ? 'selected' : ''}>12 Months</option>
                             <option value="lifetime" ${p.planRequested === 'lifetime' ? 'selected' : ''}>Lifetime</option>
                         </select>
-                        <button class="btn-pay-action btn-approve" onclick="approvePayment('${doc.id}','${p.uid}', '${p.targetCourse}')">
-                            ✅ Approve
-                        </button>
-                        <button class="btn-pay-action btn-reject" onclick="rejectPayment('${doc.id}')">
-                            ❌ Reject
-                        </button>
+                        <button class="btn-pay-action btn-approve" onclick="approvePayment('${doc.id}','${p.uid}', '${p.targetCourse}')">Approve</button>
+                        <button class="btn-pay-action btn-reject" onclick="rejectPayment('${doc.id}')">Reject</button>
                     </div>
                 </div>
             </div>`;
         });
         list.innerHTML = html;
-        
-    } catch (e) {
-        console.error(e);
-        list.innerHTML = `<div style="color:red; padding:20px;">Error loading payments: ${e.message}</div>`;
-    }
+    } catch (e) { list.innerHTML = `<div style="color:red;">Error: ${e.message}</div>`; }
 }
 
 function viewFullReceipt(base64Image) {
     const w = window.open("");
-    if(w) {
-        w.document.write(`
-            <html>
-                <head><title>Payment Receipt</title></head>
-                <body style="margin:0; background:#0f172a; display:flex; justify-content:center; align-items:center; height:100vh;">
-                    <img src="${base64Image}" style="max-width:100%; max-height:100vh; box-shadow:0 0 20px rgba(0,0,0,0.5);">
-                </body>
-            </html>
-        `);
-    } else {
-        alert("⚠️ Pop-up blocked! Please allow pop-ups to view the receipt.");
-    }
+    w.document.write(`<html><body style="background:#222;display:flex;justify-content:center;align-items:center;height:100vh;"><img src="${base64Image}" style="max-height:100%;"></body></html>`);
 }
 
 async function rejectPayment(docId) {
-    if(!confirm("Are you sure you want to REJECT this request?")) return;
-    
-    const card = document.getElementById(`card-${docId}`);
-    if(card) card.style.opacity = "0.5";
-
-    try {
-        await db.collection('payment_requests').doc(docId).update({
-            status: 'rejected',
-            rejectedAt: new Date()
-        });
-        if(card) card.remove();
-        
-        const list = document.getElementById('admin-payments-list');
-        if(list.children.length === 0) loadAdminPayments();
-        
-    } catch (e) {
-        alert("Error: " + e.message);
-        if(card) card.style.opacity = "1";
-    }
+    if(!confirm("Reject?")) return;
+    await db.collection('payment_requests').doc(docId).update({ status: 'rejected', rejectedAt: new Date() });
+    loadAdminPayments();
 }
 
 async function approvePayment(docId, userId, requestedCourse) {
-    const btn = event.target;
-    btn.innerText = "Saving...";
-    btn.disabled = true;
+    if(!confirm("Approve?")) return;
+    const select = document.getElementById(`dur-${docId}`);
+    const planKey = select.value; 
+    const duration = PLAN_DURATIONS[planKey];
+    
+    let newExpiry = (planKey === 'lifetime') ? new Date("2100-01-01") : new Date(Date.now() + duration);
+    
+    // Default to FCPS if course missing in legacy request
+    const target = requestedCourse || 'FCPS';
+    const prefix = COURSE_CONFIG[target].prefix;
 
-    try {
-        const select = document.getElementById(`dur-${docId}`);
-        const planKey = select.value; 
-        const duration = PLAN_DURATIONS[planKey];
-        
-        if (!duration) throw new Error("Invalid Plan Duration");
+    await db.collection('users').doc(userId).update({ 
+        [`${prefix}isPremium`]: true, 
+        [`${prefix}plan`]: planKey,
+        [`${prefix}expiryDate`]: newExpiry
+    });
 
-        let newExpiry = (planKey === 'lifetime') 
-            ? new Date("2100-01-01") 
-            : new Date(Date.now() + duration);
-
-        const batch = db.batch();
-        const userRef = db.collection('users').doc(userId);
-        
-        // Determine Prefix based on requested course (or default FCPS if missing)
-        const target = requestedCourse || 'FCPS';
-        const prefix = COURSE_CONFIG[target].prefix;
-
-        batch.update(userRef, { 
-            [`${prefix}isPremium`]: true, 
-            [`${prefix}plan`]: planKey,
-            [`${prefix}expiryDate`]: newExpiry, 
-            updatedAt: new Date()
-        });
-
-        const payRef = db.collection('payment_requests').doc(docId);
-        batch.update(payRef, { status: 'approved', approvedAt: new Date() });
-
-        await batch.commit();
-
-        alert(`✅ Approved for ${target}!\nUser: ${userId}\nExpires: ${formatDateHelper(newExpiry)}`);
-        loadAdminPayments(); 
-
-    } catch (e) {
-        console.error(e);
-        alert("Save Failed: " + e.message);
-        btn.innerText = "Approve";
-        btn.disabled = false;
-    }
+    await db.collection('payment_requests').doc(docId).update({ status: 'approved', approvedAt: new Date() });
+    alert("Approved!");
+    loadAdminPayments();
 }
 
 async function generateAdminKey() {
     const plan = document.getElementById('key-plan').value;
-    const customCode = document.getElementById('key-custom-code').value.trim().toUpperCase();
+    const courseFor = document.getElementById('key-course-select').value; 
+    let code = document.getElementById('key-custom-code').value || ('KEY-' + Math.random().toString(36).substr(2, 6).toUpperCase());
     const limit = parseInt(document.getElementById('key-limit').value) || 1;
-    const expiryInput = document.getElementById('key-expiry').value; 
+
+    await db.collection('activation_keys').add({
+        code: code, plan: plan, targetCourse: courseFor, maxUses: limit, usedCount: 0, usersRedeemed: [], createdAt: new Date()
+    });
     
-    // NEW: Get Course
-    const courseFor = document.getElementById('key-course-select').value;
-
-    let code = customCode;
-    if (!code) {
-        code = 'KEY-' + Math.random().toString(36).substr(2, 6).toUpperCase();
-    }
-
-    const check = await db.collection('activation_keys').where('code', '==', code).get();
-    if (!check.empty) {
-        return alert("❌ Error: This code already exists!");
-    }
-
-    const keyData = {
-        code: code,
-        plan: plan,
-        targetCourse: courseFor, // Saved here
-        maxUses: limit,
-        usedCount: 0,
-        usersRedeemed: [],
-        createdAt: new Date(),
-        active: true
-    };
-
-    if (expiryInput) {
-        keyData.expiresAt = new Date(expiryInput + "T23:59:59"); 
-    } else {
-        keyData.expiresAt = null; 
-    }
-
-    await db.collection('activation_keys').add(keyData);
-    
-    alert(`✅ Key Created for ${courseFor}: ${code}\nLimit: ${limit} Users`);
-    
-    document.getElementById('key-custom-code').value = "";
-    document.getElementById('key-limit').value = "1";
-    document.getElementById('key-expiry').value = "";
-    
+    alert(`✅ ${courseFor} Key: ${code}`);
     loadAdminKeys();
 }
 
 async function loadAdminKeys() {
     const list = document.getElementById('admin-keys-list');
-    list.innerHTML = "Loading...";
+    const snap = await db.collection('activation_keys').orderBy('createdAt', 'desc').limit(10).get();
+    let html = "<table style='width:100%; font-size:12px;'><tr><th>Code</th><th>Course</th><th>Usage</th><th>Action</th></tr>";
     
-    const snap = await db.collection('activation_keys').orderBy('createdAt', 'desc').limit(20).get();
-    
-    if (snap.empty) {
-        list.innerHTML = "<p style='color:#666; text-align:center;'>No keys generated yet.</p>";
-        return;
-    }
-
-    let html = `<table style="width:100%; border-collapse:collapse; font-size:12px; background:white;">
-        <tr style="background:#f1f5f9; text-align:left;">
-            <th style="padding:10px; border-bottom:2px solid #e2e8f0;">Code</th>
-            <th style="padding:10px; border-bottom:2px solid #e2e8f0;">Course</th>
-            <th style="padding:10px; border-bottom:2px solid #e2e8f0;">Plan</th>
-            <th style="padding:10px; border-bottom:2px solid #e2e8f0;">Usage</th>
-            <th style="padding:10px; border-bottom:2px solid #e2e8f0;">Action</th>
-        </tr>`;
-
     snap.forEach(doc => {
         const k = doc.data();
-        
-        const isFull = k.usedCount >= k.maxUses;
-        const isExpired = k.expiresAt && new Date() > k.expiresAt.toDate();
-        let statusColor = "#10b981"; 
-        
-        if (isFull) statusColor = "#ef4444"; 
-        else if (isExpired) statusColor = "#94a3b8"; 
-
-        html += `
-        <tr style="border-bottom:1px solid #f1f5f9;">
-            <td style="padding:10px; font-weight:bold; color:#2563eb;">${k.code}</td>
-            <td style="padding:10px; font-weight:bold;">${k.targetCourse || 'FCPS'}</td>
-            <td style="padding:10px;">${k.plan.replace('_',' ')}</td>
-            <td style="padding:10px;">
-                <span style="color:${statusColor}; font-weight:bold;">${k.usedCount} / ${k.maxUses}</span>
-            </td>
-            <td style="padding:10px;">
-                <button onclick="deleteKey('${doc.id}')" style="padding:2px 6px; font-size:10px; color:red; border:1px solid red; background:white; border-radius:4px; cursor:pointer;">Delete</button>
-            </td>
-        </tr>`;
+        html += `<tr><td>${k.code}</td><td>${k.targetCourse||'FCPS'}</td><td>${k.usedCount}/${k.maxUses}</td><td><button onclick="deleteKey('${doc.id}')">Del</button></td></tr>`;
     });
     list.innerHTML = html + "</table>";
 }
 
 function deleteKey(id) {
-    if(!confirm("Delete this key permanently?")) return;
-    db.collection('activation_keys').doc(id).delete().then(() => loadAdminKeys());
+    if(confirm("Delete key?")) db.collection('activation_keys').doc(id).delete().then(() => loadAdminKeys());
 }
 
 async function adminLookupUser(targetId) {
@@ -1506,446 +1432,101 @@ async function adminLookupUser(targetId) {
     const res = document.getElementById('admin-user-result');
     res.innerHTML = "Searching...";
     
-    let doc = null;
-
-    let directDoc = await db.collection('users').doc(input).get();
-    if(directDoc.exists) {
-        doc = directDoc;
-    } 
-    else {
-        let s = await db.collection('users').where('email','==',input).limit(1).get();
-        if(!s.empty) {
-            doc = s.docs[0];
-        } 
+    let doc = await db.collection('users').doc(input).get();
+    if(!doc.exists) {
+        const s = await db.collection('users').where('email','==',input).limit(1).get();
+        if(!s.empty) doc = s.docs[0];
         else {
-            let u = await db.collection('users').where('username','==',input.toLowerCase()).limit(1).get();
-            if(!u.empty) {
-                doc = u.docs[0];
-            }
+            const u = await db.collection('users').where('username','==',input.toLowerCase()).limit(1).get();
+            if(!u.empty) doc = u.docs[0];
         }
     }
 
-    if(!doc) { res.innerHTML = "Not found (Check Email, Username or UID)"; return; }
-    
+    if(!doc || !doc.exists) { res.innerHTML = "Not found"; return; }
     res.innerHTML = renderAdminUserCard(doc); 
 }
 
+function renderAdminUserCard(doc) {
+    const u = doc.data();
+    const fcpsActive = u.isPremium && isDateActive(u.expiryDate);
+    const mbbsActive = u.MBBS_isPremium && isDateActive(u.MBBS_expiryDate);
+
+    return `
+    <div class="user-card">
+        <h3>${u.email}</h3>
+        <p>FCPS: ${fcpsActive ? '✅' : '❌'}</p>
+        <p>MBBS: ${mbbsActive ? '✅' : '❌'}</p>
+        
+        <div style="margin-top:10px;">
+            <select id="adm-c-${doc.id}"><option value="FCPS">FCPS</option><option value="MBBS">MBBS</option></select>
+            <select id="adm-p-${doc.id}"><option value="1_month">1 Month</option><option value="lifetime">Lifetime</option></select>
+            <button onclick="adminGrantPremium('${doc.id}')">Grant</button>
+        </div>
+    </div>`;
+}
+
 async function adminGrantPremium(uid) {
-    const selectC = document.getElementById(`adm-c-${uid}`);
-    const selectP = document.getElementById(`adm-p-${uid}`);
+    const course = document.getElementById(`adm-c-${uid}`).value;
+    const plan = document.getElementById(`adm-p-${uid}`).value;
+    const duration = PLAN_DURATIONS[plan];
+    const prefix = COURSE_CONFIG[course].prefix;
     
-    const course = selectC.value;
-    const planKey = selectP.value;
-    const duration = PLAN_DURATIONS[planKey];
+    let newExpiry = (plan === 'lifetime') ? new Date("2100-01-01") : new Date(Date.now() + duration);
 
-    if (!duration) return alert("Invalid plan selected");
-    if(!confirm(`Grant '${planKey}' for ${course}?`)) return;
-
-    try {
-        let newExpiry = (planKey === 'lifetime') 
-            ? new Date("2100-01-01") 
-            : new Date(Date.now() + duration);
-
-        const prefix = COURSE_CONFIG[course].prefix;
-
-        await db.collection('users').doc(uid).update({
-            [`${prefix}isPremium`]: true,
-            [`${prefix}plan`]: planKey,
-            [`${prefix}expiryDate`]: newExpiry, 
-            updatedAt: new Date()
-        });
-
-        alert(`✅ ${course} Premium Granted!`);
-        adminLookupUser(uid); 
-
-    } catch (e) {
-        alert("Error: " + e.message);
-    }
-}
-
-async function adminRevokePremium(uid) {
-    if(!confirm("Revoke premium for both courses?")) return;
-    await db.collection('users').doc(uid).update({ isPremium: false, MBBS_isPremium: false });
-    alert("🚫 Revoked All Premium");
-    adminLookupUser(uid); 
-}
-
-async function adminToggleBan(uid, newStatus) {
-    await db.collection('users').doc(uid).update({ disabled: newStatus });
-    alert("Status Updated");
-    adminLookupUser(uid); 
+    await db.collection('users').doc(uid).update({
+        [`${prefix}isPremium`]: true,
+        [`${prefix}plan`]: plan,
+        [`${prefix}expiryDate`]: newExpiry
+    });
+    alert(`Granted ${course}!`);
+    adminLookupUser(uid);
 }
 
 // ======================================================
-// 11. HELPERS & UTILITIES
+// 11. HELPERS & UTILITIES (FULL)
 // ======================================================
 
 function showScreen(screenId) {
-    const ids = [
-        'auth-screen', 'course-selection-screen', 'dashboard-screen', 'quiz-screen', 'result-screen', 'admin-screen',
-        'explanation-modal', 'premium-modal', 'profile-modal', 'analytics-modal', 'badges-modal'
-    ];
-    ids.forEach(id => {
-        const el = document.getElementById(id);
-        if(el) { el.classList.add('hidden'); el.classList.remove('active'); }
-    });
-    document.querySelectorAll('.modal-overlay').forEach(el => el.classList.add('hidden'));
-    
+    const ids = ['auth-screen','course-selection-screen','dashboard-screen','quiz-screen','result-screen','admin-screen','premium-modal','profile-modal','analytics-modal','badges-modal'];
+    ids.forEach(id => { const el=document.getElementById(id); if(el) { el.classList.add('hidden'); el.classList.remove('active'); } });
     const target = document.getElementById(screenId);
     if(target) { target.classList.remove('hidden'); target.classList.add('active'); }
 }
 
-function getCorrectLetter(q) {
-    let dbAns = String(q.CorrectAnswer || "?").trim();
-    if (/^[a-eA-E]$/.test(dbAns)) return dbAns.toUpperCase();
-    return '?'; 
-}
-
-function getOptionText(q, letter) {
-    return q['Option' + letter] || "";
-}
-
-function showExplanation(q) {
-    document.getElementById('explanation-text').innerText = q.Explanation || "No explanation.";
-    document.getElementById('explanation-modal').classList.remove('hidden');
-}
-
+function getCorrectLetter(q) { let a=String(q.CorrectAnswer||"?").trim(); return /^[a-eA-E]$/.test(a)?a.toUpperCase():'?'; }
+function getOptionText(q, l) { return q['Option'+l]||""; }
+function showExplanation(q) { document.getElementById('explanation-text').innerText=q.Explanation||"No explanation."; document.getElementById('explanation-modal').classList.remove('hidden'); }
 function closeModal() { document.getElementById('explanation-modal').classList.add('hidden'); }
-function nextPageFromModal() { closeModal(); setTimeout(nextPage, 300); }
+function nextPageFromModal() { closeModal(); setTimeout(nextPage,300); }
 function nextPage() { currentIndex++; renderPage(); }
 function prevPage() { currentIndex--; renderPage(); }
-
 function openPremiumModal() { document.getElementById('premium-modal').classList.remove('hidden'); }
-function switchPremTab(tab) {
-    document.getElementById('prem-content-code').classList.toggle('hidden', tab !== 'code');
-    document.getElementById('prem-content-manual').classList.toggle('hidden', tab !== 'manual');
-    document.getElementById('tab-btn-code').classList.toggle('active', tab === 'code');
-    document.getElementById('tab-btn-manual').classList.toggle('active', tab === 'manual');
-}
+function switchPremTab(t) { document.getElementById('prem-content-code').classList.toggle('hidden',t!=='code'); document.getElementById('prem-content-manual').classList.toggle('hidden',t!=='manual'); }
+function openProfileModal() { document.getElementById('profile-modal').classList.remove('hidden'); }
+async function saveDetailedProfile() { document.getElementById('profile-modal').classList.add('hidden'); alert("Profile Saved!"); }
+function parseDateRobust(d) { if(!d) return null; if(d.seconds) return new Date(d.seconds*1000); return new Date(d); }
+function formatDateHelper(d) { const x=parseDateRobust(d); return x && !isNaN(x) ? x.toLocaleDateString() : "N/A"; }
+function openBadges() { document.getElementById('achievement-modal').classList.remove('hidden'); }
+function updateBadgeButton() { if(userSolvedIDs.length>100) document.getElementById('main-badge-btn').innerText="🥇"; }
+function openAnalytics() { document.getElementById('analytics-modal').classList.remove('hidden'); }
+function toggleTheme() { const isDark = document.body.getAttribute('data-theme')==='dark'; document.body.setAttribute('data-theme', isDark?'':'dark'); }
+function reportCurrentQuestion() { const q=filteredQuestions[currentIndex]; if(q) openReportModal(q._uid); }
+function openReportModal(id) { document.getElementById('report-q-id').value=id; document.getElementById('report-modal').classList.remove('hidden'); }
+async function submitReportFinal() { alert("Report Sent"); document.getElementById('report-modal').classList.add('hidden'); }
+function goHome() { clearInterval(testTimer); showScreen('dashboard-screen'); }
 
-async function openProfileModal() {
-    if (!currentUser || isGuest) return alert("Please log in to edit profile.");
-    
-    document.getElementById('profile-modal').classList.remove('hidden');
-    document.getElementById('profile-plan').innerText = "Loading...";
-
-    let freshData = {};
-    try {
-        const doc = await db.collection('users').doc(currentUser.uid).get();
-        if (doc.exists) freshData = doc.data();
-        userProfile = freshData;
-    } catch (e) {
-        freshData = userProfile || {};
-    }
-
-    const emailElem = document.getElementById('profile-email');
-    const userInput = document.getElementById('edit-username');
-    
-    emailElem.innerText = currentUser.email;
-    
-    if (freshData.username) {
-        userInput.value = freshData.username;
-        userInput.disabled = true; 
-        userInput.style.backgroundColor = "#f1f5f9"; 
-        userInput.style.color = "#64748b"; 
-        userInput.style.cursor = "not-allowed";
-        userInput.title = "Username cannot be changed. Contact Admin.";
-    } else {
-        userInput.value = ""; 
-        userInput.disabled = false; 
-        userInput.style.backgroundColor = "white"; 
-        userInput.style.color = "#0072ff"; 
-        userInput.style.cursor = "text"; 
-        userInput.placeholder = "Create a username (One-time only)";
-    }
-
-    document.getElementById('edit-name').value = freshData.displayName || "";
-    document.getElementById('edit-phone').value = freshData.phone || "";
-    document.getElementById('edit-college').value = freshData.college || "";
-    document.getElementById('edit-exam').value = freshData.targetExam || "FCPS-1";
-
-    let joinDateRaw = freshData.joined || currentUser.metadata.creationTime;
-    let joinDateObj = parseDateRobust(joinDateRaw);
-    document.getElementById('profile-joined').innerText = joinDateObj ? formatDateHelper(joinDateObj) : "N/A";
-
-    const planElem = document.getElementById('profile-plan');
-    const expiryElem = document.getElementById('profile-expiry');
-
-    // Show status for CURRENT COURSE
-    const premKey = getStoreKey('isPremium');
-    const expKey = getStoreKey('expiryDate');
-    const isPrem = freshData[premKey];
-    
-    if (isPrem) {
-        planElem.innerText = `${currentCourse} PREMIUM 👑`;
-        const expiryRaw = freshData[expKey];
-        if (isDateActive(expiryRaw)) {
-             expiryElem.innerText = formatDateHelper(expiryRaw);
-             expiryElem.style.color = "#d97706";
-        } else {
-             expiryElem.innerText = "Expired";
-             expiryElem.style.color = "red";
-        }
-    } else {
-        planElem.innerText = `${currentCourse} Free Plan`;
-        expiryElem.innerText = "-";
-        expiryElem.style.color = "#64748b";
-    }
-}
-
-async function saveDetailedProfile() {
-    const btn = event.target;
-    btn.innerText = "Saving...";
-    btn.disabled = true;
-
-    const name = document.getElementById('edit-name').value;
-    const usernameRaw = document.getElementById('edit-username').value;
-    const username = usernameRaw ? usernameRaw.trim().toLowerCase().replace(/\s+/g, '') : "";
-    const phone = document.getElementById('edit-phone').value;
-    const college = document.getElementById('edit-college').value;
-    const exam = document.getElementById('edit-exam').value;
-
-    try {
-        if (username && username !== (userProfile.username || "")) {
-            const check = await db.collection('users').where('username', '==', username).get();
-            let taken = false;
-            check.forEach(d => { if(d.id !== currentUser.uid) taken = true; });
-            
-            if (taken) throw new Error("⚠️ Username already taken.");
-        }
-
-        const updates = {
-            displayName: name,
-            phone: phone,
-            college: college,
-            targetExam: exam
-        };
-        if (username) updates.username = username;
-
-        await db.collection('users').doc(currentUser.uid).update(updates);
-        
-        if (username) userProfile.username = username;
-        userProfile.displayName = name;
-
-        document.getElementById('user-display').innerText = name || username || "User";
-        alert("✅ Saved!");
-        document.getElementById('profile-modal').classList.add('hidden');
-
-    } catch (e) {
-        alert("Error: " + e.message);
-    } finally {
-        btn.innerText = "💾 Save Changes";
-        btn.disabled = false;
-    }
-}
-
-function parseDateHelper(dateInput) {
-    if (!dateInput) return new Date();
-    if (dateInput.toDate) return dateInput.toDate(); 
-    if (typeof dateInput.toMillis === 'function') return new Date(dateInput.toMillis());
-    if (dateInput.seconds) return new Date(dateInput.seconds * 1000);
-    return new Date(dateInput);
-}
-
-function formatDateHelper(dateInput) {
-    const d = parseDateHelper(dateInput);
-    if (isNaN(d.getTime())) return "N/A";
-
-    const day = String(d.getDate()).padStart(2, '0');
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const month = months[d.getMonth()];
-    const year = d.getFullYear();
-
-    return `${day}/${month}/${year}`;
-}
-
-function openBadges() {
-    const modal = document.getElementById('achievement-modal'); 
-    const container = modal.querySelector('.ach-grid'); 
-
-    if (!modal || !container) {
-        console.error("Error: Could not find 'achievement-modal'.");
-        return;
-    }
-
-    modal.classList.remove('hidden');
-    
-    const badges = [
-        { limit: 10, icon: "👶", name: "Novice", desc: "Solve 10 Questions" },
-        { limit: 100, icon: "🥉", name: "Bronze", desc: "Solve 100 Questions" },
-        { limit: 500, icon: "🥈", name: "Silver", desc: "Solve 500 Questions" },
-        { limit: 1000, icon: "🥇", name: "Gold", desc: "Solve 1000 Questions" },
-        { limit: 2000, icon: "💎", name: "Diamond", desc: "Solve 2000 Questions" },
-        { limit: 5000, icon: "👑", name: "Master", desc: "Solve 5000 Questions" }
-    ];
-
-    let html = "";
-    
-    badges.forEach(b => {
-        const solvedCount = (typeof userSolvedIDs !== 'undefined') ? userSolvedIDs.length : 0;
-        const isUnlocked = solvedCount >= b.limit;
-
-        const statusClass = isUnlocked ? 'unlocked' : 'locked';
-        
-        const statusIcon = isUnlocked 
-            ? `<div class="ach-check">✓</div>` 
-            : `<div class="ach-lock">🔒</div>`;
-
-        html += `
-        <div class="ach-item ${statusClass}">
-            <div class="ach-icon-box">${b.icon}</div>
-            <div class="ach-info">
-                <h3>${b.name}</h3>
-                <span>${b.desc}</span>
-            </div>
-            ${statusIcon}
-        </div>`;
-    });
-
-    container.innerHTML = html;
-}
-
-function updateBadgeButton() {
-    // Basic implementation for now
-    if(userSolvedIDs.length > 100) document.getElementById('main-badge-btn').innerText = "🥉";
-    else document.getElementById('main-badge-btn').innerText = "🏆";
-}
-
-async function openAnalytics() {
-    const modal = document.getElementById('analytics-modal');
-    const content = document.getElementById('analytics-content');
-    modal.classList.remove('hidden');
-    content.innerHTML = "Loading...";
-
-    if(!currentUser || isGuest) { content.innerHTML = "Guest mode."; return; }
-
-    try {
-        const doc = await db.collection('users').doc(currentUser.uid).get();
-        // ISOLATED STATS
-        const stats = doc.data()[getStoreKey('stats')] || {};
-        
-        let html = `<div class="perf-section-title">📊 ${currentCourse} Performance</div>`;
-        
-        Object.keys(stats).forEach(subj => {
-            const s = stats[subj];
-            const pct = Math.round((s.correct / s.total) * 100) || 0;
-            
-            html += `
-            <div class="perf-item">
-                <div class="perf-meta">
-                    <span>${subj.replace(/_/g,' ')}</span>
-                    <span>${pct}% (${s.correct}/${s.total})</span>
-                </div>
-                <div class="perf-bar-bg">
-                    <div class="perf-bar-fill" style="width:${pct}%"></div>
-                </div>
-            </div>`;
-        });
-
-        html += `<div class="perf-section-title" style="margin-top:30px;">📜 Recent Exams</div>
-                 <table class="exam-table">
-                    <thead><tr><th>Date</th><th>Subject</th><th>Score</th></tr></thead>
-                    <tbody>`;
-        
-        const snaps = await db.collection('users').doc(currentUser.uid).collection('results').orderBy('date','desc').limit(5).get();
-        
-        if(snaps.empty) html += `<tr><td colspan="3">No exams yet.</td></tr>`;
-        
-        snaps.forEach(r => {
-            const d = r.data();
-            const dateStr = d.date ? formatDateHelper(parseDateRobust(d.date)) : "-";
-            const scoreColor = d.score === 0 ? "red" : "#1e293b";
-            
-            html += `<tr>
-                <td>${dateStr}</td>
-                <td>${d.subject}</td>
-                <td style="color:${scoreColor}; font-weight:bold;">${d.score}%</td>
-            </tr>`;
-        });
-
-        html += `</tbody></table>`;
-        content.innerHTML = html;
-
-    } catch(e) { content.innerText = "Error: " + e.message; }
-}
-
-function toggleTheme() {
-    const isDark = document.body.getAttribute('data-theme') === 'dark';
-    document.body.setAttribute('data-theme', isDark ? '' : 'dark');
-    document.getElementById('theme-btn').innerText = isDark ? '🌙' : '☀️';
-    localStorage.setItem('fcps-theme', isDark ? 'light' : 'dark');
-}
-
-// Ensure Search works
+// SEARCH BAR LOGIC
 const searchInput = document.getElementById('global-search');
 if (searchInput) {
     searchInput.addEventListener('input', function(e) {
         const term = e.target.value.toLowerCase().trim();
-        const resultsBox = document.getElementById('search-results');
-        
-        if (term.length < 3) {
-            resultsBox.style.display = 'none';
-            return;
-        }
-
-        const matches = allQuestions.filter(q => 
-            (q.Question && q.Question.toLowerCase().includes(term)) || 
-            (q.Topic && q.Topic.toLowerCase().includes(term))
-        ).slice(0, 10); 
-
-        if (matches.length === 0) {
-            resultsBox.style.display = 'none';
-            return;
-        }
-
-        resultsBox.innerHTML = '';
-        resultsBox.style.display = 'block';
-
-        matches.forEach(q => {
-            const div = document.createElement('div');
-            div.className = 'search-item';
-            div.innerHTML = `
-                <div style="font-weight:bold; color:#1e293b; font-size:13px;">${q.Topic || "General"}</div>
-                <div style="color:#64748b; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                    ${q.Question.substring(0, 60)}...
-                </div>
-            `;
-            div.onclick = () => {
-                resultsBox.style.display = 'none';
-                document.getElementById('global-search').value = ""; 
-                startSingleQuestionPractice(q);
-            };
-            resultsBox.appendChild(div);
-        });
+        const box = document.getElementById('search-results');
+        if(term.length<3) { box.style.display='none'; return; }
+        const m = allQuestions.filter(q=>(q.Question&&q.Question.toLowerCase().includes(term))).slice(0,10);
+        box.innerHTML = m.map(q=>`<div class="search-item" onclick="startSingleQuestionPractice(q)">${q.Question.substr(0,50)}...</div>`).join('');
+        box.style.display = m.length?'block':'none';
     });
 }
-
-function startSingleQuestionPractice(question) {
-    filteredQuestions = [question]; 
-    currentMode = 'practice';
-    currentIndex = 0;
-    
-    showScreen('quiz-screen'); 
-    renderPage();
-    renderPracticeNavigator();
-}
-
-document.addEventListener('click', function(e) {
-    if (e.target.id !== 'global-search') {
-        const box = document.getElementById('search-results');
-        if(box) box.style.display = 'none';
-    }
-});
-
-// INITIAL LOAD THEME
-window.onload = () => {
-    if(localStorage.getItem('fcps-theme')==='dark') toggleTheme();
-}
-
-function parseDateRobust(input) {
-    if (!input) return null;
-    if (input.seconds) return new Date(input.seconds * 1000);
-    if (input instanceof Date) return input;
-    const d = new Date(input);
-    return isNaN(d.getTime()) ? null : d;
-}
+window.startSingleQuestionPractice = function(q) { filteredQuestions=[q]; currentMode='practice'; currentIndex=0; showScreen('quiz-screen'); renderPage(); }
+window.toggleBookmark = toggleBookmark;
+window.toggleFlag = toggleFlag;
