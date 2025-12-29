@@ -46,7 +46,7 @@ if (!currentDeviceId) {
     localStorage.setItem('fcps_device_id', currentDeviceId);
 }
 
-// --- GLOBAL PREMIUM PLANS CONFIGURATION (The Calculator) ---
+// --- GLOBAL PREMIUM PLANS CONFIGURATION ---
 const PLAN_DURATIONS = {
     '1_day': 86400000,
     '1_week': 604800000,
@@ -55,7 +55,7 @@ const PLAN_DURATIONS = {
     '3_months': 7776000000,
     '6_months': 15552000000,
     '12_months': 31536000000,
-    'lifetime': 2524608000000 // ~80 Years
+    'lifetime': 2524608000000 
 };
 
 // ======================================================
@@ -94,7 +94,6 @@ async function checkLoginSecurity(user) {
         const doc = await docRef.get();
 
         if (!doc.exists) {
-            // New User Creation
             await docRef.set({
                 email: user.email,
                 deviceId: currentDeviceId,
@@ -107,8 +106,6 @@ async function checkLoginSecurity(user) {
             loadUserData();
         } else {
             const data = doc.data();
-            
-            // --- AUTO-REPAIR: Fix Missing Data ---
             const updates = {};
             
             if (!data.email || data.email !== user.email) {
@@ -167,7 +164,7 @@ function guestLogin() {
 }
 
 async function login() {
-    const input = document.getElementById('email').value.trim().toLowerCase(); // Clean the input
+    const input = document.getElementById('email').value.trim().toLowerCase(); 
     const p = document.getElementById('password').value;
     const msg = document.getElementById('auth-msg');
     if(!input || !p) return alert("Please enter email/username and password");
@@ -178,14 +175,11 @@ async function login() {
     if (!input.includes('@')) {
         try {
             const snap = await db.collection('users').where('username', '==', input).limit(1).get();
-            
             if (snap.empty) {
                 msg.innerText = "❌ Username not found.";
                 return;
             }
             emailToUse = snap.docs[0].data().email;
-            console.log("Username found. Logging in via email:", emailToUse);
-            
         } catch (e) {
             msg.innerText = "Login Error: " + e.message;
             return;
@@ -209,18 +203,15 @@ async function signup() {
     msg.innerText = "Checking availability...";
 
     try {
-        // 1. Check if Username is Taken
         const check = await db.collection('users').where('username', '==', username).get();
         if (!check.empty) throw new Error("⚠️ Username is already taken.");
 
-        // 2. Create Auth User
         msg.innerText = "Creating account...";
         const cred = await auth.createUserWithEmailAndPassword(email, password);
         
-        // 3. Create Firestore Profile
         await db.collection('users').doc(cred.user.uid).set({
             email: email,
-            username: username, // Saved!
+            username: username,
             role: 'student',
             isPremium: false,
             joined: new Date(),
@@ -229,7 +220,6 @@ async function signup() {
         });
 
         msg.innerText = "✅ Success!";
-        // Auth listener will handle redirection
 
     } catch (e) {
         msg.innerText = "Error: " + e.message;
@@ -251,7 +241,6 @@ function checkPremiumExpiry() {
     }
     
     const now = new Date().getTime();
-    // Handle Firestore Timestamp vs JS Date
     const expiry = userProfile.expiryDate.toMillis ? userProfile.expiryDate.toMillis() : new Date(userProfile.expiryDate).getTime();
 
     if (now > expiry) {
@@ -618,7 +607,6 @@ function startTest() {
     const isAdmin = userProfile && userProfile.role === 'admin';
     const isPrem = userProfile && userProfile.isPremium;
 
-    // --- FIX BUG 2: ENFORCE EXAM LIMIT FOR FREE USERS ---
     let count = parseInt(document.getElementById('q-count').value);
     
     if (!isGuest && !isPrem && !isAdmin) {
@@ -627,7 +615,6 @@ function startTest() {
             alert("🔒 Free Plan Limit: Exams are capped at 20 questions.\nUpgrade to PRO for unlimited custom exams.");
         }
     }
-    // ----------------------------------------------------
 
     const mins = parseInt(document.getElementById('t-limit').value);
     
@@ -665,7 +652,7 @@ function startTest() {
 }
 
 // ======================================================
-// 8. QUIZ ENGINE
+// 8. QUIZ ENGINE (FIXED NAVIGATOR & FLAGS)
 // ======================================================
 
 function renderPage() {
@@ -677,10 +664,8 @@ function renderPage() {
     const nextBtn = document.getElementById('next-btn');
     const submitBtn = document.getElementById('submit-btn');
     
-    // --- FIX BUG 1: HIDE OLD HEADER FLAG ---
     const flagBtn = document.getElementById('flag-btn'); 
-    if(flagBtn) flagBtn.classList.add('hidden'); // Force hide global flag
-    // ---------------------------------------
+    if(flagBtn) flagBtn.classList.add('hidden'); // Force hide old header flag
     
     prevBtn.classList.toggle('hidden', currentIndex === 0);
 
@@ -721,15 +706,14 @@ function createQuestionCard(q, index, showNumber = true) {
     const block = document.createElement('div');
     block.className = "test-question-block";
     block.id = `q-card-${index}`;
-    block.style.position = "relative"; // Ensure we can position flag absolutely
+    block.style.position = "relative"; 
 
-    // --- FIX BUG 1: INJECT FLAG BUTTON ON THE QUESTION ---
+    // --- FIX: FLAG BUTTON (TEST MODE) ---
     if(currentMode === 'test') {
         const flagDiv = document.createElement('div');
         const isFlagged = testFlags[q._uid];
         flagDiv.innerHTML = isFlagged ? "🚩" : "🏳️";
         
-        // Inline styles to position it top-right of the card
         flagDiv.style.cssText = `
             position: absolute; 
             top: 15px; 
@@ -743,22 +727,46 @@ function createQuestionCard(q, index, showNumber = true) {
         
         flagDiv.title = "Flag Question";
         flagDiv.onclick = (e) => {
-            e.stopPropagation(); // Prevent clicking the card
+            e.stopPropagation(); 
             toggleFlagWithID(q._uid);
-            // Update UI immediately
             flagDiv.innerHTML = testFlags[q._uid] ? "🚩" : "🏳️";
             flagDiv.style.opacity = testFlags[q._uid] ? '1' : '0.4';
         };
         block.appendChild(flagDiv);
+    } 
+    // --- FIX: BOOKMARK BUTTON (PRACTICE MODE) ---
+    else if (currentMode === 'practice') {
+        const bookmarkDiv = document.createElement('div');
+        const isBookmarked = userBookmarks.includes(q._uid);
+        bookmarkDiv.innerHTML = isBookmarked ? "⭐" : "☆"; 
+        
+        bookmarkDiv.style.cssText = `
+            position: absolute; 
+            top: 15px; 
+            right: 15px; 
+            cursor: pointer; 
+            font-size: 24px; 
+            z-index: 10;
+            color: ${isBookmarked ? '#ffd700' : '#cbd5e1'};
+            transition: all 0.2s;
+        `;
+        
+        bookmarkDiv.title = "Bookmark Question";
+        bookmarkDiv.onclick = (e) => {
+            e.stopPropagation(); 
+            toggleBookmark(q._uid);
+            // Instant update UI
+            const nowActive = userBookmarks.includes(q._uid);
+            bookmarkDiv.innerHTML = nowActive ? "⭐" : "☆";
+            bookmarkDiv.style.color = nowActive ? '#ffd700' : '#cbd5e1';
+        };
+        block.appendChild(bookmarkDiv);
     }
-    // -----------------------------------------------------
 
-    // 1. Question Text (Clean, no inner button)
+    // 1. Question Text
     const qText = document.createElement('div');
     qText.className = "test-q-text";
-    // Standard text formatting
     qText.innerHTML = `${showNumber ? (index + 1) + ". " : ""}${q.Question || "Missing Text"}`;
-    
     block.appendChild(qText);
 
     // 2. Options
@@ -772,7 +780,6 @@ function createQuestionCard(q, index, showNumber = true) {
         const btn = document.createElement('button');
         btn.className = "option-btn";
         btn.id = `btn-${index}-${opt}`;
-        
         btn.innerHTML = `<span class="opt-text">${opt}</span><span class="elim-eye">👁️</span>`;
         
         btn.querySelector('.elim-eye').onclick = (e) => {
@@ -832,22 +839,9 @@ function checkAnswer(selectedOption, btnElement, q) {
         btnElement.classList.add('wrong');
         saveProgressToDB(q, false); 
     }
-    
     renderPracticeNavigator();
 }
 
-function reportCurrentQuestion() {
-    // 1. Check if we have questions loaded
-    if (!filteredQuestions || filteredQuestions.length === 0) return;
-    
-    // 2. Get the specific ID of the question currently on screen
-    const currentQ = filteredQuestions[currentIndex];
-    
-    // 3. Open the modal for this ID
-    if(currentQ) openReportModal(currentQ._uid);
-}
-
-// Updated Flag Logic to handle ID directly
 function toggleFlagWithID(uid) {
     if(testFlags[uid]) delete testFlags[uid];
     else testFlags[uid] = true;
@@ -855,14 +849,32 @@ function toggleFlagWithID(uid) {
 }
 
 function toggleFlag() {
-    // Legacy support if called without ID
     const q = filteredQuestions[currentIndex];
     toggleFlagWithID(q._uid);
 }
 
-// ======================================================
-// 9. DATABASE SAVING & SUBMISSION
-// ======================================================
+// --- FIX: BOOKMARK LOGIC ---
+async function toggleBookmark(uid) {
+    if (!currentUser || isGuest) {
+        return alert("Please log in to save bookmarks.");
+    }
+    
+    const idx = userBookmarks.indexOf(uid);
+    if (idx > -1) {
+        // Remove
+        userBookmarks.splice(idx, 1);
+        await db.collection('users').doc(currentUser.uid).update({
+            bookmarks: firebase.firestore.FieldValue.arrayRemove(uid)
+        });
+    } else {
+        // Add
+        userBookmarks.push(uid);
+        await db.collection('users').doc(currentUser.uid).update({
+            bookmarks: firebase.firestore.FieldValue.arrayUnion(uid)
+        });
+    }
+}
+// ---------------------------
 
 async function saveProgressToDB(q, isCorrect) {
     if (!currentUser) return;
@@ -950,7 +962,6 @@ async function redeemKey() {
     btn.disabled = true;
 
     try {
-        // 1. Find Key
         const snapshot = await db.collection('activation_keys').where('code', '==', codeInput).get();
 
         if (snapshot.empty) throw new Error("Invalid Code.");
@@ -959,32 +970,25 @@ async function redeemKey() {
         const k = keyDoc.data();
         const keyId = keyDoc.id;
 
-        // 2. CHECK: Expiry
         if (k.expiresAt) {
             const expiryDate = k.expiresAt.toDate();
             if (new Date() > expiryDate) throw new Error("This code has expired.");
         }
 
-        // 3. CHECK: Usage Limit
         if (k.usedCount >= k.maxUses) throw new Error("This code has been fully redeemed.");
 
-        // 4. CHECK: Already Used by Me?
         if (k.usersRedeemed && k.usersRedeemed.includes(currentUser.uid)) {
             throw new Error("You have already used this code.");
         }
 
-        // 5. CALCULATE PREMIUM DURATION
-        // (Ensure PLAN_DURATIONS is defined at top of script.js)
         const duration = PLAN_DURATIONS[k.plan] || 2592000000; 
         
         let newExpiry;
         if (k.plan === 'lifetime') newExpiry = new Date("2100-01-01");
         else newExpiry = new Date(Date.now() + duration);
 
-        // 6. EXECUTE TRANSACTION (Safe Update)
         const batch = db.batch();
 
-        // A. Update User
         const userRef = db.collection('users').doc(currentUser.uid);
         batch.update(userRef, {
             isPremium: true,
@@ -993,7 +997,6 @@ async function redeemKey() {
             updatedAt: new Date()
         });
 
-        // B. Update Key Stats (Increment count, Add user ID)
         const keyRef = db.collection('activation_keys').doc(keyId);
         batch.update(keyRef, {
             usedCount: firebase.firestore.FieldValue.increment(1),
@@ -1003,7 +1006,6 @@ async function redeemKey() {
 
         await batch.commit();
 
-        // 7. Success
         alert(`✅ Code Redeemed!\nPlan: ${k.plan.replace('_',' ').toUpperCase()}\nExpires: ${formatDateHelper(newExpiry)}`);
         window.location.reload();
 
@@ -1022,7 +1024,6 @@ function selectPlan(planValue, element) {
     document.getElementById('selected-plan-value').value = planValue;
 }
 
-// --- FIX BUG 3: IMAGE COMPRESSION HELPER ---
 function compressImage(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -1032,7 +1033,6 @@ function compressImage(file) {
             img.src = event.target.result;
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                // Maximum dimensions (Good for phone screens)
                 const MAX_WIDTH = 800; 
                 const MAX_HEIGHT = 800;
                 let width = img.width;
@@ -1054,14 +1054,12 @@ function compressImage(file) {
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
-                // Compress to JPEG at 0.7 quality (Good balance)
                 resolve(canvas.toDataURL('image/jpeg', 0.7));
             }
         }
         reader.onerror = (err) => reject(err);
     });
 }
-// ------------------------------------------
 
 async function submitPaymentProof() {
     const selectedPlan = document.getElementById('selected-plan-value').value;
@@ -1075,10 +1073,7 @@ async function submitPaymentProof() {
     btn.disabled = true;
 
     try {
-        // --- USE COMPRESSION HELPER ---
         const imgStr = await compressImage(file);
-        // ------------------------------
-
         const autoTID = "MANUAL_" + Math.random().toString(36).substr(2, 6).toUpperCase();
 
         await db.collection('payment_requests').add({
@@ -1102,7 +1097,6 @@ async function submitPaymentProof() {
     }
 }
 
-// --- ADMIN DASHBOARD ---
 function openAdminPanel() {
     if (!currentUser) return;
     db.collection('users').doc(currentUser.uid).get().then(doc => {
@@ -1192,7 +1186,6 @@ async function loadAllUsers() {
     Object.keys(usersByEmail).forEach(email => {
         const accounts = usersByEmail[email];
         accounts.sort((a, b) => (a.role === 'admin' ? -1 : 1));
-        
         html += renderUserRow(accounts[0]);
         count++;
     });
@@ -1216,7 +1209,6 @@ function renderUserRow(u, extraLabel = "") {
     const isAdmin = u.role === 'admin';
     const isPrem = u.isPremium;
     
-    // Determine Badge Classes
     const roleBadgeClass = isAdmin ? 'badge-admin' : 'badge-student';
     const roleText = isAdmin ? 'Admin' : 'Student';
     
@@ -1224,14 +1216,12 @@ function renderUserRow(u, extraLabel = "") {
     const planText = isPrem ? 'Premium' : 'Free';
     const rowClass = isAdmin ? "is-admin-row" : "";
     
-    // Format Date
     let dateStr = "N/A";
     if(u.joined) {
         const d = u.joined.seconds ? new Date(u.joined.seconds * 1000) : new Date(u.joined);
         if(!isNaN(d.getTime())) dateStr = formatDateHelper(d);
     }
 
-    // NEW: Check for username
     const usernameDisplay = u.username ? `<span style="color:#64748b; font-size:12px; margin-left:5px;">(@${u.username})</span>` : "";
 
     return `
@@ -1264,7 +1254,7 @@ async function loadAdminPayments() {
     try {
         const snap = await db.collection('payment_requests')
             .where('status','==','pending')
-            .orderBy('timestamp', 'desc') // Show newest first
+            .orderBy('timestamp', 'desc') 
             .get();
         
         if(snap.empty) { 
@@ -1277,7 +1267,6 @@ async function loadAdminPayments() {
             const p = doc.data();
             const reqPlan = p.planRequested ? p.planRequested.replace('_', ' ').toUpperCase() : "UNKNOWN";
             
-            // Check if image exists
             const imageHtml = p.image 
                 ? `<div class="pay-proof-container" onclick="viewFullReceipt('${p.image.replace(/'/g, "\\'")}')">
                      <img src="${p.image}" class="pay-proof-img" alt="Receipt">
@@ -1332,9 +1321,6 @@ async function loadAdminPayments() {
     }
 }
 
-// --- NEW HELPER FUNCTIONS ---
-
-// 1. Fix for the "Click to View" bug
 function viewFullReceipt(base64Image) {
     const w = window.open("");
     if(w) {
@@ -1351,26 +1337,18 @@ function viewFullReceipt(base64Image) {
     }
 }
 
-// 2. Helper for Rejection
 async function rejectPayment(docId) {
     if(!confirm("Are you sure you want to REJECT this request?")) return;
-    
-    // UI Feedback
     const card = document.getElementById(`card-${docId}`);
     if(card) card.style.opacity = "0.5";
-
     try {
         await db.collection('payment_requests').doc(docId).update({
             status: 'rejected',
             rejectedAt: new Date()
         });
-        // Remove from list immediately
         if(card) card.remove();
-        
-        // If list is empty now, reload to show "No pending requests" message
         const list = document.getElementById('admin-payments-list');
         if(list.children.length === 0) loadAdminPayments();
-        
     } catch (e) {
         alert("Error: " + e.message);
         if(card) card.style.opacity = "1";
@@ -1423,44 +1401,38 @@ async function generateAdminKey() {
     const plan = document.getElementById('key-plan').value;
     const customCode = document.getElementById('key-custom-code').value.trim().toUpperCase();
     const limit = parseInt(document.getElementById('key-limit').value) || 1;
-    const expiryInput = document.getElementById('key-expiry').value; // YYYY-MM-DD
+    const expiryInput = document.getElementById('key-expiry').value; 
 
-    // 1. Determine Code Name
     let code = customCode;
     if (!code) {
         code = 'KEY-' + Math.random().toString(36).substr(2, 6).toUpperCase();
     }
 
-    // 2. Check for Duplicate Code
     const check = await db.collection('activation_keys').where('code', '==', code).get();
     if (!check.empty) {
         return alert("❌ Error: This code already exists!");
     }
 
-    // 3. Prepare Data
     const keyData = {
         code: code,
         plan: plan,
         maxUses: limit,
         usedCount: 0,
-        usersRedeemed: [], // Track who used it to prevent double-dipping
+        usersRedeemed: [], 
         createdAt: new Date(),
         active: true
     };
 
-    // Add Expiry if set
     if (expiryInput) {
-        keyData.expiresAt = new Date(expiryInput + "T23:59:59"); // End of that day
+        keyData.expiresAt = new Date(expiryInput + "T23:59:59");
     } else {
-        keyData.expiresAt = null; // Never expires
+        keyData.expiresAt = null; 
     }
 
-    // 4. Save to DB
     await db.collection('activation_keys').add(keyData);
     
     alert(`✅ Key Created: ${code}\nLimit: ${limit} Users`);
     
-    // Clear inputs
     document.getElementById('key-custom-code').value = "";
     document.getElementById('key-limit').value = "1";
     document.getElementById('key-expiry').value = "";
@@ -1472,7 +1444,6 @@ async function loadAdminKeys() {
     const list = document.getElementById('admin-keys-list');
     list.innerHTML = "Loading...";
     
-    // Sort by newest created
     const snap = await db.collection('activation_keys').orderBy('createdAt', 'desc').limit(20).get();
     
     if (snap.empty) {
@@ -1492,15 +1463,13 @@ async function loadAdminKeys() {
     snap.forEach(doc => {
         const k = doc.data();
         
-        // Status Check
         const isFull = k.usedCount >= k.maxUses;
         const isExpired = k.expiresAt && new Date() > k.expiresAt.toDate();
-        let statusColor = "#10b981"; // Green (Active)
+        let statusColor = "#10b981"; 
         
-        if (isFull) statusColor = "#ef4444"; // Red (Full)
-        else if (isExpired) statusColor = "#94a3b8"; // Grey (Expired)
+        if (isFull) statusColor = "#ef4444"; 
+        else if (isExpired) statusColor = "#94a3b8"; 
 
-        // Date Format
         const expiryStr = k.expiresAt ? formatDateHelper(k.expiresAt) : "Never";
 
         html += `
@@ -1519,7 +1488,6 @@ async function loadAdminKeys() {
     list.innerHTML = html + "</table>";
 }
 
-// Add this helper if missing
 function deleteKey(id) {
     if(!confirm("Delete this key permanently?")) return;
     db.collection('activation_keys').doc(id).delete().then(() => loadAdminKeys());
@@ -1532,19 +1500,16 @@ async function adminLookupUser(targetId) {
     
     let doc = null;
 
-    // 1. Try fetching by UID directly
     let directDoc = await db.collection('users').doc(input).get();
     if(directDoc.exists) {
         doc = directDoc;
     } 
     else {
-        // 2. Try fetching by Email
         let s = await db.collection('users').where('email','==',input).limit(1).get();
         if(!s.empty) {
             doc = s.docs[0];
         } 
         else {
-            // 3. Try fetching by Username (NEW)
             let u = await db.collection('users').where('username','==',input.toLowerCase()).limit(1).get();
             if(!u.empty) {
                 doc = u.docs[0];
@@ -1553,14 +1518,9 @@ async function adminLookupUser(targetId) {
     }
 
     if(!doc) { res.innerHTML = "Not found (Check Email, Username or UID)"; return; }
-    
-    // ... (Keep the rest of your render code for the user card) ...
-    // Pass the data to the render function
-    res.innerHTML = renderAdminUserCard(doc); // *See helper below
+    res.innerHTML = renderAdminUserCard(doc); 
 }
 
-// *Helper: I separated the card HTML to make it cleaner. 
-// You can replace the bottom half of your existing adminLookupUser with this:
 function renderAdminUserCard(doc) {
     const u = doc.data();
     return `
@@ -1691,11 +1651,9 @@ function switchPremTab(tab) {
 async function openProfileModal() {
     if (!currentUser || isGuest) return alert("Please log in to edit profile.");
     
-    // 1. Show Modal
     document.getElementById('profile-modal').classList.remove('hidden');
     document.getElementById('profile-plan').innerText = "Loading...";
 
-    // 2. Fetch Fresh Data
     let freshData = {};
     try {
         const doc = await db.collection('users').doc(currentUser.uid).get();
@@ -1705,23 +1663,21 @@ async function openProfileModal() {
         freshData = userProfile || {};
     }
 
-    // 3. FILL FIELDS & LOCK USERNAME LOGIC (The Fix)
     const emailElem = document.getElementById('profile-email');
     const userInput = document.getElementById('edit-username');
     
     emailElem.innerText = currentUser.email;
     
-    // Check if username exists
     if (freshData.username) {
         userInput.value = freshData.username;
-        userInput.disabled = true; // LOCK THE INPUT
-        userInput.style.backgroundColor = "#f1f5f9"; // Grey out background
-        userInput.style.color = "#64748b"; // Grey text
+        userInput.disabled = true; 
+        userInput.style.backgroundColor = "#f1f5f9"; 
+        userInput.style.color = "#64748b"; 
         userInput.style.cursor = "not-allowed";
         userInput.title = "Username cannot be changed. Contact Admin.";
     } else {
         userInput.value = ""; 
-        userInput.disabled = false; // UNLOCK
+        userInput.disabled = false; 
         userInput.style.backgroundColor = "white";
         userInput.style.color = "#0072ff";
         userInput.style.cursor = "text";
@@ -1733,12 +1689,10 @@ async function openProfileModal() {
     document.getElementById('edit-college').value = freshData.college || "";
     document.getElementById('edit-exam').value = freshData.targetExam || "FCPS-1";
 
-    // 4. Handle Dates (Robust)
     let joinDateRaw = freshData.joined || currentUser.metadata.creationTime;
     let joinDateObj = parseDateRobust(joinDateRaw);
     document.getElementById('profile-joined').innerText = joinDateObj ? formatDateHelper(joinDateObj) : "N/A";
 
-    // 5. Handle Plan & Expiry
     const planElem = document.getElementById('profile-plan');
     const expiryElem = document.getElementById('profile-expiry');
 
@@ -1783,7 +1737,6 @@ async function saveDetailedProfile() {
     const exam = document.getElementById('edit-exam').value;
 
     try {
-        // 1. If username changed, check uniqueness
         if (username && username !== (userProfile.username || "")) {
             const check = await db.collection('users').where('username', '==', username).get();
             let taken = false;
@@ -1792,7 +1745,6 @@ async function saveDetailedProfile() {
             if (taken) throw new Error("⚠️ Username already taken.");
         }
 
-        // 2. Update DB
         const updates = {
             displayName: name,
             phone: phone,
@@ -1803,7 +1755,6 @@ async function saveDetailedProfile() {
 
         await db.collection('users').doc(currentUser.uid).update(updates);
         
-        // 3. Update Local State
         if (username) userProfile.username = username;
         userProfile.displayName = name;
 
@@ -1831,8 +1782,7 @@ function formatDateHelper(dateInput) {
     const d = parseDateHelper(dateInput);
     if (isNaN(d.getTime())) return "N/A";
 
-    // CUSTOM FORMAT: DD/MMM/YYYY
-    const day = String(d.getDate()).padStart(2, '0'); // Ensures '05' instead of '5'
+    const day = String(d.getDate()).padStart(2, '0');
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const month = months[d.getMonth()];
     const year = d.getFullYear();
@@ -1841,10 +1791,7 @@ function formatDateHelper(dateInput) {
 }
 
 function openBadges() {
-    // 1. Target the NEW Modal ID (from the HTML I gave you)
     const modal = document.getElementById('achievement-modal'); 
-    
-    // 2. Target the Grid Container inside that modal
     const container = modal.querySelector('.ach-grid'); 
 
     if (!modal || !container) {
@@ -1852,10 +1799,8 @@ function openBadges() {
         return;
     }
 
-    // 3. Show the modal
     modal.classList.remove('hidden');
     
-    // 4. Your Badge Data
     const badges = [
         { limit: 10, icon: "👶", name: "Novice", desc: "Solve 10 Questions" },
         { limit: 100, icon: "🥉", name: "Bronze", desc: "Solve 100 Questions" },
@@ -1865,23 +1810,15 @@ function openBadges() {
         { limit: 5000, icon: "👑", name: "Master", desc: "Solve 5000 Questions" }
     ];
 
-    // 5. Generate the NEW HTML Structure
     let html = "";
-    
     badges.forEach(b => {
-        // Check if unlocked (Safely handle if userSolvedIDs is missing)
         const solvedCount = (typeof userSolvedIDs !== 'undefined') ? userSolvedIDs.length : 0;
         const isUnlocked = solvedCount >= b.limit;
-
-        // Determine Styles (Locked vs Unlocked)
         const statusClass = isUnlocked ? 'unlocked' : 'locked';
-        
-        // Determine Icon (Checkmark vs Lock)
         const statusIcon = isUnlocked 
             ? `<div class="ach-check">✓</div>` 
             : `<div class="ach-lock">🔒</div>`;
 
-        // Build the Card HTML
         html += `
         <div class="ach-item ${statusClass}">
             <div class="ach-icon-box">${b.icon}</div>
@@ -1892,10 +1829,9 @@ function openBadges() {
             ${statusIcon}
         </div>`;
     });
-
-    // 6. Inject into the grid
     container.innerHTML = html;
 }
+
 function updateBadgeButton() {
     if(userSolvedIDs.length > 5000) document.getElementById('main-badge-btn').innerText = "👑";
     else if(userSolvedIDs.length > 2000) document.getElementById('main-badge-btn').innerText = "💎";
@@ -1935,7 +1871,6 @@ async function openAnalytics() {
             </div>`;
         });
 
-        // Recent Exams Table
         html += `<div class="perf-section-title" style="margin-top:30px;">📜 Recent Exams</div>
                  <table class="exam-table">
                     <thead><tr><th>Date</th><th>Subject</th><th>Score</th></tr></thead>
@@ -1963,12 +1898,26 @@ async function openAnalytics() {
     } catch(e) { content.innerText = "Error: " + e.message; }
 }
 
-
 function toggleTheme() {
     const isDark = document.body.getAttribute('data-theme') === 'dark';
     document.body.setAttribute('data-theme', isDark ? '' : 'dark');
     document.getElementById('theme-btn').innerText = isDark ? '🌙' : '☀️';
     localStorage.setItem('fcps-theme', isDark ? 'light' : 'dark');
+}
+
+// FIXED: Nav Function now adds 'flagged' class
+function renderNavigator() {
+    const c = document.getElementById('nav-grid');
+    if (!c) return;
+    c.innerHTML = "";
+    filteredQuestions.forEach((q,i) => {
+        const b = document.createElement('div');
+        // Added the check for testFlags here:
+        b.className = `nav-btn ${i===currentIndex?'current':''} ${testAnswers[q._uid]?'answered':''} ${testFlags[q._uid]?'flagged':''}`;
+        b.innerText = i+1;
+        b.onclick = () => { currentIndex=i; renderPage(); renderNavigator(); };
+        c.appendChild(b);
+    });
 }
 
 function renderPracticeNavigator() {
@@ -1990,35 +1939,19 @@ function renderPracticeNavigator() {
     }, 100);
 }
 
-function renderNavigator() {
-    const c = document.getElementById('nav-grid');
-    if (!c) return;
-    c.innerHTML = "";
-    filteredQuestions.forEach((q,i) => {
-        const b = document.createElement('div');
-        b.className = `nav-btn ${i===currentIndex?'current':''} ${testAnswers[q._uid]?'answered':''}`;
-        b.innerText = i+1;
-        b.onclick = () => { currentIndex=i; renderPage(); renderNavigator(); };
-        c.appendChild(b);
-    });
-}
-
 function toggleReportForm() { document.getElementById('report-form').classList.toggle('hidden'); }
-// Opens the new independent report modal
 function openReportModal(qId) {
     document.getElementById('report-q-id').value = qId;
-    document.getElementById('report-text').value = ""; // Clear previous text
+    document.getElementById('report-text').value = ""; 
     document.getElementById('report-modal').classList.remove('hidden');
 }
 
-// Sends the report to Firestore
 async function submitReportFinal() {
     const qId = document.getElementById('report-q-id').value;
     const reason = document.getElementById('report-text').value.trim();
     
     if(!reason) return alert("Please describe the issue.");
     
-    // Find the question object to include its text in the report
     const qObj = allQuestions.find(q => q._uid === qId);
     
     try {
@@ -2028,7 +1961,7 @@ async function submitReportFinal() {
             reportReason: reason,
             reportedBy: currentUser ? (currentUser.email || currentUser.uid) : 'Guest',
             timestamp: new Date(),
-            status: 'pending' // For admin tracking
+            status: 'pending' 
         });
         
         alert("✅ Report Sent! Thank you.");
@@ -2066,38 +1999,33 @@ function toggleAuthMode() {
         btn.innerText = "Sign Up";
         toggleMsg.innerText = "Already have an account?";
         toggleLink.innerText = "Log In here";
-        userField.classList.remove('hidden'); // Show Username
-        emailField.placeholder = "Email Address"; // Must be email for signup
+        userField.classList.remove('hidden'); 
+        emailField.placeholder = "Email Address"; 
     } else {
         title.innerText = "Log In";
         btn.innerText = "Log In";
         toggleMsg.innerText = "New here?";
         toggleLink.innerText = "Create New ID";
-        userField.classList.add('hidden'); // Hide Username
+        userField.classList.add('hidden'); 
         emailField.placeholder = "Email or Username";
     }
 }
 
-// Router for the "Enter" key
 function handleAuthAction() {
     if (isSignupMode) signup();
     else login();
 }
 
 function goHome() { 
-    // 1. Stop any timers
     if(testTimer) clearInterval(testTimer);
     
-    // 2. Reset Quiz State
     currentIndex = 0;
     filteredQuestions = [];
-    currentMode = 'practice'; // Default back to practice
+    currentMode = 'practice'; 
     
-    // 3. Force Dashboard Screen
     showScreen('dashboard-screen'); 
     loadUserData(); 
     
-    // 4. Clear Search Bar (Visual Cleanup)
     const searchInput = document.getElementById('global-search');
     if(searchInput) searchInput.value = "";
     const results = document.getElementById('search-results');
@@ -2119,21 +2047,14 @@ window.onload = () => {
 
 function parseDateRobust(input) {
     if (!input) return null;
-    // 1. Firestore Timestamp object (has .seconds)
     if (input.seconds) return new Date(input.seconds * 1000);
-    // 2. Already a JS Date object
     if (input instanceof Date) return input;
-    // 3. String or Number (Timestamp)
     const d = new Date(input);
     return isNaN(d.getTime()) ? null : d;
 }
 
-// --- REPORT BUTTON LOGIC ---
 function reportCurrentQuestion() {
-    // Check if a question is actually loaded
     if (!filteredQuestions || filteredQuestions.length === 0) return;
-    
-    // Get the ID of the question currently on screen
     const currentQ = filteredQuestions[currentIndex];
     if (currentQ) {
         openReportModal(currentQ._uid);
@@ -2154,11 +2075,8 @@ function openReportModal(qId) {
 async function submitReportFinal() {
     const qId = document.getElementById('report-q-id').value;
     const reason = document.getElementById('report-text').value.trim();
-    
     if(!reason) return alert("Please describe the issue.");
-    
     const qObj = allQuestions.find(q => q._uid === qId);
-    
     try {
         await db.collection('reports').add({
             questionID: qId,
@@ -2168,7 +2086,6 @@ async function submitReportFinal() {
             timestamp: new Date(),
             status: 'pending'
         });
-        
         alert("✅ Report Sent!");
         document.getElementById('report-modal').classList.add('hidden');
     } catch (e) {
@@ -2176,19 +2093,15 @@ async function submitReportFinal() {
     }
 }
 
-// --- SEARCH BAR LOGIC ---
-// Ensure this code is NOT inside another function
 const searchInput = document.getElementById('global-search');
 if (searchInput) {
     searchInput.addEventListener('input', function(e) {
         const term = e.target.value.toLowerCase().trim();
         const resultsBox = document.getElementById('search-results');
-        
         if (term.length < 3) {
             resultsBox.style.display = 'none';
             return;
         }
-
         const matches = allQuestions.filter(q => 
             (q.Question && q.Question.toLowerCase().includes(term)) || 
             (q.Topic && q.Topic.toLowerCase().includes(term))
@@ -2198,7 +2111,6 @@ if (searchInput) {
             resultsBox.style.display = 'none';
             return;
         }
-
         resultsBox.innerHTML = '';
         resultsBox.style.display = 'block';
 
@@ -2222,16 +2134,14 @@ if (searchInput) {
 }
 
 function startSingleQuestionPractice(question) {
-    filteredQuestions = [question]; // Create a 1-question quiz
+    filteredQuestions = [question]; 
     currentMode = 'practice';
     currentIndex = 0;
-    
-    showScreen('quiz-screen'); // Go to Quiz Screen
+    showScreen('quiz-screen'); 
     renderPage();
     renderPracticeNavigator();
 }
 
-// Close search if clicking outside
 document.addEventListener('click', function(e) {
     if (e.target.id !== 'global-search') {
         const box = document.getElementById('search-results');
