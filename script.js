@@ -716,17 +716,34 @@ function setMode(mode) {
 function startPractice(subject, topic) {
     let pool = allQuestions.filter(q => q.Subject === subject && (!topic || q.Topic === topic));
     
-    // --- UPDATED: Check Premium for Current Course ---
+    // Check Premium Status
     const premKey = getStoreKey('isPremium');
     const expKey = getStoreKey('expiryDate');
     const isPrem = userProfile && userProfile[premKey] && isDateActive(userProfile[expKey]);
+    const isAdmin = userProfile && userProfile.role === 'admin';
 
-    if (!isPrem && !isGuest && userProfile.role !== 'admin') {
-        if (pool.length > 20) {
-            pool = pool.slice(0, 20);
-            if(currentIndex === 0) alert(`🔒 ${currentCourse} Free Mode: Limited to 20 questions per section.\nGo Premium to unlock full bank.`);
+    // --- NEW LIMIT LOGIC ---
+    let limit = Infinity;
+    let userType = "Premium";
+
+    if (isAdmin) {
+        limit = Infinity;
+    } else if (isGuest) {
+        limit = 20; // Guest Limit
+        userType = "Guest";
+    } else if (!isPrem) {
+        limit = 50; // Free User Limit (Non-Premium)
+        userType = "Free";
+    }
+
+    // Apply Limit
+    if (pool.length > limit) {
+        pool = pool.slice(0, limit);
+        if (currentIndex === 0) {
+            alert(`🔒 ${userType} Limit Reached\n\nYou are limited to ${limit} questions per section in ${userType} mode.\n\nUpgrade to Premium to unlock the full ${currentCourse} bank!`);
         }
     }
+    // -----------------------
 
     if (pool.length === 0) return alert("No questions available.");
 
@@ -787,13 +804,24 @@ function startTest() {
     let count = parseInt(document.getElementById('q-count').value);
     const mins = parseInt(document.getElementById('t-limit').value);
 
-    if (!isGuest && !isPrem && !isAdmin) {
-        if (count > 20) {
-            alert(`🔒 FREE PLAN LIMIT:\n${currentCourse} exams are limited to 20 questions.`);
-            count = 20;
-        }
-        if(!confirm(`⚠️ ${currentCourse} Free Version: Exam mode is limited.\nUpgrade for unlimited tests?`)) return;
+    // --- NEW EXAM LIMIT LOGIC ---
+    let maxQuestions = Infinity;
+    
+    if (isAdmin) {
+        maxQuestions = Infinity;
+    } else if (isGuest) {
+        maxQuestions = 20;
+    } else if (!isPrem) {
+        maxQuestions = 50;
     }
+
+    if (count > maxQuestions) {
+        alert(`🔒 Limit Exceeded\n\n${isGuest ? "Guest" : "Free"} accounts are limited to ${maxQuestions} questions per exam.\n\nReducing question count to ${maxQuestions}.`);
+        count = maxQuestions;
+        // Update the input to reflect the change visually
+        document.getElementById('q-count').value = maxQuestions;
+    }
+    // ----------------------------
 
     const selectedElements = document.querySelectorAll('.exam-selectable.selected');
     let pool = [];
@@ -809,7 +837,10 @@ function startTest() {
 
     if(pool.length === 0) return alert("No questions found.");
     
-    filteredQuestions = pool.sort(() => Math.random() - 0.5).slice(0, count);
+    // Ensure we don't try to take more questions than exist in the pool
+    const finalCount = Math.min(count, pool.length);
+    
+    filteredQuestions = pool.sort(() => Math.random() - 0.5).slice(0, finalCount);
     
     currentMode = 'test';
     currentIndex = 0;
@@ -821,6 +852,7 @@ function startTest() {
     document.getElementById('timer').classList.remove('hidden');
     document.getElementById('test-sidebar').classList.add('active');
     
+    // Ensure the navigator renders immediately
     renderNavigator();
 
     clearInterval(testTimer);
@@ -2092,4 +2124,5 @@ function goHome() {
     // 4. Navigate back to Dashboard
     showScreen('dashboard-screen');
 }
+
 
