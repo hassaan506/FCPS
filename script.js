@@ -2,16 +2,18 @@
 // 1. CONFIGURATION & FIREBASE SETUP
 // ======================================================
 
-// --- MULTI-COURSE CONFIGURATION (Replaces single Sheet URL) ---
+// --- UPDATED: COURSE CONFIGURATION ---
 const COURSE_CONFIG = {
     'FCPS': {
         name: "FCPS Part 1",
+        // Original FCPS Sheet
         sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8aw1eGppF_fgvI5VAOO_3XEONyI-4QgWa0IgQg7K-VdxeFyn4XBpWT9tVDewbQ6PnMEQ80XpwbASh/pub?output=csv",
-        prefix: "",       // No prefix = Keeps existing user progress safe
+        prefix: "",       // No prefix = Legacy Mode (Keeps existing user progress safe)
         theme: ""         // Default Blue Theme
     },
     'MBBS': {
         name: "MBBS Final Year",
+        // New MBBS Sheet (Converted to CSV format)
         sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6fLWMz_k89yK_S8kfjqAGs9I_fGzBE-WQ-Ci8l-D5ownRGV0I1Tz-ifZZKBOTXZAx9bvs4wVuWLID/pub?output=csv",
         prefix: "MBBS_",  // Prefix ensures data separation (e.g. MBBS_solved)
         theme: "mbbs-mode" // Activates Green Theme
@@ -207,8 +209,8 @@ function selectCourse(courseName) {
     allQuestions = [];
     filteredQuestions = [];
     
-    loadQuestions(config.sheet); // Load specific sheet
-    loadUserData(); // Load specific user data
+    loadQuestions(config.sheet); // Dynamic URL
+    loadUserData(); // Dynamic Prefix Loading
 }
 
 function returnToCourseSelection() {
@@ -246,21 +248,28 @@ async function login() {
     const input = document.getElementById('email').value.trim().toLowerCase();
     const p = document.getElementById('password').value;
     const msg = document.getElementById('auth-msg');
-    if(!input || !p) return alert("Please enter credentials");
+    if(!input || !p) return alert("Please enter email/username and password");
     msg.innerText = "Verifying...";
    
     let emailToUse = input;
 
     if (!input.includes('@')) {
-        db.collection('users').where('username', '==', input).limit(1).get()
-        .then(snap => {
-            if (snap.empty) { msg.innerText = "❌ Username not found."; return; }
+        try {
+            const snap = await db.collection('users').where('username', '==', input).limit(1).get();
+            if (snap.empty) {
+                msg.innerText = "❌ Username not found.";
+                return;
+            }
             emailToUse = snap.docs[0].data().email;
-            auth.signInWithEmailAndPassword(emailToUse, p).catch(err => msg.innerText = "❌ " + err.message);
-        });
-    } else {
-       auth.signInWithEmailAndPassword(emailToUse, p).catch(err => msg.innerText = "❌ " + err.message);
+        } catch (e) {
+            msg.innerText = "Login Error: " + e.message;
+            return;
+        }
     }
+    auth.signInWithEmailAndPassword(emailToUse, p)
+        .catch(err => {
+            msg.innerText = "❌ " + err.message;
+        });
 }
 
 async function signup() {
@@ -269,22 +278,33 @@ async function signup() {
     const username = document.getElementById('reg-username').value.trim().toLowerCase().replace(/\s+/g, '');
     const msg = document.getElementById('auth-msg');
 
-    if (!email || !password || !username) return alert("Please fill fields.");
-    msg.innerText = "Creating account...";
+    if (!email || !password || !username) return alert("Please fill in all fields.");
+    if (username.length < 3) return alert("Username must be at least 3 characters.");
+
+    msg.innerText = "Checking availability...";
 
     try {
         const check = await db.collection('users').where('username', '==', username).get();
-        if (!check.empty) throw new Error("⚠️ Username taken.");
+        if (!check.empty) throw new Error("⚠️ Username is already taken.");
 
+        msg.innerText = "Creating account...";
         const cred = await auth.createUserWithEmailAndPassword(email, password);
         
         await db.collection('users').doc(cred.user.uid).set({
-            email: email, username: username, role: 'student',
-            joined: new Date(), deviceId: currentDeviceId,
-            solved: [], bookmarks: [], mistakes: [], isPremium: false
+            email: email,
+            username: username,
+            role: 'student',
+            isPremium: false,
+            joined: new Date(),
+            deviceId: currentDeviceId,
+            solved: [], bookmarks: [], mistakes: [], stats: {}
         });
+
         msg.innerText = "✅ Success!";
-    } catch (e) { msg.innerText = "Error: " + e.message; }
+
+    } catch (e) {
+        msg.innerText = "Error: " + e.message;
+    }
 }
 
 function logout() {
@@ -355,6 +375,7 @@ async function loadUserData() {
 function checkPremiumExpiry() {
     if (!userProfile) return;
     
+    // Dynamic Keys
     const premKey = getStoreKey('isPremium');
     const expKey = getStoreKey('expiryDate');
     
@@ -1437,26 +1458,17 @@ async function adminLookupUser(targetId) {
     const res = document.getElementById('admin-user-result');
     res.innerHTML = "Searching...";
     
-    let doc = null;
-
-    let directDoc = await db.collection('users').doc(input).get();
-    if(directDoc.exists) {
-        doc = directDoc;
-    } 
-    else {
-        let s = await db.collection('users').where('email','==',input).limit(1).get();
-        if(!s.empty) {
-            doc = s.docs[0];
-        } 
+    let doc = await db.collection('users').doc(input).get();
+    if(!doc.exists) {
+        const s = await db.collection('users').where('email','==',input).limit(1).get();
+        if(!s.empty) doc = s.docs[0];
         else {
-            let u = await db.collection('users').where('username','==',input.toLowerCase()).limit(1).get();
-            if(!u.empty) {
-                doc = u.docs[0];
-            }
+            const u = await db.collection('users').where('username','==',input.toLowerCase()).limit(1).get();
+            if(!u.empty) doc = u.docs[0];
         }
     }
 
-    if(!doc) { res.innerHTML = "Not found (Check Email, Username or UID)"; return; }
+    if(!doc || !doc.exists) { res.innerHTML = "Not found"; return; }
     res.innerHTML = renderAdminUserCard(doc); 
 }
 
