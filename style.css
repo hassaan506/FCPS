@@ -1449,7 +1449,7 @@ tr:last-child td { border-bottom: none; }
     flex-direction: column !important;
     max-height: 85vh !important; /* Forces a maximum height */
     overflow: hidden !important; /* Keeps header/footer fixed */
-    padding: 0 !important;       /* Removes padding that squishes content */
+    padding: 0 !important;        /* Removes padding that squishes content */
 }
 
 /* 2. Force the middle section to scroll */
@@ -2035,4 +2035,66 @@ button.secondary {
 [data-theme="dark"] #stats-box .secondary {
     background-color: var(--input-bg) !important;
     color: var(--text-dark) !important;
+}
+
+/* =========================================
+   24. NEW FIXES (Bookmarks & Flags)
+   ========================================= */
+
+/* Header inside the Question Card */
+.question-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px dashed #e2e8f0;
+}
+
+/* The Question Number Text */
+.q-number-tag {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--primary);
+    background: #e0f2fe;
+    padding: 5px 12px;
+    border-radius: 8px;
+}
+
+/* Container for Icon Buttons */
+.q-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* The Star and Flag Buttons */
+.action-icon-btn {
+    background: transparent;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    padding: 5px;
+    transition: transform 0.2s;
+    line-height: 1;
+    margin: 0 !important; /* Override global button margin */
+    width: auto !important; /* Override global width */
+}
+
+.action-icon-btn:hover {
+    transform: scale(1.2);
+}
+
+/* Active States */
+.bookmark-active {
+    color: #f59e0b; /* Gold Star */
+}
+
+.flag-active {
+    color: #ef4444; /* Red Flag */
+}
+
+/* Visual Indicator when a card is flagged */
+.test-question-block.is-flagged-card {
+    border: 2px solid #ef4444 !important;
+    background: #fff5f5;
 }
