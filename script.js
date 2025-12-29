@@ -172,7 +172,7 @@ async function login() {
     const msg = document.getElementById('auth-msg');
     if(!input || !p) return alert("Please enter email/username and password");
     msg.innerText = "Verifying...";
-   
+    
     let emailToUse = input;
 
     if (!input.includes('@')) {
@@ -618,11 +618,17 @@ function startTest() {
     const isAdmin = userProfile && userProfile.role === 'admin';
     const isPrem = userProfile && userProfile.isPremium;
 
+    // --- FIX BUG 2: ENFORCE EXAM LIMIT FOR FREE USERS ---
+    let count = parseInt(document.getElementById('q-count').value);
+    
     if (!isGuest && !isPrem && !isAdmin) {
-        if(!confirm("⚠️ Free Version: Exam mode is limited.\nUpgrade for unlimited tests?")) return;
+        if (count > 20) {
+            count = 20;
+            alert("🔒 Free Plan Limit: Exams are capped at 20 questions.\nUpgrade to PRO for unlimited custom exams.");
+        }
     }
+    // ----------------------------------------------------
 
-    const count = parseInt(document.getElementById('q-count').value);
     const mins = parseInt(document.getElementById('t-limit').value);
     
     const selectedElements = document.querySelectorAll('.exam-selectable.selected');
@@ -670,14 +676,17 @@ function renderPage() {
     const prevBtn = document.getElementById('prev-btn');
     const nextBtn = document.getElementById('next-btn');
     const submitBtn = document.getElementById('submit-btn');
+    
+    // --- FIX BUG 1: HIDE OLD HEADER FLAG ---
     const flagBtn = document.getElementById('flag-btn'); 
+    if(flagBtn) flagBtn.classList.add('hidden'); // Force hide global flag
+    // ---------------------------------------
     
     prevBtn.classList.toggle('hidden', currentIndex === 0);
 
     if (currentMode === 'practice') {
         document.getElementById('timer').classList.add('hidden');
         document.getElementById('test-sidebar').classList.remove('active'); 
-        flagBtn.classList.add('hidden'); 
         submitBtn.classList.add('hidden');
         
         if (currentIndex < filteredQuestions.length - 1) nextBtn.classList.remove('hidden');
@@ -688,7 +697,6 @@ function renderPage() {
 
     } else {
         document.getElementById('timer').classList.remove('hidden');
-        flagBtn.classList.remove('hidden'); 
         document.getElementById('test-sidebar').classList.add('active');
 
         const start = currentIndex;
@@ -713,6 +721,37 @@ function createQuestionCard(q, index, showNumber = true) {
     const block = document.createElement('div');
     block.className = "test-question-block";
     block.id = `q-card-${index}`;
+    block.style.position = "relative"; // Ensure we can position flag absolutely
+
+    // --- FIX BUG 1: INJECT FLAG BUTTON ON THE QUESTION ---
+    if(currentMode === 'test') {
+        const flagDiv = document.createElement('div');
+        const isFlagged = testFlags[q._uid];
+        flagDiv.innerHTML = isFlagged ? "🚩" : "🏳️";
+        
+        // Inline styles to position it top-right of the card
+        flagDiv.style.cssText = `
+            position: absolute; 
+            top: 15px; 
+            right: 15px; 
+            cursor: pointer; 
+            font-size: 20px; 
+            z-index: 10;
+            opacity: ${isFlagged ? '1' : '0.4'};
+            transition: all 0.2s;
+        `;
+        
+        flagDiv.title = "Flag Question";
+        flagDiv.onclick = (e) => {
+            e.stopPropagation(); // Prevent clicking the card
+            toggleFlagWithID(q._uid);
+            // Update UI immediately
+            flagDiv.innerHTML = testFlags[q._uid] ? "🚩" : "🏳️";
+            flagDiv.style.opacity = testFlags[q._uid] ? '1' : '0.4';
+        };
+        block.appendChild(flagDiv);
+    }
+    // -----------------------------------------------------
 
     // 1. Question Text (Clean, no inner button)
     const qText = document.createElement('div');
@@ -808,11 +847,17 @@ function reportCurrentQuestion() {
     if(currentQ) openReportModal(currentQ._uid);
 }
 
-function toggleFlag() {
-    const q = filteredQuestions[currentIndex];
-    if(testFlags[q._uid]) delete testFlags[q._uid];
-    else testFlags[q._uid] = true;
+// Updated Flag Logic to handle ID directly
+function toggleFlagWithID(uid) {
+    if(testFlags[uid]) delete testFlags[uid];
+    else testFlags[uid] = true;
     renderNavigator();
+}
+
+function toggleFlag() {
+    // Legacy support if called without ID
+    const q = filteredQuestions[currentIndex];
+    toggleFlagWithID(q._uid);
 }
 
 // ======================================================
@@ -845,7 +890,7 @@ async function saveProgressToDB(q, isCorrect) {
                 [`stats.${q.Subject.replace(/\W/g,'_')}.total`]: firebase.firestore.FieldValue.increment(1)
             });
         }
-      updateBadgeButton();
+       updateBadgeButton();
     }
 }
 
@@ -977,27 +1022,62 @@ function selectPlan(planValue, element) {
     document.getElementById('selected-plan-value').value = planValue;
 }
 
+// --- FIX BUG 3: IMAGE COMPRESSION HELPER ---
+function compressImage(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                // Maximum dimensions (Good for phone screens)
+                const MAX_WIDTH = 800; 
+                const MAX_HEIGHT = 800;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                } else {
+                    if (height > MAX_HEIGHT) {
+                        width *= MAX_HEIGHT / height;
+                        height = MAX_HEIGHT;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                // Compress to JPEG at 0.7 quality (Good balance)
+                resolve(canvas.toDataURL('image/jpeg', 0.7));
+            }
+        }
+        reader.onerror = (err) => reject(err);
+    });
+}
+// ------------------------------------------
+
 async function submitPaymentProof() {
     const selectedPlan = document.getElementById('selected-plan-value').value;
     const file = document.getElementById('pay-proof').files[0];
     if(!selectedPlan) return alert("❌ Please select a plan from the list above.");
     if(!file) return alert("❌ Please upload a screenshot of your payment.");
 
-    let imgStr = null;
-    if(file.size > 2000000) return alert("Image too large (Max 2MB)"); 
-    
     const btn = event.target;
     const originalText = btn.innerText;
-    btn.innerText = "Uploading...";
+    btn.innerText = "Compressing & Uploading...";
     btn.disabled = true;
 
     try {
-        imgStr = await new Promise((resolve, reject) => {
-            let fr = new FileReader();
-            fr.onload = () => resolve(fr.result);
-            fr.onerror = reject;
-            fr.readAsDataURL(file);
-        });
+        // --- USE COMPRESSION HELPER ---
+        const imgStr = await compressImage(file);
+        // ------------------------------
 
         const autoTID = "MANUAL_" + Math.random().toString(36).substr(2, 6).toUpperCase();
 
