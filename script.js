@@ -652,7 +652,7 @@ function startTest() {
 }
 
 // ======================================================
-// 8. QUIZ ENGINE (FIXED NAVIGATOR & FLAGS)
+// 8. QUIZ ENGINE
 // ======================================================
 
 function renderPage() {
@@ -665,7 +665,7 @@ function renderPage() {
     const submitBtn = document.getElementById('submit-btn');
     
     const flagBtn = document.getElementById('flag-btn'); 
-    if(flagBtn) flagBtn.classList.add('hidden'); // Force hide old header flag
+    if(flagBtn) flagBtn.classList.add('hidden'); 
     
     prevBtn.classList.toggle('hidden', currentIndex === 0);
 
@@ -708,7 +708,7 @@ function createQuestionCard(q, index, showNumber = true) {
     block.id = `q-card-${index}`;
     block.style.position = "relative"; 
 
-    // --- FIX: FLAG BUTTON (TEST MODE) ---
+    // --- BUTTON INJECTION ---
     if(currentMode === 'test') {
         const flagDiv = document.createElement('div');
         const isFlagged = testFlags[q._uid];
@@ -734,7 +734,6 @@ function createQuestionCard(q, index, showNumber = true) {
         };
         block.appendChild(flagDiv);
     } 
-    // --- FIX: BOOKMARK BUTTON (PRACTICE MODE) ---
     else if (currentMode === 'practice') {
         const bookmarkDiv = document.createElement('div');
         const isBookmarked = userBookmarks.includes(q._uid);
@@ -755,7 +754,6 @@ function createQuestionCard(q, index, showNumber = true) {
         bookmarkDiv.onclick = (e) => {
             e.stopPropagation(); 
             toggleBookmark(q._uid);
-            // Instant update UI
             const nowActive = userBookmarks.includes(q._uid);
             bookmarkDiv.innerHTML = nowActive ? "⭐" : "☆";
             bookmarkDiv.style.color = nowActive ? '#ffd700' : '#cbd5e1';
@@ -853,7 +851,7 @@ function toggleFlag() {
     toggleFlagWithID(q._uid);
 }
 
-// --- FIX: BOOKMARK LOGIC ---
+// --- BOOKMARK LOGIC ---
 async function toggleBookmark(uid) {
     if (!currentUser || isGuest) {
         return alert("Please log in to save bookmarks.");
@@ -874,7 +872,6 @@ async function toggleBookmark(uid) {
         });
     }
 }
-// ---------------------------
 
 async function saveProgressToDB(q, isCorrect) {
     if (!currentUser) return;
@@ -1136,6 +1133,12 @@ async function loadAdminReports() {
     snap.forEach(doc => {
         const r = doc.data();
         html += `<div class="report-card">
+            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                <span style="background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:bold;">
+                    Row: ${r.sheetRow || 'N/A'}
+                </span>
+                <span style="font-size:10px; color:#94a3b8;">${formatDateHelper(r.timestamp)}</span>
+            </div>
             <strong>${r.questionText.substr(0, 50)}...</strong><br>
             <span style="color:red; font-size:12px;">Reason: ${r.reportReason}</span><br>
             <small>By: ${r.reportedBy}</small><br>
@@ -1905,14 +1908,12 @@ function toggleTheme() {
     localStorage.setItem('fcps-theme', isDark ? 'light' : 'dark');
 }
 
-// FIXED: Nav Function now adds 'flagged' class
 function renderNavigator() {
     const c = document.getElementById('nav-grid');
     if (!c) return;
     c.innerHTML = "";
     filteredQuestions.forEach((q,i) => {
         const b = document.createElement('div');
-        // Added the check for testFlags here:
         b.className = `nav-btn ${i===currentIndex?'current':''} ${testAnswers[q._uid]?'answered':''} ${testFlags[q._uid]?'flagged':''}`;
         b.innerText = i+1;
         b.onclick = () => { currentIndex=i; renderPage(); renderNavigator(); };
@@ -1946,6 +1947,7 @@ function openReportModal(qId) {
     document.getElementById('report-modal').classList.remove('hidden');
 }
 
+// --- UPDATED REPORT SUBMISSION WITH ROW NUMBER ---
 async function submitReportFinal() {
     const qId = document.getElementById('report-q-id').value;
     const reason = document.getElementById('report-text').value.trim();
@@ -1958,6 +1960,8 @@ async function submitReportFinal() {
         await db.collection('reports').add({
             questionID: qId,
             questionText: qObj ? qObj.Question : "Unknown",
+            // This is the new line adding the Row Number:
+            sheetRow: qObj ? qObj.SheetRow : "N/A", 
             reportReason: reason,
             reportedBy: currentUser ? (currentUser.email || currentUser.uid) : 'Guest',
             timestamp: new Date(),
@@ -1970,6 +1974,7 @@ async function submitReportFinal() {
         alert("Error sending report: " + e.message);
     }
 }
+// ------------------------------------------------
 
 function submitReport() {
     const r = document.getElementById('report-reason').value;
@@ -2069,27 +2074,6 @@ function openReportModal(qId) {
         modal.classList.remove('hidden');
     } else {
         console.error("Report modal not found in HTML");
-    }
-}
-
-async function submitReportFinal() {
-    const qId = document.getElementById('report-q-id').value;
-    const reason = document.getElementById('report-text').value.trim();
-    if(!reason) return alert("Please describe the issue.");
-    const qObj = allQuestions.find(q => q._uid === qId);
-    try {
-        await db.collection('reports').add({
-            questionID: qId,
-            questionText: qObj ? qObj.Question : "Unknown",
-            reportReason: reason,
-            reportedBy: currentUser ? (currentUser.email || currentUser.uid) : 'Guest',
-            timestamp: new Date(),
-            status: 'pending'
-        });
-        alert("✅ Report Sent!");
-        document.getElementById('report-modal').classList.add('hidden');
-    } catch (e) {
-        alert("Error: " + e.message);
     }
 }
 
