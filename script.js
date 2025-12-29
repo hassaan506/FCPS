@@ -234,18 +234,21 @@ function getStoreKey(baseKey) {
 
 function guestLogin() {
     isGuest = true;
-    userProfile = { role: 'guest' };
-    
-    // Force UI Update
+    userProfile = { 
+        role: 'guest', 
+        isPremium: false, 
+        MBBS_isPremium: false 
+    };
     if(document.getElementById('course-selection-screen')) {
         showScreen('course-selection-screen');
+        updateCourseSelectionUI(); 
     } else {
         selectCourse('FCPS');
     }
-    
-    document.getElementById('user-display').innerText = "Guest User";
+    const display = document.getElementById('user-display');
+    if(display) display.innerText = "Guest User";
     document.getElementById('premium-badge').classList.add('hidden');
-    document.getElementById('get-premium-btn').classList.remove('hidden');
+    document.getElementById('get-premium-btn').classList.remove('hidden');  
     alert("👤 Guest Mode Active\n\n⚠️ Progress is NOT saved.\n🔒 Limit: 20 Questions per topic.");
 }
 
@@ -1948,3 +1951,4 @@ function parseDateRobust(input) {
     const d = new Date(input);
     return isNaN(d.getTime()) ? null : d;
 }
+
