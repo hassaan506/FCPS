@@ -1,21 +1,24 @@
 {
-  "name": "FCPS Prep Portal",
-  "short_name": "FCPS Prep",
+  "name": "Edeetos Preparation",
+  "short_name": "Edeetos",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#4a90e2",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
   "orientation": "portrait",
+  "description": "Premium preparation for FCPS & MBBS exams.",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/2965/2965358.png",
+      "src": "logo.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/2965/2965358.png",
+      "src": "logo.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
