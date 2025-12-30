@@ -2466,65 +2466,53 @@ async function resetAccountData() {
 }
 
 // =========================================================
-// 🎮 UNIVERSAL INPUT MANAGER (KEYBOARD + SWIPE)
+// 🎮 UNIVERSAL INPUT MANAGER (v3 - Auto-Detect)
 // =========================================================
 
 // --- 1. CONFIGURATION ---
-const SWIPE_THRESHOLD = 50; // Minimum distance (px) to count as a swipe
-let touchStartX = 0;
-let touchStartY = 0;
-let touchEndX = 0;
-let touchEndY = 0;
+const SWIPE_THRESHOLD = 50; 
+let touchStartX = 0, touchStartY = 0, touchEndX = 0, touchEndY = 0;
 
-// --- 2. KEYBOARD LISTENER (Desktop) ---
+// --- 2. KEYBOARD LISTENER ---
 document.addEventListener('keydown', function(e) {
-    // A. Safety Checks
-    const testScreen = document.getElementById('test-screen');
-    // Only run if Test Screen is visible & user isn't typing in a text box
-    if (!testScreen || testScreen.classList.contains('hidden')) return;
+    // A. Ignore if typing in a text box
     if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
 
-    // B. Navigation Shortcuts
-    if (e.key === 'ArrowRight') triggerButton('next-btn'); // Right Arrow -> Next
-    if (e.key === 'ArrowLeft') triggerButton('prev-btn');  // Left Arrow -> Prev
-    
-    // C. Option Selection (Keys 1, 2, 3, 4, 5)
+    // B. AUTO-DETECT BUTTONS (Finds buttons by text/icon if IDs fail)
+    const nextBtn = findButton('next-btn', ['Next', '→', 'Skip', '>']);
+    const prevBtn = findButton('prev-btn', ['Prev', 'Back', '←', '<']);
+
+    // C. NAVIGATION
+    if (e.key === 'ArrowRight') triggerElement(nextBtn);
+    if (e.key === 'ArrowLeft') triggerElement(prevBtn);
+
+    // D. OPTIONS (1-5)
+    // Looks for any button with class 'option-btn', 'answer', or just buttons inside 'options-container'
     const keyMap = {'1':0, '2':1, '3':2, '4':3, '5':4};
     if (keyMap.hasOwnProperty(e.key)) {
-        const options = document.querySelectorAll('#options-container .option-btn');
+        // Try multiple common selectors for options
+        const options = document.querySelectorAll('.option-btn, .answer-btn, .option, #options-container button');
         const idx = keyMap[e.key];
-        if (options[idx]) {
-            options[idx].click(); // Click the option
-            animateElement(options[idx]); // Show visual feedback
-        }
+        if (options[idx]) triggerElement(options[idx]);
     }
 
-    // D. Exit / Submit (Esc)
+    // E. EXIT (Esc)
     if (e.key === 'Escape') {
-        if (typeof currentMode !== 'undefined' && currentMode === 'test') {
-            if(confirm("Submit Exam and Exit?")) {
-                if(typeof submitTest === 'function') submitTest();
-            }
-        } else {
-            if(typeof goHome === 'function') goHome();
-        }
+        const exitBtn = findButton('exit-btn', ['Exit', 'Quit', 'End']);
+        if (exitBtn) exitBtn.click();
+        else if (typeof goHome === 'function') goHome();
     }
 });
 
-// --- 3. TOUCH LISTENERS (Mobile Swipe) ---
+// --- 3. TOUCH LISTENERS (Swipe) ---
 document.addEventListener('touchstart', e => {
     touchStartX = e.changedTouches[0].screenX;
     touchStartY = e.changedTouches[0].screenY;
 }, {passive: true});
 
 document.addEventListener('touchend', e => {
-    // Safety Check: Only swipe if test screen is active
-    const testScreen = document.getElementById('test-screen');
-    if (!testScreen || testScreen.classList.contains('hidden')) return;
-
     touchEndX = e.changedTouches[0].screenX;
     touchEndY = e.changedTouches[0].screenY;
-    
     handleSwipeLogic();
 }, {passive: true});
 
@@ -2532,39 +2520,47 @@ function handleSwipeLogic() {
     const diffX = touchStartX - touchEndX;
     const diffY = touchStartY - touchEndY;
 
-    // 1. Ensure user is swiping Horizontally, not Vertically (scrolling)
-    if (Math.abs(diffX) > Math.abs(diffY)) {
-        
-        // 2. Ensure swipe is long enough (avoid accidental taps)
-        if (Math.abs(diffX) > SWIPE_THRESHOLD) {
-            
-            if (diffX > 0) {
-                // Swipe Left (Finger moves Right -> Left) === NEXT Page
-                triggerButton('next-btn');
-            } else {
-                // Swipe Right (Finger moves Left -> Right) === PREVIOUS Page
-                triggerButton('prev-btn');
-            }
-        }
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > SWIPE_THRESHOLD) {
+        const nextBtn = findButton('next-btn', ['Next', '→', 'Skip', '>']);
+        const prevBtn = findButton('prev-btn', ['Prev', 'Back', '←', '<']);
+
+        if (diffX > 0) triggerElement(nextBtn); // Swipe Left -> Next
+        else triggerElement(prevBtn); // Swipe Right -> Prev
     }
 }
 
-// --- 4. HELPER: TRIGGER BUTTON & ANIMATION ---
-function triggerButton(btnId) {
-    const btn = document.getElementById(btnId);
-    
-    // Check if button exists, is visible, and enabled
-    if (btn && !btn.disabled && btn.offsetParent !== null) {
-        btn.click(); // Perform the actual click logic
-        animateElement(btn); // Visual feedback
+// --- 4. SMART HELPER FUNCTIONS ---
+
+// Finds a button by ID first, then tries to find it by Text Content
+function findButton(id, textKeywords) {
+    // 1. Try ID
+    let btn = document.getElementById(id);
+    if (isValidBtn(btn)) return btn;
+
+    // 2. Try searching all buttons for keywords (e.g. "Next")
+    const allBtns = document.querySelectorAll('button, .btn, [role="button"]');
+    for (let b of allBtns) {
+        if (!isValidBtn(b)) continue;
+        const text = b.innerText || "";
+        if (textKeywords.some(keyword => text.includes(keyword))) {
+            return b;
+        }
+    }
+    return null;
+}
+
+function isValidBtn(btn) {
+    return btn && !btn.disabled && btn.offsetParent !== null; // Must be visible
+}
+
+function triggerElement(el) {
+    if (el) {
+        el.click();
+        animateElement(el);
     }
 }
 
 function animateElement(el) {
-    // Add CSS class for "Pressed" look
     el.classList.add('simulate-active');
-    // Remove it after 150ms
-    setTimeout(() => {
-        el.classList.remove('simulate-active');
-    }, 150);
+    setTimeout(() => el.classList.remove('simulate-active'), 150);
 }
