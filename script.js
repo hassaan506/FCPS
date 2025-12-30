@@ -784,8 +784,19 @@ function startMistakePractice() {
 }
 
 function startSavedQuestions() {
-    if (userBookmarks.length === 0) return alert("No bookmarks!");
+    // 1. Remove duplicates from local array immediately
+    userBookmarks = [...new Set(userBookmarks)];
+
+    if (userBookmarks.length === 0) return alert("No bookmarks found for this course.");
+
+    // 2. Filter Questions
+    // Make sure we only get questions that actually exist in the current sheet data
     filteredQuestions = allQuestions.filter(q => userBookmarks.includes(q._uid));
+    
+    if (filteredQuestions.length === 0) {
+        // This handles the case where you bookmarked a question from a different course/sheet
+        return alert("You have bookmarks, but they don't match the current loaded questions (FCPS/MBBS). Switch course to view them.");
+    }
     
     currentMode = 'practice';
     isMistakeReview = false;
@@ -793,6 +804,8 @@ function startSavedQuestions() {
     
     showScreen('quiz-screen');
     renderPage();
+    // Also render navigator so you can see the count immediately
+    renderPracticeNavigator(); 
 }
 
 function startTest() {
@@ -916,18 +929,19 @@ function createQuestionCard(q, index, showNumber = true) {
     block.className = "test-question-block";
     block.id = `q-card-${index}`;
 
-    // Visual Flag Indicator
     if (testFlags[q._uid]) {
         block.classList.add('is-flagged-card');
     }
 
-    // 1. HEADER (Number + Bookmark + Flag)
-    const header = document.createElement('div');
-    header.className = "question-card-header";
-    
-    const isBookmarked = userBookmarks.includes(q._uid);
+    // --- FIX: BLIND BOOKMARK CHECK ---
+    // If in TEST mode, always look un-bookmarked (false). 
+    // If in PRACTICE mode, show real status.
+    const isBookmarked = (currentMode === 'test') ? false : userBookmarks.includes(q._uid);
     const isFlagged = testFlags[q._uid] || false;
 
+    // 1. HEADER
+    const header = document.createElement('div');
+    header.className = "question-card-header";
     header.innerHTML = `
         <span class="q-number-tag">Question ${index + 1}</span>
         <div class="q-actions">
@@ -941,6 +955,9 @@ function createQuestionCard(q, index, showNumber = true) {
     `;
     block.appendChild(header);
 
+    // ... rest of the function remains the same ...
+    // (Append Question Text and Options below as before)
+    
     // 2. Question Text
     const qText = document.createElement('div');
     qText.className = "test-q-text";
@@ -957,34 +974,23 @@ function createQuestionCard(q, index, showNumber = true) {
     opts.forEach(opt => {
         const btn = document.createElement('button');
         btn.className = "option-btn";
-        btn.id = `btn-${index}-${opt}`;
-        
         btn.innerHTML = `<span class="opt-text">${opt}</span><span class="elim-eye">👁️</span>`;
-        
-        btn.querySelector('.elim-eye').onclick = (e) => {
-            e.stopPropagation();
-            btn.classList.toggle('eliminated');
-        };
-
+        btn.querySelector('.elim-eye').onclick = (e) => { e.stopPropagation(); btn.classList.toggle('eliminated'); };
         btn.onclick = (e) => {
             if (e.target.classList.contains('elim-eye')) return;
             if (btn.classList.contains('eliminated')) btn.classList.remove('eliminated');
             checkAnswer(opt, btn, q);
         };
-
-        btn.addEventListener('contextmenu', (e) => {
-            e.preventDefault(); 
-            btn.classList.toggle('eliminated');
-        });
-
+        btn.addEventListener('contextmenu', (e) => { e.preventDefault(); btn.classList.toggle('eliminated'); });
+        
         if (typeof testAnswers !== 'undefined' && testAnswers[q._uid] === opt) {
             btn.classList.add('selected');
         }
-
         optionsDiv.appendChild(btn);
     });
 
     block.appendChild(optionsDiv);
+
     return block;
 }
 
@@ -1207,7 +1213,26 @@ async function toggleBookmark(uid, btn) {
     
     const key = getStoreKey('bookmarks'); 
 
+    // --- FIX: TEST MODE LOGIC ---
+    if (currentMode === 'test') {
+        // In exam, we DO NOT remove. We only ADD.
+        // Even if it's already there, we just show visual confirmation that we clicked it.
+        
+        if (!userBookmarks.includes(uid)) {
+            userBookmarks.push(uid);
+            await db.collection('users').doc(currentUser.uid).update({
+                [key]: firebase.firestore.FieldValue.arrayUnion(uid)
+            });
+        }
+        // Visually turn it yellow so user knows it registered
+        btn.innerHTML = "⭐";
+        btn.classList.add('bookmark-active');
+        return; 
+    }
+
+    // --- STANDARD PRACTICE MODE (TOGGLE) ---
     if (userBookmarks.includes(uid)) {
+        // Remove
         userBookmarks = userBookmarks.filter(id => id !== uid);
         btn.innerHTML = "☆";
         btn.classList.remove('bookmark-active');
@@ -1216,6 +1241,7 @@ async function toggleBookmark(uid, btn) {
             [key]: firebase.firestore.FieldValue.arrayRemove(uid)
         });
     } else {
+        // Add
         userBookmarks.push(uid);
         btn.innerHTML = "⭐";
         btn.classList.add('bookmark-active');
@@ -1641,6 +1667,10 @@ function renderAdminUserCard(doc) {
 
     return `
     <div class="user-card">
+        <div style="margin-bottom:15px;">
+            <button onclick="loadAllUsers()" style="background:#64748b; color:white; border:none; padding:5px 10px; border-radius:4px; font-size:12px; cursor:pointer;">⬅ Back to Users List</button>
+        </div>
+
         <h3>${u.email}</h3>
         <p style="font-size:12px; color:#666;">UID: ${doc.id}</p>
         
@@ -1658,12 +1688,11 @@ function renderAdminUserCard(doc) {
         <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
 
         <h4>Grant Subscription</h4>
-        <div style="display:flex; gap:5px; flex-wrap:wrap; align-items: center;">
+        <div style="display:flex; gap:5px; flex-wrap:wrap; align-items:center;">
             <select id="adm-c-${doc.id}" style="padding:5px; border:1px solid #ccc; border-radius:4px;">
                 <option value="FCPS">FCPS Part 1</option>
                 <option value="MBBS">MBBS Final Year</option>
             </select>
-            
             <select id="adm-p-${doc.id}" style="padding:5px; border:1px solid #ccc; border-radius:4px;">
                 <option value="1_day">1 Day</option>
                 <option value="1_week">1 Week</option>
@@ -1674,7 +1703,6 @@ function renderAdminUserCard(doc) {
                 <option value="12_months">12 Months</option>
                 <option value="lifetime">Lifetime</option>
             </select>
-            
             <button onclick="adminGrantPremium('${doc.id}')" style="background:#10b981; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Grant</button>
         </div>
 
@@ -1683,7 +1711,6 @@ function renderAdminUserCard(doc) {
         <h4>Danger Zone</h4>
         <div style="display:flex; gap:10px;">
             <button onclick="adminRevokePremium('${doc.id}')" style="background:#f59e0b; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">🚫 Revoke All</button>
-            
             ${isBanned 
                 ? `<button onclick="adminToggleBan('${doc.id}', false)" style="background:#10b981; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">✅ Unban User</button>`
                 : `<button onclick="adminToggleBan('${doc.id}', true)" style="background:#ef4444; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">⛔ Ban User</button>`
@@ -1691,6 +1718,7 @@ function renderAdminUserCard(doc) {
         </div>
     </div>`;
 }
+
 async function adminGrantPremium(uid) {
     const course = document.getElementById(`adm-c-${uid}`).value;
     const plan = document.getElementById(`adm-p-${uid}`).value;
@@ -2125,4 +2153,54 @@ function goHome() {
     showScreen('dashboard-screen');
 }
 
+// ==========================================
+// FIX: REPORTING SYSTEM
+// ==========================================
+
+function openReportModal(questionId) {
+    // 1. Find the question object to get the text for context
+    const q = allQuestions.find(item => item._uid === questionId);
+    if(!q) return alert("Error identifying question.");
+
+    // 2. Set the hidden ID and clear previous text
+    document.getElementById('report-q-id').value = questionId;
+    document.getElementById('report-text').value = "";
+    
+    // 3. Show Modal
+    document.getElementById('report-modal').classList.remove('hidden');
+}
+
+async function submitReportFinal() {
+    const qId = document.getElementById('report-q-id').value;
+    const reason = document.getElementById('report-text').value.trim();
+    
+    if(!reason) return alert("Please describe the error.");
+    
+    // 1. Get the Question Data again to include SheetRow
+    const qData = allQuestions.find(item => item._uid === qId);
+    
+    const btn = event.target;
+    btn.innerText = "Sending...";
+    btn.disabled = true;
+
+    try {
+        await db.collection('reports').add({
+            questionId: qId,
+            questionText: qData ? qData.Question : "Unknown",
+            sheetRow: qData ? (qData.SheetRow || "N/A") : "N/A", // Saving the Row Number
+            subject: qData ? qData.Subject : "General",
+            reportReason: reason,
+            reportedBy: currentUser ? currentUser.email : "Guest",
+            timestamp: new Date()
+        });
+
+        alert("✅ Report Sent! We will fix this shortly.");
+        document.getElementById('report-modal').classList.add('hidden');
+    } catch(e) {
+        alert("Error: " + e.message);
+    } finally {
+        btn.innerText = "Submit";
+        btn.disabled = false;
+    }
+}
 
