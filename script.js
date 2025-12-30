@@ -1200,11 +1200,9 @@ function renderPracticeNavigator() {
 async function saveProgressToDB(q, isCorrect) {
     if (!currentUser || isGuest) return;
 
-    // --- PREFIX LOGIC: FCPS vs MBBS ---
     const sKey = getStoreKey('solved');
     const mKey = getStoreKey('mistakes');
     const statKey = getStoreKey('stats');
-    
     const subjectKey = q.Subject.replace(/\W/g,'_');
 
     if (isCorrect) {
@@ -1216,14 +1214,17 @@ async function saveProgressToDB(q, isCorrect) {
                 [`${statKey}.${subjectKey}.total`]: firebase.firestore.FieldValue.increment(1)
             });
         }
-        if (isMistakeReview) {
+
+        if (userMistakes.includes(q._uid)) {
             userMistakes = userMistakes.filter(id => id !== q._uid);
-            db.collection('users').doc(currentUser.uid).update({
-                [mKey]: firebase.firestore.FieldValue.arrayRemove(q._uid)
+            db.collection('users').doc(currentUser.uid).update({ 
+                [mKey]: firebase.firestore.FieldValue.arrayRemove(q._uid) 
             });
         }
+
     } else {
-        if (!userMistakes.includes(q._uid) && !userSolvedIDs.includes(q._uid)) {
+
+        if (!userMistakes.includes(q._uid)) {
             userMistakes.push(q._uid);
             db.collection('users').doc(currentUser.uid).update({
                 [mKey]: firebase.firestore.FieldValue.arrayUnion(q._uid),
@@ -1231,9 +1232,7 @@ async function saveProgressToDB(q, isCorrect) {
             });
         }
     }
-    updateBadgeButton();
 }
-
 function updateTimer() {
     testTimeRemaining--;
     const m = Math.floor(testTimeRemaining/60);
@@ -1246,31 +1245,57 @@ function submitTest() {
     clearInterval(testTimer);
     let score = 0;
     
-    const uniqueSubjects = [...new Set(filteredQuestions.map(q => q.Subject))];
-    const examSubject = uniqueSubjects.length === 1 ? uniqueSubjects[0] : "Mixed Subjects";
+    // Arrays to collect data for Bulk Update
+    let newSolved = [];
+    let newMistakes = [];
 
     filteredQuestions.forEach(q => {
         const user = testAnswers[q._uid];
-        const correct = getCorrectLetter(q);
-        const correctText = getOptionText(q, correct);
+        const correctText = getOptionText(q, getCorrectLetter(q));
+        
         if(user === correctText) {
+            // CORRECT
             score++;
-            if(currentUser && !isGuest) {
-                const sKey = getStoreKey('solved');
-                db.collection('users').doc(currentUser.uid).update({ [sKey]: firebase.firestore.FieldValue.arrayUnion(q._uid) });
+            if(currentUser && !isGuest && !userSolvedIDs.includes(q._uid)) {
+                newSolved.push(q._uid);
+            }
+        } else {
+            // WRONG or LEFT (Unanswered)
+            // FIX: Add to mistakes list
+            if(currentUser && !isGuest && !userMistakes.includes(q._uid)) {
+                newMistakes.push(q._uid);
             }
         }
     });
 
     const pct = Math.round((score/filteredQuestions.length)*100);
-    
+
+    // --- SAVE TO DATABASE ---
     if(currentUser && !isGuest) {
-        db.collection('users').doc(currentUser.uid).collection('results').add({
+        const batch = db.batch();
+        const userRef = db.collection('users').doc(currentUser.uid);
+        const sKey = getStoreKey('solved');
+        const mKey = getStoreKey('mistakes');
+
+        // 1. Save Result History
+        userRef.collection('results').add({
             date: new Date(), 
             score: pct, 
             total: filteredQuestions.length, 
-            subject: `${examSubject} (${currentCourse})` // Tag results
+            subject: `${currentCourse} Exam`
         });
+
+        // 2. Bulk Add Solved
+        if(newSolved.length > 0) {
+            userRef.update({ [sKey]: firebase.firestore.FieldValue.arrayUnion(...newSolved) });
+            userSolvedIDs.push(...newSolved); // Update local state immediately
+        }
+
+        // 3. Bulk Add Mistakes (Wrong/Left)
+        if(newMistakes.length > 0) {
+            userRef.update({ [mKey]: firebase.firestore.FieldValue.arrayUnion(...newMistakes) });
+            userMistakes.push(...newMistakes); // Update local state immediately
+        }
     }
 
     showScreen('result-screen');
@@ -2335,6 +2360,7 @@ async function submitReportFinal() {
         btn.disabled = false;
     }
 }
+
 
 
 
