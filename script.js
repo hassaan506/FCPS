@@ -2271,18 +2271,18 @@ function parseDateRobust(input) {
 // ==========================================
 
 function goHome() {
-    // 1. Stop the Exam Timer
+    // 1. Stop Timer
     if (testTimer) {
         clearInterval(testTimer);
         testTimer = null;
     }
 
-    // 2. Reset Mode & State
+    // 2. Reset State
     currentMode = 'practice';
     testAnswers = {};
     testFlags = {};
     
-    // 3. Reset UI Elements
+    // 3. Hide Quiz Elements
     const timerEl = document.getElementById('timer');
     if(timerEl) timerEl.classList.add('hidden');
     
@@ -2292,10 +2292,12 @@ function goHome() {
     const practiceNav = document.getElementById('practice-nav-container');
     if(practiceNav) practiceNav.classList.add('hidden');
 
-    // 4. Navigate back to Dashboard
+    // 4. CRITICAL FIX: Reload User Data to update counters (Mistakes/Bookmarks)
+    loadUserData(); 
+
+    // 5. Go to Dashboard
     showScreen('dashboard-screen');
 }
-
 // ==========================================
 // FIX: REPORTING SYSTEM
 // ==========================================
@@ -2360,6 +2362,7 @@ async function submitReportFinal() {
         btn.disabled = false;
     }
 }
+
 
 
 
