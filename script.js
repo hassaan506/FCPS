@@ -1200,39 +1200,67 @@ function renderPracticeNavigator() {
 async function saveProgressToDB(q, isCorrect) {
     if (!currentUser || isGuest) return;
 
+    const userRef = db.collection('users').doc(currentUser.uid);
     const sKey = getStoreKey('solved');
     const mKey = getStoreKey('mistakes');
     const statKey = getStoreKey('stats');
     const subjectKey = q.Subject.replace(/\W/g,'_');
 
+    const batch = db.batch();
+
+    // ==========================================
+    // 1. AGAR JAWAB SAHI HAI (CORRECT)
+    // ==========================================
     if (isCorrect) {
+        
+        // A. Solved List me daal do (Green karne ke liye)
         if (!userSolvedIDs.includes(q._uid)) {
             userSolvedIDs.push(q._uid);
-            db.collection('users').doc(currentUser.uid).update({
+            batch.update(userRef, {
                 [sKey]: firebase.firestore.FieldValue.arrayUnion(q._uid),
                 [`${statKey}.${subjectKey}.correct`]: firebase.firestore.FieldValue.increment(1),
                 [`${statKey}.${subjectKey}.total`]: firebase.firestore.FieldValue.increment(1)
             });
         }
 
-        if (userMistakes.includes(q._uid)) {
-            userMistakes = userMistakes.filter(id => id !== q._uid);
-            db.collection('users').doc(currentUser.uid).update({ 
-                [mKey]: firebase.firestore.FieldValue.arrayRemove(q._uid) 
+        if (isMistakeReview === true) {
+            // Local se nikalo
+            const idx = userMistakes.indexOf(q._uid);
+            if (idx > -1) userMistakes.splice(idx, 1);
+
+            // Database se nikalo
+            batch.update(userRef, {
+                [mKey]: firebase.firestore.FieldValue.arrayRemove(q._uid)
             });
+            console.log("Deleted from mistakes (Review Mode)");
+        } else {
+            console.log("Correct Answer: Mistake NOT deleted (Normal Mode)");
         }
 
-    } else {
+    } 
 
+    else {
+        // Mistake List me daal do
         if (!userMistakes.includes(q._uid)) {
             userMistakes.push(q._uid);
-            db.collection('users').doc(currentUser.uid).update({
+            
+            batch.update(userRef, {
                 [mKey]: firebase.firestore.FieldValue.arrayUnion(q._uid),
                 [`${statKey}.${subjectKey}.total`]: firebase.firestore.FieldValue.increment(1)
             });
         }
     }
+
+    // Save Changes
+    try {
+        await batch.commit();
+        // UI ke numbers update karo
+        if (typeof updateLiveStatsUI === "function") updateLiveStatsUI();
+    } catch(e) {
+        console.error(e);
+    }
 }
+
 function updateTimer() {
     testTimeRemaining--;
     const m = Math.floor(testTimeRemaining/60);
@@ -2362,6 +2390,7 @@ async function submitReportFinal() {
         btn.disabled = false;
     }
 }
+
 
 
 
