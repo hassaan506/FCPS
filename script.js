@@ -2466,7 +2466,7 @@ async function resetAccountData() {
 }
 
 // =========================================================
-// 🎮 UNIVERSAL INPUT MANAGER (v4 - Popup Smart)
+// 🎮 UNIVERSAL INPUT MANAGER (v5 - Final Fix)
 // =========================================================
 
 // --- 1. CONFIGURATION ---
@@ -2479,12 +2479,8 @@ document.addEventListener('keydown', function(e) {
 
     // --- A. SMART ESCAPE (Close Popup OR Exit) ---
     if (e.key === 'Escape') {
-        // 1. Try to close any open explanation/modal first
-        if (closeActivePopups()) {
-            return; // If we closed a popup, STOP here. Don't exit the app.
-        }
+        if (closeActivePopups()) return; // Stop if we just closed a popup
 
-        // 2. If no popup was open, THEN try to exit
         const exitBtn = findButton('exit-btn', ['Exit', 'Quit']);
         if (exitBtn) exitBtn.click();
         else if (typeof goHome === 'function') goHome();
@@ -2493,13 +2489,13 @@ document.addEventListener('keydown', function(e) {
 
     // --- B. NAVIGATION (Arrow Keys) ---
     if (e.key === 'ArrowRight') {
-        closeActivePopups(); // Clear screen before moving
+        closeActivePopups(); 
         const nextBtn = findButton('next-btn', ['Next', '→', 'Skip', '>']);
         triggerElement(nextBtn);
     }
     
     if (e.key === 'ArrowLeft') {
-        closeActivePopups(); // Clear screen before moving
+        closeActivePopups();
         const prevBtn = findButton('prev-btn', ['Prev', 'Back', '←', '<']);
         triggerElement(prevBtn);
     }
@@ -2519,31 +2515,26 @@ window.addEventListener('touchstart', e => {
 }, {passive: false});
 
 window.addEventListener('touchend', e => {
-    const nextBtn = document.getElementById('next-btn'); // Only swipe if exam is active
+    const nextBtn = document.getElementById('next-btn'); // Only active if Next button exists
     if (!nextBtn || nextBtn.offsetParent === null) return;
 
     const diffX = touchStartX - e.changedTouches[0].screenX;
     const diffY = touchStartY - e.changedTouches[0].screenY;
     
-    // Swipe Logic
     if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > SWIPE_THRESHOLD) {
-        closeActivePopups(); // Close popup on swipe too!
-        
+        closeActivePopups(); 
         if (diffX > 0) {
-            const btn = findButton('next-btn', ['Next', '→']); 
-            triggerElement(btn);
+            triggerElement(findButton('next-btn', ['Next', '→'])); 
         } else {
-            const btn = findButton('prev-btn', ['Prev', 'Back']);
-            triggerElement(btn);
+            triggerElement(findButton('prev-btn', ['Prev', 'Back']));
         }
     }
 }, {passive: false});
 
 // --- 4. HELPER FUNCTIONS ---
 
-// Tries to find and close explanation popups. Returns TRUE if it found one to close.
 function closeActivePopups() {
-    // List of possible IDs your popup might use. Add yours if different!
+    // Defines potential IDs for your popups
     const popupIds = ['explanation-modal', 'explanation-box', 'modal-overlay', 'explanation-container'];
     
     let closedSomething = false;
@@ -2551,14 +2542,14 @@ function closeActivePopups() {
     // 1. Check specific IDs
     popupIds.forEach(id => {
         const el = document.getElementById(id);
-        if (el && !el.classList.contains('hidden') && el.style.display !== 'none') {
-            el.classList.add('hidden'); // Force hide
-            el.style.display = 'none';  // Double safety
+        // FIX: We only toggle the class. We DO NOT touch el.style.display
+        if (el && !el.classList.contains('hidden')) {
+            el.classList.add('hidden'); 
             closedSomething = true;
         }
     });
 
-    // 2. Check for generic "modal" classes if ID didn't work
+    // 2. Check for generic "modal" classes
     if (!closedSomething) {
         const openModals = document.querySelectorAll('.modal:not(.hidden), .popup:not(.hidden)');
         openModals.forEach(m => {
