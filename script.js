@@ -1424,25 +1424,61 @@ function switchAdminTab(tab) {
 
 async function loadAdminReports() {
     const list = document.getElementById('admin-reports-list');
-    list.innerHTML = "Loading reports...";
-    const snap = await db.collection('reports').orderBy('timestamp', 'desc').limit(20).get();
+    list.innerHTML = "<p style='padding:20px; text-align:center; color:#666;'>Loading reports...</p>";
     
-    if (snap.empty) {
-        list.innerHTML = "<p style='padding:15px; text-align:center;'>No reports found.</p>";
-        return;
+    try {
+        const snap = await db.collection('reports').orderBy('timestamp', 'desc').limit(20).get();
+        
+        if (snap.empty) {
+            list.innerHTML = "<p style='padding:20px; text-align:center;'>No reports found.</p>";
+            return;
+        }
+
+        let html = "";
+        snap.forEach(doc => {
+            const r = doc.data();
+            
+            // Check if row exists, otherwise show 'Old Report'
+            const rowDisplay = r.sheetRow ? `Row ${r.sheetRow}` : "Old Report (No Row)";
+            const rowColor = r.sheetRow ? "#fef3c7" : "#f1f5f9"; // Yellow for valid rows
+            const rowText = r.sheetRow ? "#d97706" : "#94a3b8";
+
+            html += `
+            <div class="report-card" style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; margin-bottom:10px; background:white;">
+                <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:5px;">
+                    <span style="background:${rowColor}; color:${rowText}; font-weight:bold; font-size:11px; padding:2px 8px; border-radius:4px; border:1px solid ${rowText};">
+                        ${rowDisplay}
+                    </span>
+                    <small style="color:#94a3b8; font-size:10px;">${r.timestamp ? formatDateHelper(r.timestamp) : ''}</small>
+                </div>
+                
+                <div style="font-weight:600; color:#ef4444; font-size:13px; margin-bottom:4px;">
+                    Reason: ${r.reportReason}
+                </div>
+                
+                <div style="background:#f8fafc; padding:8px; border-radius:6px; font-size:12px; color:#334155; margin-bottom:8px;">
+                    "${r.questionText ? r.questionText.substring(0, 100) : 'Question text missing'}..."
+                </div>
+                
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <small style="color:#64748b;">By: ${r.reportedBy}</small>
+                    <button onclick="deleteReport('${doc.id}')" style="background:white; border:1px solid #cbd5e1; color:#64748b; padding:2px 8px; border-radius:4px; font-size:10px; cursor:pointer;">Resolve / Delete</button>
+                </div>
+            </div>`;
+        });
+        list.innerHTML = html;
+        
+    } catch (e) {
+        console.error(e);
+        list.innerHTML = `<p style="color:red; padding:20px;">Error loading reports: ${e.message}</p>`;
     }
-    
-    let html = "";
-    snap.forEach(doc => {
-        const r = doc.data();
-        html += `<div class="report-card">
-            <strong>${r.questionText.substr(0, 50)}...</strong><br>
-            <span style="color:red; font-size:12px;">Reason: ${r.reportReason}</span><br>
-            <small>By: ${r.reportedBy}</small><br>
-            <button onclick="deleteReport('${doc.id}')" style="margin-top:5px; padding:2px 8px; font-size:10px;">Resolve/Delete</button>
-        </div>`;
-    });
-    list.innerHTML = html;
+}
+
+function deleteReport(id) {
+    if(!confirm("Mark this report as resolved and delete it?")) return;
+    db.collection('reports').doc(id).delete()
+        .then(() => loadAdminReports())
+        .catch(e => alert("Error: " + e.message));
 }
 
 function deleteReport(id) { db.collection('reports').doc(id).delete().then(()=>loadAdminReports()); }
@@ -2203,4 +2239,5 @@ async function submitReportFinal() {
         btn.disabled = false;
     }
 }
+
 
