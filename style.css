@@ -1,7 +1,6 @@
 /* -----------------------------------------------------------
    STYLE.CSS - MEDICAL MASTERY (UPDATED FOR MULTI-COURSE)
    ----------------------------------------------------------- */
-/* Visual feedback when using keyboard/swipe */
 .simulate-active {
     transform: scale(0.95) !important;
     filter: brightness(0.9);
@@ -2408,5 +2407,6 @@ button.secondary {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(239, 68, 68, 0.6);
 }
+
 
 
