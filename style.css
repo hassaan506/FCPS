@@ -6,6 +6,18 @@
     filter: brightness(0.9);
     transition: transform 0.1s ease;
 }
+/* 1. FORCE APP-LIKE TOUCH BEHAVIOR */
+body, html {
+    touch-action: pan-y; /* Allows vertical scroll, BLOCKS horizontal browser gestures */
+    overscroll-behavior-y: none; /* Prevents "bounce" effect on pull-to-refresh */
+}
+
+/* 2. Visual Click Effect */
+.simulate-active {
+    transform: scale(0.95) !important;
+    filter: brightness(0.9);
+    transition: transform 0.1s ease;
+}
 /* =========================================
    1. VARIABLES & THEME SETUP
    ========================================= */
@@ -2407,6 +2419,7 @@ button.secondary {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(239, 68, 68, 0.6);
 }
+
 
 
 
