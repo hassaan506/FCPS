@@ -317,21 +317,24 @@
     </div>
 </div>
 
-<div id="report-modal" class="modal-overlay hidden">
-    <div class="joinCard" style="max-width: 400px; padding: 25px;">
-        <h3 style="margin-top:0; color:#ef4444; display:flex; align-items:center; gap:15px;">
-            <span>🚩</span> Report Issue
-        </h3>
-        <p style="font-size:13px; color:#666; margin-bottom:15px;">
-            Found a mistake? Let us know.
+<div id="report-modal" class="glass-overlay hidden">
+    <div class="glass-modal-card">
+        <div class="glass-header">
+            <div class="glass-icon-box">🚩</div>
+            <h2 class="glass-title">Report Issue</h2>
+        </div>
+        
+        <p class="glass-subtitle">
+            Found a mistake? Let us know so we can fix it.
         </p>
         
         <input type="hidden" id="report-q-id">
-        <textarea id="report-text" rows="4" style="width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; margin-bottom:15px; font-family:inherit; font-size:14px;" placeholder="Describe the error..."></textarea>
         
-        <div style="display:flex; gap:10px;">
-            <button class="secondary" onclick="document.getElementById('report-modal').classList.add('hidden')">Cancel</button>
-            <button class="primary" onclick="submitReportFinal()" style="background:#ef4444; color:white; border:none; box-shadow:none;">Submit</button>
+        <textarea id="report-text" rows="5" class="glass-input" placeholder="Describe the error here..."></textarea>
+        
+        <div class="glass-actions">
+            <button class="btn-glass-cancel" onclick="document.getElementById('report-modal').classList.remove('active'); setTimeout(()=>document.getElementById('report-modal').classList.add('hidden'), 300);">Cancel</button>
+            <button class="btn-glass-submit" onclick="submitReportFinal()">Submit Report</button>
         </div>
     </div>
 </div>
@@ -575,4 +578,5 @@
 <script src="script.js"></script>
 </body>
 </html>
+
 
