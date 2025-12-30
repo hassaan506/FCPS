@@ -2192,7 +2192,6 @@ function goHome() {
 // ==========================================
 // FIX: REPORTING SYSTEM
 // ==========================================
-
 function openReportModal(questionId) {
     // 1. Find the question object to get the text for context
     const q = allQuestions.find(item => item._uid === questionId);
@@ -2202,8 +2201,14 @@ function openReportModal(questionId) {
     document.getElementById('report-q-id').value = questionId;
     document.getElementById('report-text').value = "";
     
-    // 3. Show Modal
-    document.getElementById('report-modal').classList.remove('hidden');
+    // 3. Show Modal with Animation
+    const modal = document.getElementById('report-modal');
+    modal.classList.remove('hidden'); // Make it display: flex
+    
+    // Small delay allows the browser to realize it's visible before starting the animation
+    setTimeout(() => {
+        modal.classList.add('active'); // Triggers opacity: 1 and slide up
+    }, 10);
 }
 
 async function submitReportFinal() {
@@ -2215,7 +2220,7 @@ async function submitReportFinal() {
     // 1. Get the Question Data again to include SheetRow
     const qData = allQuestions.find(item => item._uid === qId);
     
-    const btn = event.target;
+    const btn = event.target; // Uses the global event object from the click
     btn.innerText = "Sending...";
     btn.disabled = true;
 
@@ -2223,7 +2228,7 @@ async function submitReportFinal() {
         await db.collection('reports').add({
             questionId: qId,
             questionText: qData ? qData.Question : "Unknown",
-            sheetRow: qData ? (qData.SheetRow || "N/A") : "N/A", // Saving the Row Number
+            sheetRow: qData ? (qData.SheetRow || "N/A") : "N/A",
             subject: qData ? qData.Subject : "General",
             reportReason: reason,
             reportedBy: currentUser ? currentUser.email : "Guest",
@@ -2231,13 +2236,20 @@ async function submitReportFinal() {
         });
 
         alert("✅ Report Sent! We will fix this shortly.");
-        document.getElementById('report-modal').classList.add('hidden');
+        
+        // 4. Close Modal with Animation
+        const modal = document.getElementById('report-modal');
+        modal.classList.remove('active'); // Fade out
+        
+        // Wait 300ms (match CSS transition) before hiding completely
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 300);
+
     } catch(e) {
         alert("Error: " + e.message);
     } finally {
-        btn.innerText = "Submit";
+        btn.innerText = "Submit Report";
         btn.disabled = false;
     }
 }
-
-
