@@ -1704,6 +1704,9 @@ async function loadAdminPayments() {
         const snap = await db.collection('payment_requests').where('status','==','pending').orderBy('timestamp', 'desc').get();
         if(snap.empty) { list.innerHTML = "<div style='padding:30px; text-align:center; color:#94a3b8;'>No pending payments.</div>"; return; }
 
+        // --- PREPARE OPTIONS DYNAMICALLY (SORTED BY DURATION) ---
+        const allPlans = Object.keys(PLAN_DURATIONS).sort((a,b) => PLAN_DURATIONS[a] - PLAN_DURATIONS[b]);
+        
         let html = "";
         snap.forEach(doc => {
             const p = doc.data();
@@ -1713,6 +1716,14 @@ async function loadAdminPayments() {
             const imageHtml = p.image 
                 ? `<div class="pay-proof-container" onclick="viewFullReceipt('${p.image.replace(/'/g, "\\'")}')"><img src="${p.image}" class="pay-proof-img"><span class="view-receipt-text">🔍 View Receipt</span></div>`
                 : `<div>⚠️ No Image</div>`;
+
+            // Generate dropdown options for THIS specific request
+            let optionsHtml = "";
+            allPlans.forEach(key => {
+                const label = key.replace(/_/g, ' ').toUpperCase();
+                const isSelected = p.planRequested === key ? 'selected' : '';
+                optionsHtml += `<option value="${key}" ${isSelected}>${label}</option>`;
+            });
 
             html += `
             <div class="admin-payment-card" id="card-${doc.id}">
@@ -1724,10 +1735,7 @@ async function loadAdminPayments() {
                 <div class="pay-action-box">
                     <div class="pay-controls-row">
                         <select id="dur-${doc.id}" class="pay-select">
-                            <option value="1_month" ${p.planRequested === '1_month' ? 'selected' : ''}>1 Month</option>
-                            <option value="6_months" ${p.planRequested === '6_months' ? 'selected' : ''}>6 Months</option>
-                            <option value="lifetime" ${p.planRequested === 'lifetime' ? 'selected' : ''}>Lifetime</option>
-                        </select>
+                            ${optionsHtml} </select>
                         <button class="btn-pay-action btn-approve" onclick="approvePayment('${doc.id}','${p.uid}', '${p.targetCourse}')">Approve</button>
                         <button class="btn-pay-action btn-reject" onclick="rejectPayment('${doc.id}')">Reject</button>
                     </div>
@@ -1738,10 +1746,58 @@ async function loadAdminPayments() {
     } catch (e) { list.innerHTML = `<div style="color:red;">Error: ${e.message}</div>`; }
 }
 
+// ==========================================
+// 📱 MOBILE BACK BUTTON FIX (Receipt Viewer)
+// ==========================================
+
 function viewFullReceipt(base64Image) {
-    const w = window.open("");
-    w.document.write(`<html><body style="background:#222;display:flex;justify-content:center;align-items:center;height:100vh;"><img src="${base64Image}" style="max-height:100%;"></body></html>`);
+    // 1. Create Modal on the fly if it doesn't exist
+    let modal = document.getElementById('receipt-view-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'receipt-view-modal';
+        modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:99999; display:none; justify-content:center; align-items:center; flex-direction:column;";
+        
+        modal.innerHTML = `
+            <button onclick="closeReceiptModal()" style="position:absolute; top:20px; right:20px; background:rgba(255,0,0,0.8); color:white; border:none; width:40px; height:40px; border-radius:50%; font-size:20px; cursor:pointer; font-weight:bold;">✕</button>
+            <img id="receipt-dynamic-img" src="" style="max-width:100%; max-height:85%; object-fit:contain; border-radius:4px;">
+            <p style="color:#ccc; margin-top:10px; font-size:12px;">(Press Back to Close)</p>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    // 2. Show Image
+    const img = document.getElementById('receipt-dynamic-img');
+    img.src = base64Image;
+    modal.style.display = 'flex';
+
+    // 3. MAGIC FIX: Push a new state to history
+    // This makes the browser think we went to a new page, so "Back" button works
+    history.pushState({ modal: 'receipt' }, 'View Receipt', '#view-receipt');
 }
+
+function closeReceiptModal() {
+    const modal = document.getElementById('receipt-view-modal');
+    if (modal && modal.style.display !== 'none') {
+        // If the URL has the hash, go back (this triggers the popstate listener below)
+        if (window.location.hash === '#view-receipt') {
+            history.back(); 
+        } else {
+            // Fallback: just hide it
+            modal.style.display = 'none';
+        }
+    }
+}
+
+// 4. Listen for the Physical Back Button
+window.addEventListener('popstate', function(event) {
+    const modal = document.getElementById('receipt-view-modal');
+    // If modal is open, the back button just closes it
+    if (modal && modal.style.display !== 'none') {
+        modal.style.display = 'none';
+        // We do NOT exit the app because the 'back' event was consumed by the hash change
+    }
+});
 
 async function rejectPayment(docId) {
     if(!confirm("Reject?")) return;
@@ -2595,3 +2651,4 @@ function triggerElement(el) {
         setTimeout(() => el.classList.remove('simulate-active'), 150);
     }
 }
+
