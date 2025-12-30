@@ -2408,11 +2408,10 @@ async function resetAccountData() {
     if (!currentUser || isGuest) return alert("Guests cannot reset progress.");
 
     // 1. Confirm deletion
-    const confirmed = confirm(`⚠️ WARNING: This will delete ALL progress for ${currentCourse}.\n\n- All Solved questions will be lost.\n- Mistakes list will be cleared.\n- Stats/Accuracy will be reset.\n\nAre you sure?`);
+    const confirmed = confirm(`⚠️ FINAL WARNING: This will delete ALL progress for ${currentCourse}.\n\n- Exam History will be wiped.\n- All Solved questions will be lost.\n- Mistakes list will be cleared.\n- Stats/Accuracy will be reset.\n\nAre you sure?`);
     
     if (!confirmed) return;
 
-    // 2. Show loading state on the button
     const btn = event.target;
     const oldText = btn.innerText;
     btn.innerText = "Deleting...";
@@ -2421,22 +2420,41 @@ async function resetAccountData() {
     try {
         const userRef = db.collection('users').doc(currentUser.uid);
         
-        // 3. Get the correct keys for the current course (FCPS or MBBS)
+        // --- STEP 1: Wipe Main Profile Data (Solved, Mistakes, Stats) ---
         const sKey = getStoreKey('solved');
         const mKey = getStoreKey('mistakes');
         const bKey = getStoreKey('bookmarks');
         const statKey = getStoreKey('stats');
 
-        // 4. Wipe the data in Firebase
-        await userRef.update({
-            [sKey]: [],        // Empty array
-            [mKey]: [],        // Empty array
-            [bKey]: [],        // Empty array
-            [statKey]: {}      // Empty object
+        // We use a Batch to do everything together safely
+        const batch = db.batch();
+
+        batch.update(userRef, {
+            [sKey]: [],        // Clear Solved
+            [mKey]: [],        // Clear Mistakes
+            [bKey]: [],        // Clear Bookmarks
+            [statKey]: {}      // Clear Stats Object
         });
 
-        // 5. Success Message & Reload
-        alert("✅ All progress has been reset.");
+        // --- STEP 2: Wipe Exam History (The Missing Part) ---
+        // We must query the results collection and delete docs that match the current course
+        const resultsSnapshot = await userRef.collection('results').get();
+        
+        let deletedCount = 0;
+        
+        resultsSnapshot.forEach(doc => {
+            const data = doc.data();
+            // Only delete results that belong to the current course (FCPS or MBBS)
+            if (data.subject && data.subject.includes(currentCourse)) {
+                batch.delete(doc.ref);
+                deletedCount++;
+            }
+        });
+
+        // --- STEP 3: Commit All Deletes ---
+        await batch.commit();
+
+        alert(`✅ Reset Complete!\n\nDeleted ${deletedCount} exam records and all progress for ${currentCourse}.`);
         window.location.reload();
 
     } catch (e) {
@@ -2446,10 +2464,3 @@ async function resetAccountData() {
         btn.disabled = false;
     }
 }
-
-
-
-
-
-
-
