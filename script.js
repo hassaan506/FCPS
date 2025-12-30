@@ -1,3 +1,25 @@
+// HANDLE PWA SHORTCUTS
+window.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const action = params.get('action');
+    
+    // Wait for auth to settle (approx 500ms) then redirect
+    if(action && currentUser) {
+        setTimeout(() => {
+            if (action === 'exam') {
+                showScreen('dashboard-screen');
+                setMode('test');
+                // Optional: Auto-scroll to exam section
+                document.getElementById('test-settings').scrollIntoView();
+            } else if (action === 'stats') {
+                openAnalytics();
+            } else if (action === 'mistakes') {
+                startMistakePractice();
+            }
+        }, 1000);
+    }
+});
+
 // ======================================================
 // 1. CONFIGURATION & FIREBASE SETUP
 // ======================================================
@@ -2284,5 +2306,6 @@ async function submitReportFinal() {
         btn.disabled = false;
     }
 }
+
 
 
