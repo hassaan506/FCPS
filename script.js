@@ -2464,3 +2464,107 @@ async function resetAccountData() {
         btn.disabled = false;
     }
 }
+
+// =========================================================
+// 🎮 UNIVERSAL INPUT MANAGER (KEYBOARD + SWIPE)
+// =========================================================
+
+// --- 1. CONFIGURATION ---
+const SWIPE_THRESHOLD = 50; // Minimum distance (px) to count as a swipe
+let touchStartX = 0;
+let touchStartY = 0;
+let touchEndX = 0;
+let touchEndY = 0;
+
+// --- 2. KEYBOARD LISTENER (Desktop) ---
+document.addEventListener('keydown', function(e) {
+    // A. Safety Checks
+    const testScreen = document.getElementById('test-screen');
+    // Only run if Test Screen is visible & user isn't typing in a text box
+    if (!testScreen || testScreen.classList.contains('hidden')) return;
+    if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+
+    // B. Navigation Shortcuts
+    if (e.key === 'ArrowRight') triggerButton('next-btn'); // Right Arrow -> Next
+    if (e.key === 'ArrowLeft') triggerButton('prev-btn');  // Left Arrow -> Prev
+    
+    // C. Option Selection (Keys 1, 2, 3, 4, 5)
+    const keyMap = {'1':0, '2':1, '3':2, '4':3, '5':4};
+    if (keyMap.hasOwnProperty(e.key)) {
+        const options = document.querySelectorAll('#options-container .option-btn');
+        const idx = keyMap[e.key];
+        if (options[idx]) {
+            options[idx].click(); // Click the option
+            animateElement(options[idx]); // Show visual feedback
+        }
+    }
+
+    // D. Exit / Submit (Esc)
+    if (e.key === 'Escape') {
+        if (typeof currentMode !== 'undefined' && currentMode === 'test') {
+            if(confirm("Submit Exam and Exit?")) {
+                if(typeof submitTest === 'function') submitTest();
+            }
+        } else {
+            if(typeof goHome === 'function') goHome();
+        }
+    }
+});
+
+// --- 3. TOUCH LISTENERS (Mobile Swipe) ---
+document.addEventListener('touchstart', e => {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+}, {passive: true});
+
+document.addEventListener('touchend', e => {
+    // Safety Check: Only swipe if test screen is active
+    const testScreen = document.getElementById('test-screen');
+    if (!testScreen || testScreen.classList.contains('hidden')) return;
+
+    touchEndX = e.changedTouches[0].screenX;
+    touchEndY = e.changedTouches[0].screenY;
+    
+    handleSwipeLogic();
+}, {passive: true});
+
+function handleSwipeLogic() {
+    const diffX = touchStartX - touchEndX;
+    const diffY = touchStartY - touchEndY;
+
+    // 1. Ensure user is swiping Horizontally, not Vertically (scrolling)
+    if (Math.abs(diffX) > Math.abs(diffY)) {
+        
+        // 2. Ensure swipe is long enough (avoid accidental taps)
+        if (Math.abs(diffX) > SWIPE_THRESHOLD) {
+            
+            if (diffX > 0) {
+                // Swipe Left (Finger moves Right -> Left) === NEXT Page
+                triggerButton('next-btn');
+            } else {
+                // Swipe Right (Finger moves Left -> Right) === PREVIOUS Page
+                triggerButton('prev-btn');
+            }
+        }
+    }
+}
+
+// --- 4. HELPER: TRIGGER BUTTON & ANIMATION ---
+function triggerButton(btnId) {
+    const btn = document.getElementById(btnId);
+    
+    // Check if button exists, is visible, and enabled
+    if (btn && !btn.disabled && btn.offsetParent !== null) {
+        btn.click(); // Perform the actual click logic
+        animateElement(btn); // Visual feedback
+    }
+}
+
+function animateElement(el) {
+    // Add CSS class for "Pressed" look
+    el.classList.add('simulate-active');
+    // Remove it after 150ms
+    setTimeout(() => {
+        el.classList.remove('simulate-active');
+    }, 150);
+}
