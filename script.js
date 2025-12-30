@@ -2391,6 +2391,55 @@ async function submitReportFinal() {
     }
 }
 
+async function resetProgress() {
+    if (!currentUser || isGuest) return alert("Guests cannot reset progress.");
+
+    // 1. Confirmation Alert
+    const confirmed = confirm(`⚠️ DANGER ZONE!\n\nAre you sure you want to delete ALL progress for ${currentCourse}?\n\n- Solved History will be gone.\n- Mistakes will be deleted.\n- Stats will be reset to 0.\n\nThis cannot be undone.`);
+    
+    if (!confirmed) return;
+
+    const btn = event.target;
+    const originalText = btn.innerText;
+    btn.innerText = "Deleting...";
+    btn.disabled = true;
+
+    try {
+        // 2. Get Keys for Current Course
+        const sKey = getStoreKey('solved');
+        const mKey = getStoreKey('mistakes');
+        const bKey = getStoreKey('bookmarks');
+        const statKey = getStoreKey('stats');
+
+        // 3. Wipe Data from Database
+        await db.collection('users').doc(currentUser.uid).update({
+            [sKey]: [],        // Empty Array
+            [mKey]: [],        // Empty Array
+            [bKey]: [],        // Empty Array
+            [statKey]: {}      // Empty Object
+        });
+
+        // 4. Wipe Local Memory
+        userSolvedIDs = [];
+        userMistakes = [];
+        userBookmarks = [];
+        if (userProfile) {
+            userProfile[sKey] = [];
+            userProfile[mKey] = [];
+            userProfile[statKey] = {};
+        }
+
+        alert("✅ Progress Reset Successfully!");
+        
+        // 5. Reload to Refresh Everything
+        window.location.reload();
+
+    } catch (e) {
+        alert("Error: " + e.message);
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+}
 
 
 
