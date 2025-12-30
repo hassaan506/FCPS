@@ -2466,99 +2466,125 @@ async function resetAccountData() {
 }
 
 // =========================================================
-// 🎮 UNIVERSAL INPUT MANAGER (Mobile Fixed)
+// 🎮 UNIVERSAL INPUT MANAGER (v4 - Popup Smart)
 // =========================================================
 
 // --- 1. CONFIGURATION ---
-const SWIPE_THRESHOLD = 40; // Reduced to 40px for easier swiping
-let touchStartX = 0;
-let touchStartY = 0;
+const SWIPE_THRESHOLD = 40; 
+let touchStartX = 0, touchStartY = 0;
 
-// --- 2. KEYBOARD LISTENER (Desktop) ---
+// --- 2. KEYBOARD LISTENER ---
 document.addEventListener('keydown', function(e) {
     if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
 
-    // Auto-detect Next/Prev buttons
-    const nextBtn = findButton('next-btn', ['Next', '→', 'Skip', '>']);
-    const prevBtn = findButton('prev-btn', ['Prev', 'Back', '←', '<']);
+    // --- A. SMART ESCAPE (Close Popup OR Exit) ---
+    if (e.key === 'Escape') {
+        // 1. Try to close any open explanation/modal first
+        if (closeActivePopups()) {
+            return; // If we closed a popup, STOP here. Don't exit the app.
+        }
 
-    // Navigation
-    if (e.key === 'ArrowRight') triggerElement(nextBtn);
-    if (e.key === 'ArrowLeft') triggerElement(prevBtn);
+        // 2. If no popup was open, THEN try to exit
+        const exitBtn = findButton('exit-btn', ['Exit', 'Quit']);
+        if (exitBtn) exitBtn.click();
+        else if (typeof goHome === 'function') goHome();
+        return;
+    }
 
-    // Options (1-5)
+    // --- B. NAVIGATION (Arrow Keys) ---
+    if (e.key === 'ArrowRight') {
+        closeActivePopups(); // Clear screen before moving
+        const nextBtn = findButton('next-btn', ['Next', '→', 'Skip', '>']);
+        triggerElement(nextBtn);
+    }
+    
+    if (e.key === 'ArrowLeft') {
+        closeActivePopups(); // Clear screen before moving
+        const prevBtn = findButton('prev-btn', ['Prev', 'Back', '←', '<']);
+        triggerElement(prevBtn);
+    }
+
+    // --- C. OPTIONS (1-5) ---
     const keyMap = {'1':0, '2':1, '3':2, '4':3, '5':4};
     if (keyMap.hasOwnProperty(e.key)) {
         const options = document.querySelectorAll('.option-btn, .answer-btn, #options-container button');
         if (options[keyMap[e.key]]) triggerElement(options[keyMap[e.key]]);
     }
-
-    // Exit
-    if (e.key === 'Escape') {
-        const exitBtn = findButton('exit-btn', ['Exit', 'Quit']);
-        if (exitBtn) exitBtn.click();
-        else if (typeof goHome === 'function') goHome();
-    }
 });
 
 // --- 3. TOUCH LISTENERS (Mobile Swipe) ---
-// We attach to 'window' to catch swipes anywhere on screen
 window.addEventListener('touchstart', e => {
     touchStartX = e.changedTouches[0].screenX;
     touchStartY = e.changedTouches[0].screenY;
-}, {passive: false}); // 'passive: false' helps on some older Androids
-
-window.addEventListener('touchend', e => {
-    const touchEndX = e.changedTouches[0].screenX;
-    const touchEndY = e.changedTouches[0].screenY;
-    
-    handleSwipe(touchStartX, touchStartY, touchEndX, touchEndY);
 }, {passive: false});
 
-function handleSwipe(startX, startY, endX, endY) {
-    const diffX = startX - endX;
-    const diffY = startY - endY;
+window.addEventListener('touchend', e => {
+    const nextBtn = document.getElementById('next-btn'); // Only swipe if exam is active
+    if (!nextBtn || nextBtn.offsetParent === null) return;
 
-    // Check if swipe is Horizontal (X) and long enough
+    const diffX = touchStartX - e.changedTouches[0].screenX;
+    const diffY = touchStartY - e.changedTouches[0].screenY;
+    
+    // Swipe Logic
     if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > SWIPE_THRESHOLD) {
+        closeActivePopups(); // Close popup on swipe too!
         
-        // Find buttons dynamically
-        const nextBtn = findButton('next-btn', ['Next', '→', 'Skip', '>']);
-        const prevBtn = findButton('prev-btn', ['Prev', 'Back', '←', '<']);
-
         if (diffX > 0) {
-            // Swipe Left (Finger moves Right to Left) -> NEXT
-            triggerElement(nextBtn);
+            const btn = findButton('next-btn', ['Next', '→']); 
+            triggerElement(btn);
         } else {
-            // Swipe Right (Finger moves Left to Right) -> PREV
-            triggerElement(prevBtn);
+            const btn = findButton('prev-btn', ['Prev', 'Back']);
+            triggerElement(btn);
         }
     }
-}
+}, {passive: false});
 
 // --- 4. HELPER FUNCTIONS ---
+
+// Tries to find and close explanation popups. Returns TRUE if it found one to close.
+function closeActivePopups() {
+    // List of possible IDs your popup might use. Add yours if different!
+    const popupIds = ['explanation-modal', 'explanation-box', 'modal-overlay', 'explanation-container'];
+    
+    let closedSomething = false;
+
+    // 1. Check specific IDs
+    popupIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && !el.classList.contains('hidden') && el.style.display !== 'none') {
+            el.classList.add('hidden'); // Force hide
+            el.style.display = 'none';  // Double safety
+            closedSomething = true;
+        }
+    });
+
+    // 2. Check for generic "modal" classes if ID didn't work
+    if (!closedSomething) {
+        const openModals = document.querySelectorAll('.modal:not(.hidden), .popup:not(.hidden)');
+        openModals.forEach(m => {
+            m.classList.add('hidden');
+            closedSomething = true;
+        });
+    }
+
+    return closedSomething;
+}
+
 function findButton(id, keywords) {
     let btn = document.getElementById(id);
     if (isValid(btn)) return btn;
-
-    // Fallback: Search by text
     const all = document.querySelectorAll('button, .btn');
     for (let b of all) {
-        if (isValid(b) && keywords.some(k => b.innerText.includes(k))) return b;
+        if (isValid(b) && keywords.some(k => (b.innerText||"").includes(k))) return b;
     }
     return null;
 }
 
-function isValid(el) {
-    // Must exist, be enabled, and be visible (offsetParent check)
-    return el && !el.disabled && el.offsetParent !== null;
-}
+function isValid(el) { return el && !el.disabled && el.offsetParent !== null; }
 
 function triggerElement(el) {
     if (el) {
         el.click();
-        
-        // Visual Feedback
         el.classList.add('simulate-active');
         setTimeout(() => el.classList.remove('simulate-active'), 150);
     }
