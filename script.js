@@ -2165,7 +2165,7 @@ async function openAnalytics() {
 
     try {
         const doc = await db.collection('users').doc(currentUser.uid).get();
-        // ISOLATED STATS
+        // ISOLATED STATS (This is already correct as it uses getStoreKey)
         const stats = doc.data()[getStoreKey('stats')] || {};
         
         let html = `<div class="perf-section-title">📊 ${currentCourse} Performance</div>`;
@@ -2186,26 +2186,39 @@ async function openAnalytics() {
             </div>`;
         });
 
-        html += `<div class="perf-section-title" style="margin-top:30px;">📜 Recent Exams</div>
+        html += `<div class="perf-section-title" style="margin-top:30px;">📜 Recent ${currentCourse} Exams</div>
                  <table class="exam-table">
                     <thead><tr><th>Date</th><th>Subject</th><th>Score</th></tr></thead>
                     <tbody>`;
         
-        const snaps = await db.collection('users').doc(currentUser.uid).collection('results').orderBy('date','desc').limit(5).get();
+        // 1. FETCH MORE RECORDS (Limit increased to 20 to ensure we find enough matches)
+        const snaps = await db.collection('users').doc(currentUser.uid)
+            .collection('results')
+            .orderBy('date','desc')
+            .limit(20) 
+            .get();
         
-        if(snaps.empty) html += `<tr><td colspan="3">No exams yet.</td></tr>`;
-        
-        snaps.forEach(r => {
-            const d = r.data();
-            const dateStr = d.date ? formatDateHelper(parseDateRobust(d.date)) : "-";
-            const scoreColor = d.score === 0 ? "red" : "#1e293b";
-            
-            html += `<tr>
-                <td>${dateStr}</td>
-                <td>${d.subject}</td>
-                <td style="color:${scoreColor}; font-weight:bold;">${d.score}%</td>
-            </tr>`;
-        });
+        // 2. FILTER THE RECORDS (The Fix)
+        // We convert docs to data and filter by the current course name
+        const allResults = snaps.docs.map(doc => doc.data());
+        const filteredResults = allResults.filter(r => r.subject && r.subject.includes(currentCourse));
+
+        // 3. CHECK IF EMPTY AFTER FILTERING
+        if(filteredResults.length === 0) {
+            html += `<tr><td colspan="3">No ${currentCourse} exams yet.</td></tr>`;
+        } else {
+            // 4. DISPLAY ONLY FILTERED RESULTS (Show max 5)
+            filteredResults.slice(0, 5).forEach(d => {
+                const dateStr = d.date ? formatDateHelper(parseDateRobust(d.date)) : "-";
+                const scoreColor = d.score < 50 ? "red" : (d.score >= 70 ? "green" : "#1e293b");
+                
+                html += `<tr>
+                    <td>${dateStr}</td>
+                    <td>${d.subject}</td>
+                    <td style="color:${scoreColor}; font-weight:bold;">${d.score}%</td>
+                </tr>`;
+            });
+        }
 
         html += `</tbody></table>`;
         content.innerHTML = html;
@@ -2433,6 +2446,7 @@ async function resetAccountData() {
         btn.disabled = false;
     }
 }
+
 
 
 
