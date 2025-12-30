@@ -329,6 +329,35 @@ async function login() {
         });
 }
 
+async function resetPassword() {
+    let email = document.getElementById('email').value.trim();
+    
+    // 1. If the email field is empty or looks like a username (no '@'), ask for the email explicitly
+    if (!email || !email.includes('@')) {
+        email = prompt("Please enter your registered Email Address to reset your password:");
+    }
+    
+    if (!email) return; // User cancelled or entered nothing
+
+    const msg = document.getElementById('auth-msg');
+    if (msg) msg.innerText = "Sending reset email...";
+
+    try {
+        // 2. Trigger Firebase Reset
+        await auth.sendPasswordResetEmail(email);
+        alert(`✅ Reset link sent to: ${email}\n\nPlease check your Inbox (and Spam folder) to create a new password.`);
+        if (msg) msg.innerText = "";
+    } catch (e) {
+        console.error(e);
+        if (e.code === 'auth/user-not-found') {
+            alert("❌ That email is not registered.");
+        } else {
+            alert("Error: " + e.message);
+        }
+        if (msg) msg.innerText = "Error sending email.";
+    }
+}
+
 async function signup() {
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
@@ -2306,6 +2335,7 @@ async function submitReportFinal() {
         btn.disabled = false;
     }
 }
+
 
 
 
