@@ -2466,41 +2466,46 @@ async function resetAccountData() {
 }
 
 // =========================================================
-// 🎮 UNIVERSAL INPUT MANAGER (v5 - Final Fix)
+// 🎮 UNIVERSAL INPUT MANAGER (v6 - Bookmarks & Double Tap)
 // =========================================================
 
 // --- 1. CONFIGURATION ---
 const SWIPE_THRESHOLD = 40; 
+const DOUBLE_TAP_DELAY = 300; // Time in ms to count as double tap
 let touchStartX = 0, touchStartY = 0;
+let lastTapTime = 0; // Tracks the last time you tapped
 
 // --- 2. KEYBOARD LISTENER ---
 document.addEventListener('keydown', function(e) {
     if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
 
-    // --- A. SMART ESCAPE (Close Popup OR Exit) ---
-    if (e.key === 'Escape') {
-        if (closeActivePopups()) return; // Stop if we just closed a popup
+    // --- A. BOOKMARK SHORTCUT (Key: 'S') ---
+    if (e.key.toLowerCase() === 's') {
+        // Look for bookmark button by ID or Icon/Text
+        const bookmarkBtn = findButton('bookmark-btn', ['Bookmark', 'Save', '⭐', '★', 'Mark']);
+        triggerElement(bookmarkBtn);
+    }
 
+    // --- B. SMART ESCAPE (Close Popup OR Exit) ---
+    if (e.key === 'Escape') {
+        if (closeActivePopups()) return;
         const exitBtn = findButton('exit-btn', ['Exit', 'Quit']);
         if (exitBtn) exitBtn.click();
         else if (typeof goHome === 'function') goHome();
         return;
     }
 
-    // --- B. NAVIGATION (Arrow Keys) ---
+    // --- C. NAVIGATION (Arrow Keys) ---
     if (e.key === 'ArrowRight') {
         closeActivePopups(); 
-        const nextBtn = findButton('next-btn', ['Next', '→', 'Skip', '>']);
-        triggerElement(nextBtn);
+        triggerElement(findButton('next-btn', ['Next', '→', 'Skip', '>']));
     }
-    
     if (e.key === 'ArrowLeft') {
         closeActivePopups();
-        const prevBtn = findButton('prev-btn', ['Prev', 'Back', '←', '<']);
-        triggerElement(prevBtn);
+        triggerElement(findButton('prev-btn', ['Prev', 'Back', '←', '<']));
     }
 
-    // --- C. OPTIONS (1-5) ---
+    // --- D. OPTIONS (1-5) ---
     const keyMap = {'1':0, '2':1, '3':2, '4':3, '5':4};
     if (keyMap.hasOwnProperty(e.key)) {
         const options = document.querySelectorAll('.option-btn, .answer-btn, #options-container button');
@@ -2508,65 +2513,75 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-// --- 3. TOUCH LISTENERS (Mobile Swipe) ---
+// --- 3. TOUCH LISTENERS (Swipe + Double Tap) ---
 window.addEventListener('touchstart', e => {
     touchStartX = e.changedTouches[0].screenX;
     touchStartY = e.changedTouches[0].screenY;
 }, {passive: false});
 
 window.addEventListener('touchend', e => {
-    const nextBtn = document.getElementById('next-btn'); // Only active if Next button exists
+    const nextBtn = document.getElementById('next-btn'); 
+    // Only run if we are in a quiz session
     if (!nextBtn || nextBtn.offsetParent === null) return;
 
-    const diffX = touchStartX - e.changedTouches[0].screenX;
-    const diffY = touchStartY - e.changedTouches[0].screenY;
+    const touchEndX = e.changedTouches[0].screenX;
+    const touchEndY = e.changedTouches[0].screenY;
     
+    const diffX = touchStartX - touchEndX;
+    const diffY = touchStartY - touchEndY;
+    const currentTime = new Date().getTime();
+
+    // --- CHECK FOR SWIPE (Must be a long movement) ---
     if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > SWIPE_THRESHOLD) {
         closeActivePopups(); 
-        if (diffX > 0) {
-            triggerElement(findButton('next-btn', ['Next', '→'])); 
-        } else {
-            triggerElement(findButton('prev-btn', ['Prev', 'Back']));
-        }
+        if (diffX > 0) triggerElement(findButton('next-btn', ['Next', '→'])); 
+        else triggerElement(findButton('prev-btn', ['Prev', 'Back']));
     }
+    
+    // --- CHECK FOR DOUBLE TAP (Must be very little movement) ---
+    else if (Math.abs(diffX) < 10 && Math.abs(diffY) < 10) {
+        const tapLength = currentTime - lastTapTime;
+        
+        if (tapLength < DOUBLE_TAP_DELAY && tapLength > 0) {
+            // DOUBLE TAP DETECTED! -> Trigger Bookmark
+            e.preventDefault(); // Stop zoom
+            const bookmarkBtn = findButton('bookmark-btn', ['Bookmark', 'Save', '⭐', '★']);
+            triggerElement(bookmarkBtn);
+        }
+        lastTapTime = currentTime;
+    }
+
 }, {passive: false});
 
 // --- 4. HELPER FUNCTIONS ---
 
 function closeActivePopups() {
-    // Defines potential IDs for your popups
-    const popupIds = ['explanation-modal', 'explanation-box', 'modal-overlay', 'explanation-container'];
-    
+    const popupIds = ['explanation-modal', 'explanation-box', 'modal-overlay'];
     let closedSomething = false;
 
-    // 1. Check specific IDs
     popupIds.forEach(id => {
         const el = document.getElementById(id);
-        // FIX: We only toggle the class. We DO NOT touch el.style.display
         if (el && !el.classList.contains('hidden')) {
             el.classList.add('hidden'); 
             closedSomething = true;
         }
     });
 
-    // 2. Check for generic "modal" classes
     if (!closedSomething) {
         const openModals = document.querySelectorAll('.modal:not(.hidden), .popup:not(.hidden)');
-        openModals.forEach(m => {
-            m.classList.add('hidden');
-            closedSomething = true;
-        });
+        openModals.forEach(m => { m.classList.add('hidden'); closedSomething = true; });
     }
-
     return closedSomething;
 }
 
 function findButton(id, keywords) {
     let btn = document.getElementById(id);
     if (isValid(btn)) return btn;
-    const all = document.querySelectorAll('button, .btn');
+    const all = document.querySelectorAll('button, .btn, i, span'); // Also check icons
     for (let b of all) {
-        if (isValid(b) && keywords.some(k => (b.innerText||"").includes(k))) return b;
+        // Check text OR title attribute (for icon-only buttons)
+        const text = (b.innerText || "") + (b.title || ""); 
+        if (isValid(b) && keywords.some(k => text.includes(k))) return b;
     }
     return null;
 }
@@ -2576,7 +2591,7 @@ function isValid(el) { return el && !el.disabled && el.offsetParent !== null; }
 function triggerElement(el) {
     if (el) {
         el.click();
-        el.classList.add('simulate-active');
+        el.classList.add('simulate-active'); // Add CSS class for visual effect
         setTimeout(() => el.classList.remove('simulate-active'), 150);
     }
 }
