@@ -1535,18 +1535,26 @@ async function loadAllUsers() {
 function renderUserRow(u, extraLabel = "") {
     const isAdmin = u.role === 'admin';
     
-    // FIX: Check both FCPS and MBBS variables
+    // Check Statuses
     const fcpsPrem = u.isPremium; 
     const mbbsPrem = u.MBBS_isPremium;
+    const isBanned = u.disabled === true; // Check if banned
     
     let badgeHTML = "";
+    
+    // 1. Determine Subscription Badge
     if (fcpsPrem && mbbsPrem) badgeHTML = `<span class="status-badge badge-premium" style="background:purple; color:white;">ALL ACCESS</span>`;
     else if (fcpsPrem) badgeHTML = `<span class="status-badge badge-premium">FCPS Premium</span>`;
     else if (mbbsPrem) badgeHTML = `<span class="status-badge badge-premium" style="background:#dcfce7; color:#166534;">MBBS Premium</span>`;
     else badgeHTML = `<span class="status-badge badge-free">Free User</span>`;
 
+    // 2. Add Banned Badge if applicable
+    if (isBanned) {
+        badgeHTML += ` <span class="status-badge" style="background:#ef4444; color:white; margin-left:5px;">⛔ BANNED</span>`;
+    }
+
     return `
-    <div class="user-list-item ${isAdmin ? "is-admin-row" : ""}">
+    <div class="user-list-item ${isAdmin ? "is-admin-row" : ""}" style="${isBanned ? 'opacity: 0.6; background: #fee2e2;' : ''}">
         <div class="user-info-group">
             <div class="user-email-text">
                 ${isAdmin ? '⭐' : ''} ${u.email || "Unknown User"} 
@@ -2253,3 +2261,4 @@ async function submitReportFinal() {
         btn.disabled = false;
     }
 }
+
