@@ -2466,101 +2466,100 @@ async function resetAccountData() {
 }
 
 // =========================================================
-// 🎮 UNIVERSAL INPUT MANAGER (v3 - Auto-Detect)
+// 🎮 UNIVERSAL INPUT MANAGER (Mobile Fixed)
 // =========================================================
 
 // --- 1. CONFIGURATION ---
-const SWIPE_THRESHOLD = 50; 
-let touchStartX = 0, touchStartY = 0, touchEndX = 0, touchEndY = 0;
+const SWIPE_THRESHOLD = 40; // Reduced to 40px for easier swiping
+let touchStartX = 0;
+let touchStartY = 0;
 
-// --- 2. KEYBOARD LISTENER ---
+// --- 2. KEYBOARD LISTENER (Desktop) ---
 document.addEventListener('keydown', function(e) {
-    // A. Ignore if typing in a text box
     if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
 
-    // B. AUTO-DETECT BUTTONS (Finds buttons by text/icon if IDs fail)
+    // Auto-detect Next/Prev buttons
     const nextBtn = findButton('next-btn', ['Next', '→', 'Skip', '>']);
     const prevBtn = findButton('prev-btn', ['Prev', 'Back', '←', '<']);
 
-    // C. NAVIGATION
+    // Navigation
     if (e.key === 'ArrowRight') triggerElement(nextBtn);
     if (e.key === 'ArrowLeft') triggerElement(prevBtn);
 
-    // D. OPTIONS (1-5)
-    // Looks for any button with class 'option-btn', 'answer', or just buttons inside 'options-container'
+    // Options (1-5)
     const keyMap = {'1':0, '2':1, '3':2, '4':3, '5':4};
     if (keyMap.hasOwnProperty(e.key)) {
-        // Try multiple common selectors for options
-        const options = document.querySelectorAll('.option-btn, .answer-btn, .option, #options-container button');
-        const idx = keyMap[e.key];
-        if (options[idx]) triggerElement(options[idx]);
+        const options = document.querySelectorAll('.option-btn, .answer-btn, #options-container button');
+        if (options[keyMap[e.key]]) triggerElement(options[keyMap[e.key]]);
     }
 
-    // E. EXIT (Esc)
+    // Exit
     if (e.key === 'Escape') {
-        const exitBtn = findButton('exit-btn', ['Exit', 'Quit', 'End']);
+        const exitBtn = findButton('exit-btn', ['Exit', 'Quit']);
         if (exitBtn) exitBtn.click();
         else if (typeof goHome === 'function') goHome();
     }
 });
 
-// --- 3. TOUCH LISTENERS (Swipe) ---
-document.addEventListener('touchstart', e => {
+// --- 3. TOUCH LISTENERS (Mobile Swipe) ---
+// We attach to 'window' to catch swipes anywhere on screen
+window.addEventListener('touchstart', e => {
     touchStartX = e.changedTouches[0].screenX;
     touchStartY = e.changedTouches[0].screenY;
-}, {passive: true});
+}, {passive: false}); // 'passive: false' helps on some older Androids
 
-document.addEventListener('touchend', e => {
-    touchEndX = e.changedTouches[0].screenX;
-    touchEndY = e.changedTouches[0].screenY;
-    handleSwipeLogic();
-}, {passive: true});
+window.addEventListener('touchend', e => {
+    const touchEndX = e.changedTouches[0].screenX;
+    const touchEndY = e.changedTouches[0].screenY;
+    
+    handleSwipe(touchStartX, touchStartY, touchEndX, touchEndY);
+}, {passive: false});
 
-function handleSwipeLogic() {
-    const diffX = touchStartX - touchEndX;
-    const diffY = touchStartY - touchEndY;
+function handleSwipe(startX, startY, endX, endY) {
+    const diffX = startX - endX;
+    const diffY = startY - endY;
 
+    // Check if swipe is Horizontal (X) and long enough
     if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > SWIPE_THRESHOLD) {
+        
+        // Find buttons dynamically
         const nextBtn = findButton('next-btn', ['Next', '→', 'Skip', '>']);
         const prevBtn = findButton('prev-btn', ['Prev', 'Back', '←', '<']);
 
-        if (diffX > 0) triggerElement(nextBtn); // Swipe Left -> Next
-        else triggerElement(prevBtn); // Swipe Right -> Prev
+        if (diffX > 0) {
+            // Swipe Left (Finger moves Right to Left) -> NEXT
+            triggerElement(nextBtn);
+        } else {
+            // Swipe Right (Finger moves Left to Right) -> PREV
+            triggerElement(prevBtn);
+        }
     }
 }
 
-// --- 4. SMART HELPER FUNCTIONS ---
-
-// Finds a button by ID first, then tries to find it by Text Content
-function findButton(id, textKeywords) {
-    // 1. Try ID
+// --- 4. HELPER FUNCTIONS ---
+function findButton(id, keywords) {
     let btn = document.getElementById(id);
-    if (isValidBtn(btn)) return btn;
+    if (isValid(btn)) return btn;
 
-    // 2. Try searching all buttons for keywords (e.g. "Next")
-    const allBtns = document.querySelectorAll('button, .btn, [role="button"]');
-    for (let b of allBtns) {
-        if (!isValidBtn(b)) continue;
-        const text = b.innerText || "";
-        if (textKeywords.some(keyword => text.includes(keyword))) {
-            return b;
-        }
+    // Fallback: Search by text
+    const all = document.querySelectorAll('button, .btn');
+    for (let b of all) {
+        if (isValid(b) && keywords.some(k => b.innerText.includes(k))) return b;
     }
     return null;
 }
 
-function isValidBtn(btn) {
-    return btn && !btn.disabled && btn.offsetParent !== null; // Must be visible
+function isValid(el) {
+    // Must exist, be enabled, and be visible (offsetParent check)
+    return el && !el.disabled && el.offsetParent !== null;
 }
 
 function triggerElement(el) {
     if (el) {
         el.click();
-        animateElement(el);
+        
+        // Visual Feedback
+        el.classList.add('simulate-active');
+        setTimeout(() => el.classList.remove('simulate-active'), 150);
     }
-}
-
-function animateElement(el) {
-    el.classList.add('simulate-active');
-    setTimeout(() => el.classList.remove('simulate-active'), 150);
 }
