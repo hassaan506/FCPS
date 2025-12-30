@@ -124,49 +124,72 @@ auth.onAuthStateChanged(async (user) => {
     }
 });
 
+let userListener = null; // Variable to track the real-time connection
+
 async function checkLoginSecurity(user) {
     try {
         const docRef = db.collection('users').doc(user.uid);
+        
+        // 1. Initial Check & Setup
         const doc = await docRef.get();
 
         if (!doc.exists) {
-            // New User Creation
+            // New User: Create Profile & Set Device ID
             await docRef.set({
                 email: user.email,
-                deviceId: currentDeviceId,
+                deviceId: currentDeviceId, // Lock to this device
                 role: 'student',
                 joined: new Date(),
-                // Init Legacy Data
                 isPremium: false, solved: [], bookmarks: [], mistakes: [], stats: {}
             }, { merge: true });
-            
-            userProfile = (await docRef.get()).data();
         } else {
-            userProfile = doc.data();
-            
-            if (!userProfile.email || userProfile.email !== user.email) {
-                docRef.update({ email: user.email });
-            }
-            if (userProfile.disabled) {
-                auth.signOut();
-                alert("⛔ Your account has been disabled by the admin.");
-                return;
-            }
-            if (!userProfile.deviceId) await docRef.update({ deviceId: currentDeviceId });
+            // Existing User: ALWAYS update to THIS device ID on login
+            // This "kicks out" any other device currently logged in
+            await docRef.update({ 
+                deviceId: currentDeviceId,
+                email: user.email // Keep email sync updated
+            });
         }
         
-        // Admin button visibility
-        if (userProfile && userProfile.role === 'admin') {
-            const btn = document.getElementById('admin-btn');
-            if(btn) btn.classList.remove('hidden');
-        }
+        // 2. REAL-TIME PROTECTION (The Fix)
+        // This listens for changes. If the DB changes, this code runs instantly.
+        if (userListener) userListener(); // Stop any old listeners
+        
+        userListener = docRef.onSnapshot((snapshot) => {
+            if (!snapshot.exists) return;
+            const data = snapshot.data();
+            userProfile = data; // Keep local profile fresh
+
+            // A. Check for Device Conflict
+            if (data.deviceId && data.deviceId !== currentDeviceId) {
+                // The DB says a different device is active. We must log out.
+                auth.signOut();
+                alert("⚠️ Session Ended\n\nYou have logged in on another device. This session is now closed.");
+                window.location.reload();
+                return;
+            }
+
+            // B. Check for Ban Status
+            if (data.disabled) {
+                auth.signOut();
+                alert("⛔ Your account has been disabled by the admin.");
+                window.location.reload();
+                return;
+            }
+
+            updateCourseSelectionUI();
+  
+            if (userProfile.role === 'admin') {
+                const btn = document.getElementById('admin-btn');
+                if(btn) btn.classList.remove('hidden');
+            }
+        });
 
     } catch (e) { 
         console.error("Auth Error:", e); 
-        alert("Login Error: " + e.message); // Surface error to user
+        alert("Login Error: " + e.message); 
     }
 }
-
 // --- NEW: COURSE SELECTION LOGIC ---
 
 function updateCourseSelectionUI() {
@@ -2261,4 +2284,5 @@ async function submitReportFinal() {
         btn.disabled = false;
     }
 }
+
 
