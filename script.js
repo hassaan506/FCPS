@@ -2391,52 +2391,45 @@ async function submitReportFinal() {
     }
 }
 
-async function resetProgress() {
+async function resetAccountData() {
     if (!currentUser || isGuest) return alert("Guests cannot reset progress.");
 
-    // 1. Confirmation Alert
-    const confirmed = confirm(`⚠️ DANGER ZONE!\n\nAre you sure you want to delete ALL progress for ${currentCourse}?\n\n- Solved History will be gone.\n- Mistakes will be deleted.\n- Stats will be reset to 0.\n\nThis cannot be undone.`);
+    // 1. Confirm deletion
+    const confirmed = confirm(`⚠️ WARNING: This will delete ALL progress for ${currentCourse}.\n\n- All Solved questions will be lost.\n- Mistakes list will be cleared.\n- Stats/Accuracy will be reset.\n\nAre you sure?`);
     
     if (!confirmed) return;
 
+    // 2. Show loading state on the button
     const btn = event.target;
-    const originalText = btn.innerText;
+    const oldText = btn.innerText;
     btn.innerText = "Deleting...";
     btn.disabled = true;
 
     try {
-        // 2. Get Keys for Current Course
+        const userRef = db.collection('users').doc(currentUser.uid);
+        
+        // 3. Get the correct keys for the current course (FCPS or MBBS)
         const sKey = getStoreKey('solved');
         const mKey = getStoreKey('mistakes');
         const bKey = getStoreKey('bookmarks');
         const statKey = getStoreKey('stats');
 
-        // 3. Wipe Data from Database
-        await db.collection('users').doc(currentUser.uid).update({
-            [sKey]: [],        // Empty Array
-            [mKey]: [],        // Empty Array
-            [bKey]: [],        // Empty Array
-            [statKey]: {}      // Empty Object
+        // 4. Wipe the data in Firebase
+        await userRef.update({
+            [sKey]: [],        // Empty array
+            [mKey]: [],        // Empty array
+            [bKey]: [],        // Empty array
+            [statKey]: {}      // Empty object
         });
 
-        // 4. Wipe Local Memory
-        userSolvedIDs = [];
-        userMistakes = [];
-        userBookmarks = [];
-        if (userProfile) {
-            userProfile[sKey] = [];
-            userProfile[mKey] = [];
-            userProfile[statKey] = {};
-        }
-
-        alert("✅ Progress Reset Successfully!");
-        
-        // 5. Reload to Refresh Everything
+        // 5. Success Message & Reload
+        alert("✅ All progress has been reset.");
         window.location.reload();
 
     } catch (e) {
-        alert("Error: " + e.message);
-        btn.innerText = originalText;
+        console.error(e);
+        alert("Error resetting data: " + e.message);
+        btn.innerText = oldText;
         btn.disabled = false;
     }
 }
