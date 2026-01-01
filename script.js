@@ -1007,13 +1007,9 @@ function createQuestionCard(q, index, showNumber = true) {
         block.classList.add('is-flagged-card');
     }
 
-    // --- FIX: BLIND BOOKMARK CHECK ---
-    // If in TEST mode, always look un-bookmarked (false). 
-    // If in PRACTICE mode, show real status.
     const isBookmarked = (currentMode === 'test') ? false : userBookmarks.includes(q._uid);
     const isFlagged = testFlags[q._uid] || false;
 
-    // 1. HEADER
     const header = document.createElement('div');
     header.className = "question-card-header";
     header.innerHTML = `
@@ -1034,28 +1030,53 @@ function createQuestionCard(q, index, showNumber = true) {
     qText.innerHTML = q.Question || "Missing Text";
     block.appendChild(qText);
 
-    // 3. Options
     const optionsDiv = document.createElement('div');
     optionsDiv.className = "options-group";
     optionsDiv.id = `opts-${index}`;
 
-    let opts = [q.OptionA, q.OptionB, q.OptionC, q.OptionD, q.OptionE].filter(o => o && o.trim() !== "");
-    opts = shuffleArray(opts);
-    opts.forEach(opt => {
+    let rawOpts = [q.OptionA, q.OptionB, q.OptionC, q.OptionD, q.OptionE].filter(o => o && o.trim() !== "");
+
+    let normalOpts = [];
+    let bottomOpts = [];
+
+    rawOpts.forEach(opt => {
+        const lower = opt.toLowerCase();
+
+        if (lower.includes("all of") || lower.includes("none of") || lower.includes("of the above") || lower.includes("all the")) {
+            bottomOpts.push(opt);
+        } else {
+            normalOpts.push(opt);
+        }
+    });
+
+    let finalOpts = [...shuffleArray(normalOpts), ...bottomOpts];
+
+    finalOpts.forEach(opt => {
         const btn = document.createElement('button');
         btn.className = "option-btn";
+        // The span ensures the text and the eye icon are separated correctly
         btn.innerHTML = `<span class="opt-text">${opt}</span><span class="elim-eye">👁️</span>`;
-        btn.querySelector('.elim-eye').onclick = (e) => { e.stopPropagation(); btn.classList.toggle('eliminated'); };
+
+        btn.querySelector('.elim-eye').onclick = (e) => { 
+            e.stopPropagation(); 
+            btn.classList.toggle('eliminated'); 
+        };
+
         btn.onclick = (e) => {
             if (e.target.classList.contains('elim-eye')) return;
             if (btn.classList.contains('eliminated')) btn.classList.remove('eliminated');
             checkAnswer(opt, btn, q);
         };
-        btn.addEventListener('contextmenu', (e) => { e.preventDefault(); btn.classList.toggle('eliminated'); });
-        
+
+        btn.addEventListener('contextmenu', (e) => { 
+            e.preventDefault(); 
+            btn.classList.toggle('eliminated'); 
+        });
+
         if (typeof testAnswers !== 'undefined' && testAnswers[q._uid] === opt) {
             btn.classList.add('selected');
         }
+        
         optionsDiv.appendChild(btn);
     });
 
@@ -2655,3 +2676,4 @@ function shuffleArray(array) {
     }
     return array;
 }
+
