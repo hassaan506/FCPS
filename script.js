@@ -1029,10 +1029,6 @@ function createQuestionCard(q, index, showNumber = true) {
     `;
     block.appendChild(header);
 
-    // ... rest of the function remains the same ...
-    // (Append Question Text and Options below as before)
-    
-    // 2. Question Text
     const qText = document.createElement('div');
     qText.className = "test-q-text";
     qText.innerHTML = q.Question || "Missing Text";
@@ -1044,7 +1040,7 @@ function createQuestionCard(q, index, showNumber = true) {
     optionsDiv.id = `opts-${index}`;
 
     let opts = [q.OptionA, q.OptionB, q.OptionC, q.OptionD, q.OptionE].filter(o => o && o.trim() !== "");
-
+    opts = shuffleArray(opts);
     opts.forEach(opt => {
         const btn = document.createElement('button');
         btn.className = "option-btn";
@@ -2652,3 +2648,10 @@ function triggerElement(el) {
     }
 }
 
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
