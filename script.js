@@ -26,17 +26,49 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // --- NEW: MULTI-COURSE CONFIGURATION ---
 const COURSE_CONFIG = {
+    // --- MAIN COURSE: FCPS ---
     'FCPS': {
         name: "FCPS Part 1",
         sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8aw1eGppF_fgvI5VAOO_3XEONyI-4QgWa0IgQg7K-VdxeFyn4XBpWT9tVDewbQ6PnMEQ80XpwbASh/pub?output=csv",
-        prefix: "",       // Legacy Mode (No prefix = Keeps existing user progress safe)
-        theme: ""         // Default Blue Theme
+        prefix: "", 
+        theme: "" 
     },
-    'MBBS': {
-        name: "MBBS Final Year",
-        sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6fLWMz_k89yK_S8kfjqAGs9I_fGzBE-WQ-Ci8l-D5ownRGV0I1Tz-ifZZKBOTXZAx9bvs4wVuWLID/pub?output=csv",
-        prefix: "MBBS_",  // Prefix ensures data separation (e.g. MBBS_solved)
-        theme: "mbbs-mode" // Activates Green Theme
+
+    // --- SUB COURSE: MBBS (Years 1-5) ---
+    
+    'MBBS_1': { 
+        name: "MBBS Year 1", 
+        sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQavpclI1-TLczhnGiPiF7g6rG32F542mmjCBIg612NcSAkdhXScIgsK6-4w6uGVM9l_XbQe6aCiOyE/pub?output=csv", 
+        prefix: "MBBS1_", 
+        theme: "mbbs-mode" 
+    },
+
+    'MBBS_2': { 
+        name: "MBBS Year 2", 
+        sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQvD7HQYS6gFFcwo4_DTkvR9BIh70xjM4M1XMTSD5DFeGv69BTXtGVchf3ON6CFxRJ3GIN7t2ojU5Gb/pub?output=csv", 
+        prefix: "MBBS2_", 
+        theme: "mbbs-mode" 
+    },
+
+    'MBBS_3': { 
+        name: "MBBS Year 3", 
+        sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSPwZrNWryh937oxXV1zwnBYtnhysGCiJ0wLaV7J941MFGVhaG_1BC-ZODYZlgDATW6UOXrJrac-bdV/pub?output=csv", 
+        prefix: "MBBS3_", 
+        theme: "mbbs-mode" 
+    },
+
+    'MBBS_4': { 
+        name: "MBBS Year 4", 
+        sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTTGsPZWg-U9_zG2_FWkQWDp5nsQ8OVGqQnoqdqxw4bQz2JSAYsgPvrgbrwX8gtiJj5LrY9MUaNvkBn/pub?output=csv", 
+        prefix: "MBBS4_", 
+        theme: "mbbs-mode" 
+    },
+
+    'MBBS_5': { 
+        name: "MBBS Final Year", 
+        sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6fLWMz_k89yK_S8kfjqAGs9I_fGzBE-WQ-Ci8l-D5ownRGV0I1Tz-ifZZKBOTXZAx9bvs4wVuWLID/pub?output=csv", 
+        prefix: "MBBS_", 
+        theme: "mbbs-mode" 
     }
 };
 
@@ -212,28 +244,44 @@ async function checkLoginSecurity(user) {
         alert("Login Error: " + e.message); 
     }
 }
-// --- NEW: COURSE SELECTION LOGIC ---
 
 function updateCourseSelectionUI() {
     if(!userProfile) return;
     
-    // Check FCPS Status
+    // 1. Check FCPS
     const fcpsActive = userProfile.isPremium && isDateActive(userProfile.expiryDate);
     const fcpsBadge = document.getElementById('status-badge-FCPS');
-    if(fcpsBadge) {
-        fcpsBadge.innerText = fcpsActive ? "✅ Active" : "🔒 Free Version";
-        fcpsBadge.style.background = fcpsActive ? "#d1fae5" : "#e2e8f0";
-        fcpsBadge.style.color = fcpsActive ? "#065f46" : "#475569";
-    }
+    if(fcpsBadge) setBadgeUI(fcpsBadge, fcpsActive);
 
-    // Check MBBS Status
-    const mbbsActive = userProfile.MBBS_isPremium && isDateActive(userProfile.MBBS_expiryDate);
-    const mbbsBadge = document.getElementById('status-badge-MBBS');
-    if(mbbsBadge) {
-        mbbsBadge.innerText = mbbsActive ? "✅ Active" : "🔒 Free Version";
-        mbbsBadge.style.background = mbbsActive ? "#d1fae5" : "#e2e8f0";
-        mbbsBadge.style.color = mbbsActive ? "#065f46" : "#475569";
-    }
+    // 2. Check ALL MBBS Years (1 to 5)
+    // This works because our COURSE_CONFIG knows that 'MBBS_5' uses the old "MBBS_" prefix
+    checkYearStatus('MBBS_1', 'status-badge-MBBS1');
+    checkYearStatus('MBBS_2', 'status-badge-MBBS2');
+    checkYearStatus('MBBS_3', 'status-badge-MBBS3');
+    checkYearStatus('MBBS_4', 'status-badge-MBBS4');
+    checkYearStatus('MBBS_5', 'status-badge-MBBS5'); 
+}
+
+// Helper to avoid repetitive code
+function checkYearStatus(courseKey, elementId) {
+    const config = COURSE_CONFIG[courseKey];
+    if(!config) return; // Safety check
+    
+    const prefix = config.prefix; // Gets "MBBS1_" or "MBBS_" depending on the year
+    
+    const isPrem = userProfile[prefix + 'isPremium'];
+    const expiry = userProfile[prefix + 'expiryDate'];
+    
+    const isActive = isPrem && isDateActive(expiry);
+    
+    const badge = document.getElementById(elementId);
+    if(badge) setBadgeUI(badge, isActive);
+}
+
+function setBadgeUI(element, isActive) {
+    element.innerText = isActive ? "✅ Active" : "🔒 Free Version";
+    element.style.background = isActive ? "#d1fae5" : "#e2e8f0";
+    element.style.color = isActive ? "#065f46" : "#475569";
 }
 
 function selectCourse(courseName) {
@@ -2675,5 +2723,16 @@ function shuffleArray(array) {
         [array[i], array[j]] = [array[j], array[i]];
     }
     return array;
+}
+
+
+function showMbbsYears() {
+    document.getElementById('main-menu-container').classList.add('hidden');
+    document.getElementById('mbbs-years-container').classList.remove('hidden');
+}
+
+function backToMainMenu() {
+    document.getElementById('mbbs-years-container').classList.add('hidden');
+    document.getElementById('main-menu-container').classList.remove('hidden');
 }
 
