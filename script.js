@@ -1784,39 +1784,50 @@ async function loadAdminPayments() {
         const snap = await db.collection('payment_requests').where('status','==','pending').orderBy('timestamp', 'desc').get();
         if(snap.empty) { list.innerHTML = "<div style='padding:30px; text-align:center; color:#94a3b8;'>No pending payments.</div>"; return; }
 
-        // --- PREPARE OPTIONS DYNAMICALLY (SORTED BY DURATION) ---
-        const allPlans = Object.keys(PLAN_DURATIONS).sort((a,b) => PLAN_DURATIONS[a] - PLAN_DURATIONS[b]);
-        
         let html = "";
         snap.forEach(doc => {
             const p = doc.data();
-            const reqPlan = p.planRequested ? p.planRequested.replace('_', ' ').toUpperCase() : "UNKNOWN";
-            const courseLabel = p.targetCourse ? `<span style="background:#0f172a; color:white; padding:2px 6px; border-radius:4px; font-size:10px;">${p.targetCourse}</span>` : "";
+            
+            // 1. FIX COURSE NAME (MBBS_2 -> Second Year)
+            const courseKey = p.targetCourse || 'FCPS';
+            const courseName = COURSE_CONFIG[courseKey] ? COURSE_CONFIG[courseKey].name : courseKey;
+
+            // 2. FIX PLAN NAME (1_week -> 1 Week)
+            let planDisplay = p.planRequested || "Unknown";
+            // Replace underscores with spaces
+            planDisplay = planDisplay.replace(/_/g, ' ');
+            // Capitalize (CSS does this too, but this handles the text directly)
             
             const imageHtml = p.image 
                 ? `<div class="pay-proof-container" onclick="viewFullReceipt('${p.image.replace(/'/g, "\\'")}')"><img src="${p.image}" class="pay-proof-img"><span class="view-receipt-text">🔍 View Receipt</span></div>`
                 : `<div>⚠️ No Image</div>`;
 
-            // Generate dropdown options for THIS specific request
-            let optionsHtml = "";
-            allPlans.forEach(key => {
-                const label = key.replace(/_/g, ' ').toUpperCase();
-                const isSelected = p.planRequested === key ? 'selected' : '';
-                optionsHtml += `<option value="${key}" ${isSelected}>${label}</option>`;
-            });
-
+            // Dropdown with ALL 8 PLANS
             html += `
             <div class="admin-payment-card" id="card-${doc.id}">
                 <div class="pay-card-header">
                     <div><span class="pay-user-email">${p.email}</span></div>
-                    <div>${courseLabel} <span class="pay-plan-badge">${p.planRequested}</span></div>
+                    <div>
+                        <span style="background:#0f172a; color:white; padding:4px 8px; border-radius:4px; font-size:11px; font-weight:bold; margin-right:5px;">${courseName}</span> 
+                        
+                        <span class="pay-plan-badge" style="text-transform:capitalize;">${planDisplay}</span>
+                    </div>
                 </div>
                 ${imageHtml}
                 <div class="pay-action-box">
+                    <label style="font-size:11px; font-weight:bold; color:#64748b;">Approve Duration:</label>
                     <div class="pay-controls-row">
                         <select id="dur-${doc.id}" class="pay-select">
-                            ${optionsHtml} </select>
-                        <button class="btn-pay-action btn-approve" onclick="approvePayment('${doc.id}','${p.uid}', '${p.targetCourse}')">Approve</button>
+                            <option value="1_day">1 Day</option>
+                            <option value="1_week">1 Week</option>
+                            <option value="15_days">15 Days</option>
+                            <option value="1_month" ${p.planRequested === '1_month' ? 'selected' : ''}>1 Month</option>
+                            <option value="3_months" ${p.planRequested === '3_months' ? 'selected' : ''}>3 Months</option>
+                            <option value="6_months" ${p.planRequested === '6_months' ? 'selected' : ''}>6 Months</option>
+                            <option value="12_months" ${p.planRequested === '12_months' ? 'selected' : ''}>12 Months</option>
+                            <option value="lifetime" ${p.planRequested === 'lifetime' ? 'selected' : ''}>Lifetime</option>
+                        </select>
+                        <button class="btn-pay-action btn-approve" onclick="approvePayment('${doc.id}','${p.uid}', '${courseKey}')">Approve</button>
                         <button class="btn-pay-action btn-reject" onclick="rejectPayment('${doc.id}')">Reject</button>
                     </div>
                 </div>
@@ -1825,7 +1836,6 @@ async function loadAdminPayments() {
         list.innerHTML = html;
     } catch (e) { list.innerHTML = `<div style="color:red;">Error: ${e.message}</div>`; }
 }
-
 // ==========================================
 // 📱 MOBILE BACK BUTTON FIX (Receipt Viewer)
 // ==========================================
@@ -2867,3 +2877,4 @@ window.addEventListener('appinstalled', () => {
     deferredPrompt = null;
     console.log('✅ PWA was installed');
 });
+
