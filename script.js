@@ -882,33 +882,22 @@ function openManageUserModal(uid) {
     let activeSubs = "";
     Object.keys(COURSE_CONFIG).forEach(key => {
         const conf = COURSE_CONFIG[key];
-        const prefix = conf.prefix;
-        
-        if (u[prefix + 'isPremium']) {
-            const expiry = u[prefix + 'expiryDate'];
+        if (u[conf.prefix + 'isPremium']) {
+            const expiry = u[conf.prefix + 'expiryDate'];
             let timeTxt = "Active";
-            
             if(expiry) {
                 const d = (expiry.toDate ? expiry.toDate() : new Date(expiry));
                 const days = Math.ceil((d - Date.now()) / 86400000);
                 timeTxt = (days > 10000) ? "Lifetime" : `${days} days left`;
             }
-
-            activeSubs += `
-            <div style="display:flex; justify-content:space-between; font-size:12px; padding:6px 0; border-bottom:1px dashed #eee;">
-                <span>✅ <b>${conf.name}</b></span>
-                <span style="color:#166534;">${timeTxt}</span>
-            </div>`;
+            activeSubs += `<div style="display:flex; justify-content:space-between; font-size:12px; padding:6px 0; border-bottom:1px dashed #eee;"><span>✅ <b>${conf.name}</b></span><span style="color:#166534;">${timeTxt}</span></div>`;
         }
     });
-
     if(activeSubs === "") activeSubs = `<div style="font-size:12px; color:#94a3b8; font-style:italic;">No active subscriptions.</div>`;
 
     // Dropdown Options
     let courseOpts = "";
-    Object.keys(COURSE_CONFIG).forEach(k => {
-        courseOpts += `<option value="${k}">${COURSE_CONFIG[k].name}</option>`;
-    });
+    Object.keys(COURSE_CONFIG).forEach(k => { courseOpts += `<option value="${k}">${COURSE_CONFIG[k].name}</option>`; });
 
     const modalHtml = `
     <div class="admin-modal-overlay" id="admin-modal" onclick="closeAdminModal(event)">
@@ -930,7 +919,6 @@ function openManageUserModal(uid) {
                 <h4 style="margin:0 0 10px 0; color:#15803d; font-size:14px;">🎁 Add Subscription</h4>
                 <div style="display:flex; gap:10px; margin-bottom:10px;">
                     <select id="modal-course" style="flex:1; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px;">${courseOpts}</select>
-                    
                     <select id="modal-duration" style="flex:1; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px;">
                         <option value="1">1 Day</option>
                         <option value="7">1 Week</option>
@@ -941,18 +929,21 @@ function openManageUserModal(uid) {
                         <option value="365">1 Year</option>
                         <option value="9999">Lifetime</option>
                     </select>
-
                 </div>
                 <button onclick="runModalGrant('${uid}')" style="width:100%; background:#16a34a; color:white; border:none; padding:10px; border-radius:6px; font-weight:600; cursor:pointer;">Grant Access</button>
             </div>
 
             <h4 style="margin:0 0 10px 0; color:#b91c1c; font-size:14px;">⚠️ Actions</h4>
-            <div style="display:flex; gap:10px;">
-                <button onclick="adminRevokePremium('${uid}')" style="flex:1; background:#f59e0b; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:500;">🚫 Revoke All</button>
-                ${isBanned 
-                    ? `<button onclick="adminToggleBan('${uid}', false)" style="flex:1; background:#10b981; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:500;">✅ Unban</button>`
-                    : `<button onclick="adminToggleBan('${uid}', true)" style="flex:1; background:#ef4444; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:500;">⛔ Ban User</button>`
-                }
+            <div style="display:flex; flex-direction:column; gap:8px;">
+                <div style="display:flex; gap:10px;">
+                    <button onclick="adminRevokePremium('${uid}')" style="flex:1; background:#f59e0b; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:500;">🚫 Revoke All</button>
+                    ${isBanned 
+                        ? `<button onclick="adminToggleBan('${uid}', false)" style="flex:1; background:#10b981; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:500;">✅ Unban</button>`
+                        : `<button onclick="adminToggleBan('${uid}', true)" style="flex:1; background:#ef4444; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:500;">⛔ Ban User</button>`
+                    }
+                </div>
+                
+                <button onclick="adminDeleteUserDoc('${uid}')" style="background:#991b1b; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:bold;">🗑️ Permanently Delete Record</button>
             </div>
         </div>
     </div>`;
@@ -961,6 +952,21 @@ function openManageUserModal(uid) {
     div.innerHTML = modalHtml;
     document.body.appendChild(div.firstElementChild);
 }
+
+// Add this function anywhere in script.js (at the bottom)
+async function adminDeleteUserDoc(uid) {
+    if(!confirm("⚠️ ARE YOU SURE?\n\nThis will permanently delete this user's database record.\n(They will lose all progress and access).\n\nThis cannot be undone.")) return;
+    
+    try {
+        await db.collection('users').doc(uid).delete();
+        alert("✅ User Record Deleted.");
+        closeAdminModal(true);
+        loadAllUsers(); // Refresh list to see them gone
+    } catch(e) {
+        alert("Error: " + e.message);
+    }
+}
+
 
 function closeAdminModal(force) {
     if (force === true || (event && event.target.id === 'admin-modal')) {
@@ -2045,7 +2051,9 @@ async function loadAdminReports() {
     list.innerHTML = '<div style="padding:20px; text-align:center;">Loading reports...</div>';
 
     try {
+        // Load PENDING reports
         const snap = await db.collection('reports').where('status', '==', 'pending').get();
+        
         if(snap.empty) {
             list.innerHTML = "<div style='padding:20px; text-align:center; color:#888;'>✅ No pending reports.</div>";
             return;
@@ -2055,31 +2063,34 @@ async function loadAdminReports() {
         snap.forEach(doc => {
             const r = doc.data();
             
-            // --- FIND THE QUESTION TEXT ---
-            // We search your loaded Excel data for the matching ID
+            // --- 1. GET QUESTION CONTEXT ---
+            // We try to find the question in the currently loaded course
             const qData = allQuestions.find(q => q._uid === r.questionID || q.id === r.questionID);
             
-            // Fallback text if question not found (e.g. from a different course)
             const questionText = qData 
-                ? `<div style="font-weight:bold; color:#333; margin-bottom:4px;">Q: ${qData.Question.substring(0, 100)}...</div>` 
-                : `<div style="color:red; font-size:12px;">(Question Data Not Found - ID: ${r.questionID})</div>`;
+                ? `<div style="font-weight:bold; color:#333; margin-bottom:4px; font-size:13px;">Q: ${qData.Question.substring(0, 80)}...</div>` 
+                : `<div style="color:#94a3b8; font-size:11px;">(Question data from another course or not loaded)</div>`;
+
+            // --- 2. DISPLAY THE ISSUE (Fixed Mismatch) ---
+            // We check 'issue' (new code) AND 'details' (old code) so nothing is missed
+            const issueText = r.issue || r.details || "No text provided.";
 
             html += `
-            <div class="admin-card" style="border-left:4px solid var(--danger);">
-                <div style="font-size:12px; color:#666; margin-bottom:5px;">
-                    <span style="background:#fee2e2; color:#991b1b; padding:2px 6px; border-radius:4px;">${r.issueType || "Issue"}</span>
-                    Reported by: <b>${r.userEmail || "Unknown"}</b>
+            <div class="admin-card" style="border-left:4px solid var(--danger); background:white; margin-bottom:10px; padding:15px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+                <div style="font-size:11px; color:#666; margin-bottom:8px; display:flex; justify-content:space-between;">
+                    <span><b>${r.courseName || r.courseId || "Unknown Course"}</b> (Row ${r.excelRow || "?"})</span>
+                    <span>${r.userEmail || "Guest"}</span>
                 </div>
                 
                 ${questionText}
                 
-                <div style="background:#f8f9fa; padding:8px; border-radius:6px; margin:8px 0; font-size:13px; color:#444;">
-                    "${r.details || "No details provided."}"
+                <div style="background:#fff1f2; padding:10px; border-radius:6px; margin:10px 0; font-size:13px; color:#be123c; border:1px solid #fda4af;">
+                    <b>Report:</b> "${issueText}"
                 </div>
 
-                <div style="text-align:right; margin-top:8px;">
-                    <button class="btn-sm" style="background:#10b981; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;" onclick="resolveReport('${doc.id}')">✅ Mark Resolved</button>
-                    <button class="btn-sm" style="background:#ef4444; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; margin-left:5px;" onclick="deleteReport('${doc.id}')">🗑️ Delete</button>
+                <div style="text-align:right; display:flex; gap:10px; justify-content:flex-end;">
+                     <button class="btn-sm" style="background:#ef4444; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;" onclick="deleteReport('${doc.id}')">🗑️ Delete</button>
+                     <button class="btn-sm" style="background:#10b981; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;" onclick="resolveReport('${doc.id}')">✅ Resolve</button>
                 </div>
             </div>`;
         });
@@ -3065,6 +3076,7 @@ window.addEventListener('appinstalled', () => {
     deferredPrompt = null;
     console.log('✅ PWA was installed');
 });
+
 
 
 
