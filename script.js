@@ -93,11 +93,22 @@ const firebaseConfig = {
   appId: "1:949920276784:web:c9af3432814c0f80e028f5"
 };
 
-// Initialize Firebase (Safety Check)
+// Initialize Firebase
 if (typeof firebase !== 'undefined' && !firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
+
+    // ✅ ADD THIS BLOCK: This saves the "Pending Queue" to the phone's hard drive
+    firebase.firestore().enablePersistence()
+        .catch((err) => {
+            if (err.code == 'failed-precondition') {
+                console.log("Offline mode failed: Multiple tabs open.");
+            } else if (err.code == 'unimplemented') {
+                console.log("Browser doesn't support offline storage.");
+            }
+        });
+
 } else if (typeof firebase === 'undefined') {
-    alert("CRITICAL ERROR: Firebase SDK not loaded in HTML. Check your internet connection or index.html imports.");
+    alert("CRITICAL ERROR: Firebase SDK not loaded.");
 }
 
 const auth = firebase.auth();
@@ -511,94 +522,142 @@ function handleAuthAction() {
 
 async function loadUserData() {
     if (isGuest) return;
-    if (!currentUser) {
-        // If Firebase hasn't loaded the user yet, wait 500ms and try again
-        setTimeout(loadUserData, 500); 
-        return;
-    }
+    
+    // Wait for Auth to be ready
+    if (!currentUser) { setTimeout(loadUserData, 500); return; }
 
-    // Update Name on Screen
     if (currentUser.displayName) {
         const nameDisplay = document.getElementById('user-display');
         if(nameDisplay) nameDisplay.innerText = currentUser.displayName;
     }
 
+    const statsBox = document.getElementById('quick-stats');
+    if(statsBox) statsBox.style.opacity = "0.5";
+
+    let freshData = null;
+
+    // --- 1. TRY LOADING FROM INTERNET ---
     try {
-        const statsBox = document.getElementById('quick-stats');
-        if(statsBox) statsBox.style.opacity = "0.5";
-
-        let freshData = null;
-
-        // 1. TRY ONLINE LOAD
-        try {
-            // Try to get fresh data from internet
-            const doc = await db.collection('users').doc(currentUser.uid).get();
-            if (doc.exists) {
-                freshData = doc.data();
-                // ✅ SAVE TO PHONE MEMORY (For Offline Use)
-                localStorage.setItem('cached_user_profile', JSON.stringify(freshData));
-            }
-        } catch (networkError) {
-            console.log("⚠️ Offline: Could not fetch new profile.");
+        // We set a short timeout so the app doesn't freeze waiting for internet
+        const doc = await db.collection('users').doc(currentUser.uid).get({ source: 'default' });
+        if (doc.exists) {
+            freshData = doc.data();
+            console.log("✅ Online: Profile Loaded");
+            // SAVE to phone memory for next time
+            localStorage.setItem('cached_user_profile', JSON.stringify(freshData));
         }
+    } catch (e) {
+        console.log("⚠️ Internet Failed. Switching to Offline Mode...");
+    }
 
-        // 2. IF ONLINE FAILED, LOAD FROM PHONE
-        if (!freshData) {
-            const cached = localStorage.getItem('cached_user_profile');
-            if (cached) {
-                console.log("✅ Loaded Offline Profile");
-                freshData = JSON.parse(cached);
-                // Optional: Show a small toast notification that we are using offline data
-            }
+    // --- 2. IF INTERNET FAILED, LOAD FROM PHONE ---
+    if (!freshData) {
+        const cached = localStorage.getItem('cached_user_profile');
+        if (cached) {
+            console.log("✅ Offline: Loaded Saved Profile");
+            freshData = JSON.parse(cached);
+        } else {
+            console.log("❌ No internet and no saved profile.");
+            if(statsBox) statsBox.innerHTML = "<div style='color:red; font-size:12px;'>Offline & No Data. Please connect once.</div>";
+            return;
         }
+    }
 
-        // If we still have no data, stop here
-        if (!freshData) return;
+    // Apply the data
+    userProfile = freshData;
 
-        userProfile = freshData;
+    // Load arrays safely
+    userSolvedIDs = userProfile[getStoreKey('solved')] || [];
+    userBookmarks = userProfile[getStoreKey('bookmarks')] || [];
+    userMistakes = userProfile[getStoreKey('mistakes')] || [];
 
-        // --- DYNAMIC LOADING ---
-        userSolvedIDs = userProfile[getStoreKey('solved')] || [];
-        userBookmarks = userProfile[getStoreKey('bookmarks')] || [];
-        userMistakes = userProfile[getStoreKey('mistakes')] || [];
+    // Update Stats UI
+    renderStatsUI(statsBox); // (Helper function below to keep this clean)
 
-        checkStreak(userProfile);
+    // Check Expiry & Process Questions
+    updateBadgeButton();
+    checkPremiumExpiry();
+    if (allQuestions.length > 0) processData(allQuestions, true);
+}
 
-        // Stats Calculation
-        let totalAttempts = 0;
-        let totalCorrect = 0;
-        const statsObj = userProfile[getStoreKey('stats')] || {};
-        
-        Object.values(statsObj).forEach(s => {
-            totalAttempts += (s.total || 0);
-            totalCorrect += (s.correct || 0);
+// Helper to draw the stats box
+function renderStatsUI(statsBox) {
+    if(!statsBox) return;
+    
+    let totalAttempts = 0, totalCorrect = 0;
+    const statsObj = userProfile[getStoreKey('stats')] || {};
+    Object.values(statsObj).forEach(s => { totalAttempts += (s.total||0); totalCorrect += (s.correct||0); });
+    const accuracy = totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0;
+
+    const config = COURSE_CONFIG[currentCourse];
+    const displayName = config ? config.name : currentCourse;
+
+    statsBox.style.opacity = "1";
+    statsBox.innerHTML = `
+        <div style="margin-top:5px; font-size:14px; line-height:1.8;">
+            <div>✅ ${displayName} Solved: <b style="color:var(--primary);">${userSolvedIDs.length}</b></div>
+            <div>🎯 Accuracy: <b>${accuracy}%</b> <span style="font-size:11px; color:#666;">(${totalCorrect}/${totalAttempts})</span></div>
+            <div style="color:var(--danger);">❌ Pending Mistakes: <b>${userMistakes.length}</b></div>
+            <div style="color:#f59e0b;">⭐ Bookmarked: <b>${userBookmarks.length}</b></div>
+        </div>`;
+}
+
+// ======================================================
+// HELPER: SAVE PROGRESS (Offline & Online)
+// ======================================================
+async function updateUserStats(isCorrect, subject, questionUID) {
+    // 1. Safety Checks
+    if (isGuest || !currentUser) return;
+    if (!userProfile) return;
+
+    // 2. Initialize the stats object if missing
+    const storeKey = getStoreKey('stats'); // e.g., 'MBBS1_stats'
+    if (!userProfile[storeKey]) userProfile[storeKey] = {};
+    if (!userProfile[storeKey][subject]) userProfile[storeKey][subject] = { total: 0, correct: 0 };
+
+    // 3. Update the Numbers (In Memory)
+    userProfile[storeKey][subject].total += 1;
+    if (isCorrect) userProfile[storeKey][subject].correct += 1;
+
+    // 4. Update the Lists (Solved / Mistakes)
+    const solvedKey = getStoreKey('solved');     // e.g., 'MBBS1_solved'
+    const mistakesKey = getStoreKey('mistakes'); // e.g., 'MBBS1_mistakes'
+    
+    // Ensure arrays exist
+    if (!userProfile[solvedKey]) userProfile[solvedKey] = [];
+    if (!userProfile[mistakesKey]) userProfile[mistakesKey] = [];
+
+    // Add to 'Solved' if not already there
+    if (!userProfile[solvedKey].includes(questionUID)) {
+        userProfile[solvedKey].push(questionUID);
+    }
+
+    // Handle Mistakes Logic
+    if (!isCorrect) {
+        // If wrong, add to mistakes
+        if (!userProfile[mistakesKey].includes(questionUID)) {
+            userProfile[mistakesKey].push(questionUID);
+        }
+    } else {
+        // If correct, REMOVE from mistakes (because they fixed it!)
+        userProfile[mistakesKey] = userProfile[mistakesKey].filter(id => id !== questionUID);
+    }
+
+    // 5. CRITICAL: Save to Phone Memory Immediately (Offline Protection)
+    // This ensures if they close the app right now, the progress is saved locally.
+    localStorage.setItem('cached_user_profile', JSON.stringify(userProfile));
+
+    // 6. Send to Cloud (Firebase handles the offline queue)
+    try {
+        await db.collection('users').doc(currentUser.uid).update({
+            [storeKey]: userProfile[storeKey],
+            [solvedKey]: userProfile[solvedKey],
+            [mistakesKey]: userProfile[mistakesKey]
         });
-        
-        const accuracy = totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0;
-
-        // Get Readable Name
-        const config = COURSE_CONFIG[currentCourse];
-        const displayName = config ? config.name : currentCourse;
-
-        if(statsBox) {
-            statsBox.style.opacity = "1";
-            statsBox.innerHTML = `
-                <div style="margin-top:5px; font-size:14px; line-height:1.8;">
-                    <div>✅ ${displayName} Solved: <b style="color:var(--primary);">${userSolvedIDs.length}</b></div>
-                    <div>🎯 Accuracy: <b>${accuracy}%</b> <span style="font-size:11px; color:#666;">(${totalCorrect}/${totalAttempts})</span></div>
-                    <div style="color:var(--danger);">❌ Pending Mistakes: <b>${userMistakes.length}</b></div>
-                    <div style="color:#f59e0b;">⭐ Bookmarked: <b>${userBookmarks.length}</b></div>
-                </div>`;
-        }
-
-        updateBadgeButton();
-        checkPremiumExpiry();
-        
-        // Re-process questions to update 'solved' ticks
-        if (allQuestions.length > 0) processData(allQuestions, true);
-
-    } catch (e) { 
-        console.error("Critical Load Error:", e); 
+    } catch (e) {
+        // If this fails, it means we are offline. 
+        // That's okay! Firebase queues it, and Step 5 saved it locally.
+        console.log("⚠️ Saved locally (Queueing for Cloud)");
     }
 }
 
@@ -1221,6 +1280,7 @@ function checkAnswer(selectedOption, btnElement, q) {
     let userText = String(selectedOption).trim();
     let isCorrect = false;
 
+    // Logic to check if answer matches (handles text vs option letters)
     if (userText.toLowerCase() === correctData.toLowerCase()) isCorrect = true;
     else {
         const map = {'A': q.OptionA, 'B': q.OptionB, 'C': q.OptionC, 'D': q.OptionD, 'E': q.OptionE};
@@ -1230,11 +1290,16 @@ function checkAnswer(selectedOption, btnElement, q) {
     if (isCorrect) {
         btnElement.classList.remove('wrong');
         btnElement.classList.add('correct');
-        saveProgressToDB(q, true); 
+        
+        // ✅ NEW: Save using the Offline-Ready engine
+        updateUserStats(true, q.Subject || "General", q._uid);
+        
         setTimeout(() => showExplanation(q), 300);
     } else {
         btnElement.classList.add('wrong');
-        saveProgressToDB(q, false); 
+        
+        // ✅ NEW: Save using the Offline-Ready engine
+        updateUserStats(false, q.Subject || "General", q._uid);
     }
     
     renderPracticeNavigator();
@@ -2945,6 +3010,7 @@ window.addEventListener('appinstalled', () => {
     deferredPrompt = null;
     console.log('✅ PWA was installed');
 });
+
 
 
 
