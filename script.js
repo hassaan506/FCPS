@@ -1682,53 +1682,62 @@ function deleteReport(id) {
 function deleteReport(id) { db.collection('reports').doc(id).delete().then(()=>loadAdminReports()); }
 
 async function loadAllUsers() {
-    const res = document.getElementById('admin-user-result');
-    res.innerHTML = "Loading users...";
-    
-    let snap;
+    const list = document.getElementById('admin-user-result');
+    const searchInput = document.getElementById('admin-user-input');
+    const searchVal = searchInput ? searchInput.value.trim().toLowerCase() : "";
+
+    list.innerHTML = "<div style='text-align:center; padding:20px;'>Loading database...</div>";
+
     try {
-        snap = await db.collection('users').orderBy('joined', 'desc').limit(500).get();
-    } catch (e) {
-        snap = await db.collection('users').limit(500).get();
-    }
-    
-    const usersByEmail = {};
-    const noEmailAdmins = []; 
-    let hiddenGuests = 0;
+        // 1. Fetch Users (No limit or strict ordering to ensure we get everyone)
+        const snap = await db.collection('users').limit(100).get();
 
-    snap.forEach(doc => {
-        const u = doc.data();
-        u.id = doc.id;
-        if (u.role === 'guest') { hiddenGuests++; return; }
-        if (!u.email) {
-            if (u.role === 'admin' || u.isPremium) noEmailAdmins.push(u);
-        } else {
-            if (!usersByEmail[u.email]) usersByEmail[u.email] = [];
-            usersByEmail[u.email].push(u);
+        if (snap.empty) {
+            list.innerHTML = "<div style='padding:20px; text-align:center;'>No users found.</div>";
+            return;
         }
-    });
 
-    let html = "<div style='background:white; border-radius:12px; overflow:hidden;'>";
-    let count = 0;
+        let html = "";
+        let count = 0;
+        let guestCount = 0;
 
-    Object.keys(usersByEmail).forEach(email => {
-        const accounts = usersByEmail[email];
-        accounts.sort((a, b) => (a.role === 'admin' ? -1 : 1));
-        html += renderUserRow(accounts[0]);
-        count++;
-    });
+        // 2. Loop through users
+        snap.forEach(doc => {
+            const u = doc.data();
+            
+            // --- FILTER: SKIP GUESTS ---
+            if (u.role === 'guest') {
+                guestCount++;
+                return; // Stop here, do not add to HTML
+            }
 
-    noEmailAdmins.forEach(u => {
-        html += renderUserRow(u, `<span style="color:red;">(No Email)</span>`);
-        count++;
-    });
+            const uid = doc.id.toLowerCase();
+            const email = (u.email || "No Email").toLowerCase();
+            
+            // 3. Search Filter
+            if (searchVal === "" || email.includes(searchVal) || uid.includes(searchVal)) {
+                html += renderAdminUserCard(doc); 
+                count++;
+            }
+        });
 
-    res.innerHTML = `
-    <div style="padding:10px; color:#666; font-size:12px; border-bottom:1px solid #eee; display:flex; justify-content:space-between;">
-        <span><b>${count}</b> Users</span>
-        <span style="color:#94a3b8;">(Guests: ${hiddenGuests})</span>
-    </div>` + html + "</div>";
+        // 4. Show Results
+        if (count === 0) {
+             list.innerHTML = `<div style='padding:20px; text-align:center;'>No matching users found.<br><span style="font-size:11px; color:#999;">(Hidden Guests: ${guestCount})</span></div>`;
+        } else {
+             const header = `
+             <div style="padding:10px; font-size:12px; color:#666; text-align:right; border-bottom:1px solid #eee; margin-bottom:10px;">
+                Found: <b>${count}</b> Users <span style="color:#94a3b8; margin-left:10px;">(Hidden Guests: ${guestCount})</span>
+             </div>`;
+             list.innerHTML = header + html;
+        }
+
+    } catch (e) {
+        console.error(e);
+        list.innerHTML = `<div style='color:red; padding:10px;'>Error: ${e.message}</div>`;
+    }
 }
+
 
 function renderUserRow(u, extraLabel = "") {
     const isAdmin = u.role === 'admin';
@@ -2764,5 +2773,44 @@ function backToMainMenu() {
     document.getElementById('main-menu-container').classList.remove('hidden');
 }
 
+// ======================================================
+// 6. ADMIN ACTIONS (Paste at the very bottom of script.js)
+// ======================================================
 
+// --- REPORT ACTIONS ---
+async function resolveReport(id) {
+    if(!confirm("Mark this issue as resolved?")) return;
+    try {
+        await db.collection('reports').doc(id).update({ status: 'resolved' });
+        alert("✅ Issue marked as resolved.");
+        loadAdminReports(); // Refresh the list
+    } catch(e) { alert("Error: " + e.message); }
+}
 
+async function deleteReport(id) {
+    if(!confirm("Delete this report permanently?")) return;
+    try {
+        await db.collection('reports').doc(id).delete();
+        alert("🗑️ Report deleted.");
+        loadAdminReports(); // Refresh the list
+    } catch(e) { alert("Error: " + e.message); }
+}
+
+// --- KEY ACTIONS ---
+async function deleteKey(id) {
+    if(!confirm("Delete this activation key?")) return;
+    try {
+        await db.collection('activation_keys').doc(id).delete();
+        loadAdminKeys(); // Refresh the list
+    } catch(e) { alert("Error: " + e.message); }
+}
+
+// --- PAYMENT ACTIONS ---
+async function rejectPayment(id) {
+    if(!confirm("Reject this payment request?")) return;
+    try {
+        await db.collection('payment_requests').doc(id).update({ status: 'rejected' });
+        alert("❌ Request rejected.");
+        loadAdminPayments(); // Refresh the list
+    } catch(e) { alert("Error: " + e.message); }
+}
