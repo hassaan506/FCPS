@@ -458,8 +458,17 @@ async function signup() {
 }
 
 function logout() {
-    auth.signOut().then(() => {
-        window.location.reload();
+    firebase.auth().signOut().then(() => {
+        localStorage.removeItem('cached_user_profile');
+        localStorage.removeItem('cached_questions_FCPS');
+        localStorage.removeItem('cached_questions_MBBS_1');
+        localStorage.removeItem('cached_questions_MBBS_2');
+        localStorage.removeItem('cached_questions_MBBS_3');
+        localStorage.removeItem('cached_questions_MBBS_4');
+        localStorage.removeItem('cached_questions_MBBS_5');
+
+        // 3. Reload to Login Screen
+        location.reload();
     });
 }
 
@@ -501,9 +510,14 @@ function handleAuthAction() {
 // ======================================================
 
 async function loadUserData() {
-    if (isGuest || !currentUser) return;
+    if (isGuest) return;
+    if (!currentUser) {
+        // If Firebase hasn't loaded the user yet, wait 500ms and try again
+        setTimeout(loadUserData, 500); 
+        return;
+    }
 
-    // Update Display Name in Top Bar
+    // Update Name on Screen
     if (currentUser.displayName) {
         const nameDisplay = document.getElementById('user-display');
         if(nameDisplay) nameDisplay.innerText = currentUser.displayName;
@@ -511,16 +525,42 @@ async function loadUserData() {
 
     try {
         const statsBox = document.getElementById('quick-stats');
-        if(statsBox) statsBox.style.opacity = "0.5"; 
+        if(statsBox) statsBox.style.opacity = "0.5";
 
-        const userDoc = await db.collection('users').doc(currentUser.uid).get();
-        if(!userDoc.exists) return;
-        userProfile = userDoc.data();
+        let freshData = null;
 
-        // --- DYNAMIC LOADING: Use Keys for Current Course ---
+        // 1. TRY ONLINE LOAD
+        try {
+            // Try to get fresh data from internet
+            const doc = await db.collection('users').doc(currentUser.uid).get();
+            if (doc.exists) {
+                freshData = doc.data();
+                // ✅ SAVE TO PHONE MEMORY (For Offline Use)
+                localStorage.setItem('cached_user_profile', JSON.stringify(freshData));
+            }
+        } catch (networkError) {
+            console.log("⚠️ Offline: Could not fetch new profile.");
+        }
+
+        // 2. IF ONLINE FAILED, LOAD FROM PHONE
+        if (!freshData) {
+            const cached = localStorage.getItem('cached_user_profile');
+            if (cached) {
+                console.log("✅ Loaded Offline Profile");
+                freshData = JSON.parse(cached);
+                // Optional: Show a small toast notification that we are using offline data
+            }
+        }
+
+        // If we still have no data, stop here
+        if (!freshData) return;
+
+        userProfile = freshData;
+
+        // --- DYNAMIC LOADING ---
         userSolvedIDs = userProfile[getStoreKey('solved')] || [];
         userBookmarks = userProfile[getStoreKey('bookmarks')] || [];
-        userMistakes = userProfile[getStoreKey('mistakes')] || []; 
+        userMistakes = userProfile[getStoreKey('mistakes')] || [];
 
         checkStreak(userProfile);
 
@@ -536,12 +576,12 @@ async function loadUserData() {
         
         const accuracy = totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0;
 
-        // --- FIX: Get the Readable Name (e.g. "Final Year") ---
+        // Get Readable Name
         const config = COURSE_CONFIG[currentCourse];
         const displayName = config ? config.name : currentCourse;
 
         if(statsBox) {
-            statsBox.style.opacity = "1"; 
+            statsBox.style.opacity = "1";
             statsBox.innerHTML = `
                 <div style="margin-top:5px; font-size:14px; line-height:1.8;">
                     <div>✅ ${displayName} Solved: <b style="color:var(--primary);">${userSolvedIDs.length}</b></div>
@@ -551,13 +591,15 @@ async function loadUserData() {
                 </div>`;
         }
 
-        updateBadgeButton(); 
-        checkPremiumExpiry(); // Check Expiry for THIS course
-
-        // Re-process questions to update 'solved' ticks in menus
+        updateBadgeButton();
+        checkPremiumExpiry();
+        
+        // Re-process questions to update 'solved' ticks
         if (allQuestions.length > 0) processData(allQuestions, true);
 
-    } catch (e) { console.error("Load Error:", e); }
+    } catch (e) { 
+        console.error("Critical Load Error:", e); 
+    }
 }
 
 function checkPremiumExpiry() {
@@ -2903,5 +2945,6 @@ window.addEventListener('appinstalled', () => {
     deferredPrompt = null;
     console.log('✅ PWA was installed');
 });
+
 
 
