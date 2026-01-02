@@ -37,7 +37,7 @@ const COURSE_CONFIG = {
     // --- SUB COURSE: MBBS (Years 1-5) ---
     
     'MBBS_1': { 
-        name: "Frist Year", 
+        name: "First Year", 
         sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQavpclI1-TLczhnGiPiF7g6rG32F542mmjCBIg612NcSAkdhXScIgsK6-4w6uGVM9l_XbQe6aCiOyE/pub?output=csv", 
         prefix: "MBBS1_", 
         theme: "mbbs-mode" 
@@ -491,6 +491,7 @@ function handleAuthAction() {
 async function loadUserData() {
     if (isGuest || !currentUser) return;
 
+    // Update Display Name in Top Bar
     if (currentUser.displayName) {
         const nameDisplay = document.getElementById('user-display');
         if(nameDisplay) nameDisplay.innerText = currentUser.displayName;
@@ -523,11 +524,15 @@ async function loadUserData() {
         
         const accuracy = totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0;
 
+        // --- FIX: Get the Readable Name (e.g. "Final Year") ---
+        const config = COURSE_CONFIG[currentCourse];
+        const displayName = config ? config.name : currentCourse;
+
         if(statsBox) {
             statsBox.style.opacity = "1"; 
             statsBox.innerHTML = `
                 <div style="margin-top:5px; font-size:14px; line-height:1.8;">
-                    <div>✅ ${currentCourse} Solved: <b style="color:var(--primary);">${userSolvedIDs.length}</b></div>
+                    <div>✅ ${displayName} Solved: <b style="color:var(--primary);">${userSolvedIDs.length}</b></div>
                     <div>🎯 Accuracy: <b>${accuracy}%</b> <span style="font-size:11px; color:#666;">(${totalCorrect}/${totalAttempts})</span></div>
                     <div style="color:var(--danger);">❌ Pending Mistakes: <b>${userMistakes.length}</b></div>
                     <div style="color:#f59e0b;">⭐ Bookmarked: <b>${userBookmarks.length}</b></div>
@@ -1623,53 +1628,47 @@ function switchAdminTab(tab) {
 
 async function loadAdminReports() {
     const list = document.getElementById('admin-reports-list');
-    list.innerHTML = "<p style='padding:20px; text-align:center; color:#666;'>Loading reports...</p>";
-    
+    list.innerHTML = "Loading issues...";
+
     try {
-        const snap = await db.collection('reports').orderBy('timestamp', 'desc').limit(20).get();
-        
-        if (snap.empty) {
-            list.innerHTML = "<p style='padding:20px; text-align:center;'>No reports found.</p>";
-            return;
-        }
+        const snap = await db.collection('reports').orderBy('timestamp', 'desc').limit(50).get();
+        if(snap.empty) { list.innerHTML = "No reports found."; return; }
 
         let html = "";
         snap.forEach(doc => {
             const r = doc.data();
+            const dateStr = r.timestamp ? formatDateHelper(r.timestamp.toDate()) : "-";
             
-            // Check if row exists, otherwise show 'Old Report'
-            const rowDisplay = r.sheetRow ? `Row ${r.sheetRow}` : "Old Report (No Row)";
-            const rowColor = r.sheetRow ? "#fef3c7" : "#f1f5f9"; // Yellow for valid rows
-            const rowText = r.sheetRow ? "#d97706" : "#94a3b8";
+            // Fallback if old reports don't have the new fields yet
+            const displayCourse = r.courseName || r.courseId || "Unknown Course";
+            const displayRow = r.excelRow || "Unknown Row";
 
             html += `
-            <div class="report-card" style="border:1px solid #e2e8f0; border-radius:8px; padding:15px; margin-bottom:10px; background:white;">
-                <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:5px;">
-                    <span style="background:${rowColor}; color:${rowText}; font-weight:bold; font-size:11px; padding:2px 8px; border-radius:4px; border:1px solid ${rowText};">
-                        ${rowDisplay}
-                    </span>
-                    <small style="color:#94a3b8; font-size:10px;">${r.timestamp ? formatDateHelper(r.timestamp) : ''}</small>
+            <div class="report-card" style="border-left: 5px solid #ef4444; background: white; padding: 15px; margin-bottom: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:10px;">
+                    <div>
+                        <span style="background:#fee2e2; color:#b91c1c; padding:4px 8px; border-radius:6px; font-weight:bold; font-size:11px; text-transform:uppercase;">${displayCourse}</span>
+                        <span style="background:#e0f2fe; color:#0369a1; padding:4px 8px; border-radius:6px; font-weight:bold; font-size:11px; margin-left:5px;">ROW ${displayRow}</span>
+                    </div>
+                    <span style="font-size:11px; color:#94a3b8;">${dateStr}</span>
+                </div>
+
+                <p style="font-size:13px; color:#334155; margin:0 0 10px 0;">
+                    <b>Issue:</b> ${r.issue}
+                </p>
+                <div style="font-size:11px; color:#64748b;">
+                    Reported by: ${r.reportedBy}
                 </div>
                 
-                <div style="font-weight:600; color:#ef4444; font-size:13px; margin-bottom:4px;">
-                    Reason: ${r.reportReason}
-                </div>
-                
-                <div style="background:#f8fafc; padding:8px; border-radius:6px; font-size:12px; color:#334155; margin-bottom:8px;">
-                    "${r.questionText ? r.questionText.substring(0, 100) : 'Question text missing'}..."
-                </div>
-                
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <small style="color:#64748b;">By: ${r.reportedBy}</small>
-                    <button onclick="deleteReport('${doc.id}')" style="background:white; border:1px solid #cbd5e1; color:#64748b; padding:2px 8px; border-radius:4px; font-size:10px; cursor:pointer;">Resolve / Delete</button>
+                <div style="margin-top:10px; text-align:right;">
+                    <button onclick="resolveReport('${doc.id}')" style="background:white; border:1px solid #cbd5e1; color:#475569; padding:5px 10px; border-radius:6px; font-size:11px; cursor:pointer;">✅ Mark Resolved</button>
+                    <button onclick="deleteReport('${doc.id}')" style="background:white; border:1px solid #fca5a5; color:#ef4444; padding:5px 10px; border-radius:6px; font-size:11px; cursor:pointer; margin-left:5px;">🗑️ Delete</button>
                 </div>
             </div>`;
         });
         list.innerHTML = html;
-        
-    } catch (e) {
-        console.error(e);
-        list.innerHTML = `<p style="color:red; padding:20px;">Error loading reports: ${e.message}</p>`;
+    } catch(e) {
+        list.innerHTML = "Error loading reports: " + e.message;
     }
 }
 
@@ -2499,45 +2498,46 @@ function openReportModal(questionId) {
 }
 
 async function submitReportFinal() {
+    const text = document.getElementById('report-text').value;
     const qId = document.getElementById('report-q-id').value;
-    const reason = document.getElementById('report-text').value.trim();
     
-    if(!reason) return alert("Please describe the error.");
-    
-    // 1. Get the Question Data again to include SheetRow
-    const qData = allQuestions.find(item => item._uid === qId);
-    
-    const btn = event.target; // Uses the global event object from the click
-    btn.innerText = "Sending...";
-    btn.disabled = true;
+    if (!text) return alert("Please describe the issue.");
 
+    // 1. Get Readable Course Name (e.g. "Final Year")
+    const courseName = COURSE_CONFIG[currentCourse] ? COURSE_CONFIG[currentCourse].name : currentCourse;
+
+    // 2. Calculate Google Sheet Row
+    // The array starts at 0. In Sheets, Row 1 is Header. So Data starts at Row 2.
+    // Logic: Array Index + 2 = Excel Row
+    const rowIndex = allQuestions.findIndex(q => q._uid === qId);
+    const excelRow = (rowIndex !== -1) ? (rowIndex + 2) : "Unknown";
+
+    // 3. Prepare the Report
+    const reportData = {
+        questionId: qId,
+        excelRow: excelRow,        // <--- NEW: The exact row in your sheet
+        courseId: currentCourse,   // e.g. MBBS_5
+        courseName: courseName,    // <--- NEW: e.g. Final Year
+        issue: text,
+        reportedBy: currentUser ? currentUser.email : 'Guest',
+        timestamp: new Date(),
+        status: 'open'
+    };
+
+    // 4. Save to Database
     try {
-        await db.collection('reports').add({
-            questionId: qId,
-            questionText: qData ? qData.Question : "Unknown",
-            sheetRow: qData ? (qData.SheetRow || "N/A") : "N/A",
-            subject: qData ? qData.Subject : "General",
-            reportReason: reason,
-            reportedBy: currentUser ? currentUser.email : "Guest",
-            timestamp: new Date()
-        });
-
-        alert("✅ Report Sent! We will fix this shortly.");
+        await db.collection('reports').add(reportData);
         
-        // 4. Close Modal with Animation
-        const modal = document.getElementById('report-modal');
-        modal.classList.remove('active'); // Fade out
+        // UI Cleanup
+        document.getElementById('report-modal').classList.remove('active');
+        setTimeout(() => document.getElementById('report-modal').classList.add('hidden'), 300);
+        document.getElementById('report-text').value = "";
         
-        // Wait 300ms (match CSS transition) before hiding completely
-        setTimeout(() => {
-            modal.classList.add('hidden');
-        }, 300);
-
-    } catch(e) {
-        alert("Error: " + e.message);
-    } finally {
-        btn.innerText = "Submit Report";
-        btn.disabled = false;
+        // Helper Message for You
+        alert(`✅ Report Sent!\n\n(Note for Admin: This is Row ${excelRow} in the ${courseName} sheet)`);
+        
+    } catch (e) {
+        alert("Error sending report: " + e.message);
     }
 }
 
@@ -2763,5 +2763,6 @@ function backToMainMenu() {
     document.getElementById('mbbs-years-container').classList.add('hidden');
     document.getElementById('main-menu-container').classList.remove('hidden');
 }
+
 
 
