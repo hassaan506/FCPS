@@ -764,15 +764,18 @@ function checkStreak(data) {
 let adminUsersCache = {}; 
 
 // 1. MAIN LOAD FUNCTION
+// 1. MAIN LOAD FUNCTION (Strict Mode)
+// 1. MAIN LOAD FUNCTION (Strict Mode + Ghost Cleaner)
 async function loadAllUsers() {
     const list = document.getElementById('admin-user-result');
     const searchInput = document.getElementById('admin-user-input');
     const searchVal = searchInput ? searchInput.value.trim().toLowerCase() : "";
 
-    list.innerHTML = "<div style='text-align:center; padding:20px; color:#666;'>Loading users...</div>";
+    list.innerHTML = "<div style='text-align:center; padding:20px; color:#666;'>Refreshing database...</div>";
 
     try {
-        const snap = await db.collection('users').limit(100).get();
+        // Force fetch from SERVER to ignore old cache
+        const snap = await db.collection('users').get({ source: 'server' });
         
         if (snap.empty) {
             list.innerHTML = "<div style='padding:20px; text-align:center;'>No users found.</div>";
@@ -781,7 +784,8 @@ async function loadAllUsers() {
 
         let html = "";
         let visibleCount = 0;
-        let guestCount = 0; // ✅ Counter for guests
+        let guestCount = 0;
+        let ghostCount = 0;
 
         adminUsersCache = {}; 
 
@@ -789,17 +793,21 @@ async function loadAllUsers() {
             const u = doc.data();
             const uid = doc.id;
             
-            // ✅ COUNT GUESTS, BUT DO NOT SHOW THEM
+            // 1. Count Guests
             if (u.role === 'guest') {
                 guestCount++;
                 return; 
             }
+            // 2. Count Ghosts (No Email)
+            if (!u.email) {
+                ghostCount++;
+                return; 
+            }
 
-            const email = (u.email || "No Email").toLowerCase();
+            const email = (u.email || "").toLowerCase();
             const name = (u.displayName || "").toLowerCase();
             const idStr = uid.toLowerCase();
 
-            // Search Filter
             if (searchVal === "" || email.includes(searchVal) || name.includes(searchVal) || idStr.includes(searchVal)) {
                 adminUsersCache[uid] = doc; 
                 html += renderCompactUserRow(doc);
@@ -807,18 +815,25 @@ async function loadAllUsers() {
             }
         });
 
-        // ✅ SHOW COUNT + GUESTS AT THE TOP
+        // ✅ DYNAMIC HEADER WITH CLEAN BUTTON
+        let ghostAction = "";
+        if (ghostCount > 0) {
+            ghostAction = ` <button onclick="adminDeleteGhosts()" style="margin-left:5px; font-size:10px; background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; border-radius:4px; cursor:pointer; padding:2px 6px;">🗑️ Clean Up</button>`;
+        }
+
         const header = `
-        <div style="padding:10px 15px; font-size:12px; color:#64748b; background:#f8fafc; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between;">
-            <span>Showing: <b>${visibleCount}</b> Users</span>
-            <span style="color:#94a3b8;">(Hidden Guests: <b>${guestCount}</b>)</span>
+        <div style="padding:10px 15px; font-size:12px; color:#64748b; background:#f8fafc; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+            <span><b>${visibleCount}</b> Real Students</span>
+            <span style="color:#94a3b8; font-size:11px;">
+                (Hidden: <b>${guestCount}</b> Guests, <b>${ghostCount}</b> Ghosts${ghostAction})
+            </span>
         </div>`;
 
         list.innerHTML = header + (html || "<div style='padding:20px; text-align:center;'>No matching users.</div>");
 
     } catch (e) {
         console.error(e);
-        list.innerHTML = `<div style='color:red; padding:10px;'>Error: ${e.message}</div>`;
+        list.innerHTML = `<div style='color:red; padding:10px;'>Offline Error: Connect to internet to refresh list.</div>`;
     }
 }
 
@@ -3077,11 +3092,39 @@ window.addEventListener('appinstalled', () => {
     console.log('✅ PWA was installed');
 });
 
+async function adminDeleteGhosts() {
+    if(!confirm("⚠️ Delete all 'Ghost' users?\n\n(These are broken records with no email address).\nThis cannot be undone.")) return;
+    
+    const list = document.getElementById('admin-user-result');
+    // Show loading state so you know it's working
+    list.innerHTML = "<div style='padding:20px; text-align:center; color:red;'>🧹 Cleaning up database... please wait...</div>";
 
+    try {
+        const snap = await db.collection('users').get({ source: 'server' });
+        const batch = db.batch();
+        let deleteCount = 0;
 
+        snap.forEach(doc => {
+            const u = doc.data();
+            // Identify the ghosts again
+            if (!u.email) {
+                batch.delete(doc.ref);
+                deleteCount++;
+            }
+        });
 
+        if (deleteCount > 0) {
+            await batch.commit();
+            alert(`✅ Success! Deleted ${deleteCount} ghost records.`);
+        } else {
+            alert("No ghosts found to delete.");
+        }
+        
+        // Reload list to see the clean result
+        loadAllUsers();
 
-
-
-
-
+    } catch(e) {
+        alert("Error: " + e.message);
+        loadAllUsers(); // Restore list if error
+    }
+}
