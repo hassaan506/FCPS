@@ -37,35 +37,35 @@ const COURSE_CONFIG = {
     // --- SUB COURSE: MBBS (Years 1-5) ---
     
     'MBBS_1': { 
-        name: "MBBS Year 1", 
+        name: "Frist Year", 
         sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQavpclI1-TLczhnGiPiF7g6rG32F542mmjCBIg612NcSAkdhXScIgsK6-4w6uGVM9l_XbQe6aCiOyE/pub?output=csv", 
         prefix: "MBBS1_", 
         theme: "mbbs-mode" 
     },
 
     'MBBS_2': { 
-        name: "MBBS Year 2", 
+        name: "Second Year", 
         sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQvD7HQYS6gFFcwo4_DTkvR9BIh70xjM4M1XMTSD5DFeGv69BTXtGVchf3ON6CFxRJ3GIN7t2ojU5Gb/pub?output=csv", 
         prefix: "MBBS2_", 
         theme: "mbbs-mode" 
     },
 
     'MBBS_3': { 
-        name: "MBBS Year 3", 
+        name: "Third Year", 
         sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSPwZrNWryh937oxXV1zwnBYtnhysGCiJ0wLaV7J941MFGVhaG_1BC-ZODYZlgDATW6UOXrJrac-bdV/pub?output=csv", 
         prefix: "MBBS3_", 
         theme: "mbbs-mode" 
     },
 
     'MBBS_4': { 
-        name: "MBBS Year 4", 
+        name: "Fourth Year", 
         sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTTGsPZWg-U9_zG2_FWkQWDp5nsQ8OVGqQnoqdqxw4bQz2JSAYsgPvrgbrwX8gtiJj5LrY9MUaNvkBn/pub?output=csv", 
         prefix: "MBBS4_", 
         theme: "mbbs-mode" 
     },
 
     'MBBS_5': { 
-        name: "MBBS Final Year", 
+        name: "Final Year", 
         sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6fLWMz_k89yK_S8kfjqAGs9I_fGzBE-WQ-Ci8l-D5ownRGV0I1Tz-ifZZKBOTXZAx9bvs4wVuWLID/pub?output=csv", 
         prefix: "MBBS_", 
         theme: "mbbs-mode" 
@@ -293,12 +293,12 @@ function selectCourse(courseName) {
     // 1. Apply Visual Theme
     document.body.className = config.theme; 
     
-    // 2. Update Header
+    // 2. Update Header with the NICE NAME, not the ID
     const badge = document.getElementById('active-course-badge');
-    if(badge) badge.innerText = courseName;
+    if(badge) badge.innerText = config.name; // <--- This fixes the top badge
     
     const title = document.getElementById('stats-title');
-    if(title) title.innerText = `📊 ${courseName} Progress`;
+    if(title) title.innerText = `📊 ${config.name} Progress`; // <--- This fixes the dashboard title
 
     // 3. Load Data & Dashboard
     showScreen('dashboard-screen');
@@ -307,8 +307,8 @@ function selectCourse(courseName) {
     allQuestions = [];
     filteredQuestions = [];
     
-    loadQuestions(config.sheet); // Dynamic URL
-    loadUserData(); // Dynamic Prefix Loading
+    loadQuestions(config.sheet); 
+    loadUserData(); 
 }
 
 function returnToCourseSelection() {
@@ -1610,7 +1610,14 @@ function switchAdminTab(tab) {
     
     if(tab==='reports') loadAdminReports();
     if(tab==='payments') loadAdminPayments();
-    if(tab==='keys') loadAdminKeys();
+    
+    if(tab==='keys') {
+        // --- FIX: POPULATE KEY GENERATOR DROPDOWN DYNAMICALLY ---
+        const select = document.getElementById('key-course-select');
+        if(select) select.innerHTML = getCourseOptionsHTML('FCPS');
+        loadAdminKeys();
+    }
+    
     if(tab==='users') loadAllUsers();
 }
 
@@ -1953,9 +1960,24 @@ async function adminLookupUser(targetId) {
 
 function renderAdminUserCard(doc) {
     const u = doc.data();
-    const fcpsActive = u.isPremium && isDateActive(u.expiryDate);
-    const mbbsActive = u.MBBS_isPremium && isDateActive(u.MBBS_expiryDate);
     const isBanned = u.disabled === true;
+
+    // Generate dynamic badges for all active courses
+    let statusHtml = "";
+    Object.keys(COURSE_CONFIG).forEach(key => {
+        const conf = COURSE_CONFIG[key];
+        // Check if user has this specific course active
+        const isPrem = u[conf.prefix + 'isPremium'];
+        const expiry = u[conf.prefix + 'expiryDate'];
+        
+        if (isPrem && isDateActive(expiry)) {
+            statusHtml += `<div style="background:#dcfce7; color:#166534; padding:5px 8px; border-radius:6px; font-size:11px; margin-bottom:5px; border:1px solid #bbf7d0;">
+                ✅ <b>${conf.name}</b> Active
+            </div>`;
+        }
+    });
+
+    if(statusHtml === "") statusHtml = `<div style="color:#64748b; font-size:12px;">No active subscriptions.</div>`;
 
     return `
     <div class="user-card">
@@ -1966,26 +1988,22 @@ function renderAdminUserCard(doc) {
         <h3>${u.email}</h3>
         <p style="font-size:12px; color:#666;">UID: ${doc.id}</p>
         
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:15px 0;">
-            <div style="background:#f8fafc; padding:10px; border-radius:8px;">
-                <strong>FCPS Status</strong><br>
-                ${fcpsActive ? '✅ Active' : '🔒 Free'}
-            </div>
-            <div style="background:#f8fafc; padding:10px; border-radius:8px;">
-                <strong>MBBS Status</strong><br>
-                ${mbbsActive ? '✅ Active' : '🔒 Free'}
-            </div>
+        <div style="background:#f8fafc; padding:15px; border-radius:8px; margin:15px 0; border:1px solid #e2e8f0;">
+            <strong>Current Status:</strong><br>
+            ${statusHtml}
         </div>
         
         <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
 
         <h4>Grant Subscription</h4>
-        <div style="display:flex; gap:5px; flex-wrap:wrap; align-items:center;">
-            <select id="adm-c-${doc.id}" style="padding:5px; border:1px solid #ccc; border-radius:4px;">
-                <option value="FCPS">FCPS Part 1</option>
-                <option value="MBBS">MBBS Final Year</option>
+        <div style="display:flex; gap:5px; flex-direction:column;">
+            <label style="font-size:11px; font-weight:bold; color:#64748b;">Select Course:</label>
+            <select id="adm-c-${doc.id}" style="padding:8px; border:1px solid #ccc; border-radius:4px; width:100%;">
+                ${getCourseOptionsHTML('FCPS')}
             </select>
-            <select id="adm-p-${doc.id}" style="padding:5px; border:1px solid #ccc; border-radius:4px;">
+
+            <label style="font-size:11px; font-weight:bold; color:#64748b; margin-top:5px;">Duration:</label>
+            <select id="adm-p-${doc.id}" style="padding:8px; border:1px solid #ccc; border-radius:4px; width:100%;">
                 <option value="1_day">1 Day</option>
                 <option value="1_week">1 Week</option>
                 <option value="15_days">15 Days</option>
@@ -1995,7 +2013,8 @@ function renderAdminUserCard(doc) {
                 <option value="12_months">12 Months</option>
                 <option value="lifetime">Lifetime</option>
             </select>
-            <button onclick="adminGrantPremium('${doc.id}')" style="background:#10b981; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Grant</button>
+
+            <button onclick="adminGrantPremium('${doc.id}')" style="margin-top:10px; background:#10b981; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-weight:bold;">✅ Grant Access</button>
         </div>
 
         <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
@@ -2010,7 +2029,6 @@ function renderAdminUserCard(doc) {
         </div>
     </div>`;
 }
-
 async function adminGrantPremium(uid) {
     const course = document.getElementById(`adm-c-${uid}`).value;
     const plan = document.getElementById(`adm-p-${uid}`).value;
@@ -2103,31 +2121,24 @@ async function openProfileModal() {
         freshData = userProfile || {};
     }
 
-    const emailElem = document.getElementById('profile-email');
-    const userInput = document.getElementById('edit-username');
-    
-    emailElem.innerText = currentUser.email;
-    
-    if (freshData.username) {
-        userInput.value = freshData.username;
-        userInput.disabled = true; 
-        userInput.style.backgroundColor = "#f1f5f9"; 
-        userInput.style.color = "#64748b"; 
-        userInput.style.cursor = "not-allowed";
-        userInput.title = "Username cannot be changed. Contact Admin.";
-    } else {
-        userInput.value = ""; 
-        userInput.disabled = false; 
-        userInput.style.backgroundColor = "white"; 
-        userInput.style.color = "#0072ff"; 
-        userInput.style.cursor = "text"; 
-        userInput.placeholder = "Create a username (One-time only)";
-    }
-
+    // ... (Existing code for Email/Name inputs remains the same) ...
+    document.getElementById('profile-email').innerText = currentUser.email;
     document.getElementById('edit-name').value = freshData.displayName || "";
     document.getElementById('edit-phone').value = freshData.phone || "";
     document.getElementById('edit-college').value = freshData.college || "";
     document.getElementById('edit-exam').value = freshData.targetExam || "FCPS-1";
+    
+    // Username Logic (Keep existing)
+    const userInput = document.getElementById('edit-username');
+    if (freshData.username) {
+        userInput.value = freshData.username;
+        userInput.disabled = true; 
+        userInput.style.backgroundColor = "#f1f5f9"; 
+    } else {
+        userInput.value = ""; 
+        userInput.disabled = false; 
+        userInput.style.backgroundColor = "white"; 
+    }
 
     let joinDateRaw = freshData.joined || currentUser.metadata.creationTime;
     let joinDateObj = parseDateRobust(joinDateRaw);
@@ -2136,14 +2147,16 @@ async function openProfileModal() {
     const planElem = document.getElementById('profile-plan');
     const expiryElem = document.getElementById('profile-expiry');
 
-    // Show status for CURRENT COURSE
-    const premKey = getStoreKey('isPremium');
-    const expKey = getStoreKey('expiryDate');
-    const isPrem = freshData[premKey];
+    // --- FIX: USE CORRECT PREFIX AND NAME ---
+    const currentConfig = COURSE_CONFIG[currentCourse]; // Get Config for current course
+    const prefix = currentConfig.prefix;
+    const readableName = currentConfig.name;
+
+    const isPrem = freshData[prefix + 'isPremium'];
+    const expiryRaw = freshData[prefix + 'expiryDate'];
     
     if (isPrem) {
-        planElem.innerText = `${currentCourse} PREMIUM 👑`;
-        const expiryRaw = freshData[expKey];
+        planElem.innerText = `${readableName} PREMIUM 👑`; // <--- Now says "First Year PREMIUM"
         if (isDateActive(expiryRaw)) {
              expiryElem.innerText = formatDateHelper(expiryRaw);
              expiryElem.style.color = "#d97706";
@@ -2152,7 +2165,7 @@ async function openProfileModal() {
              expiryElem.style.color = "red";
         }
     } else {
-        planElem.innerText = `${currentCourse} Free Plan`;
+        planElem.innerText = `${readableName} Free Plan`;
         expiryElem.innerText = "-";
         expiryElem.style.color = "#64748b";
     }
@@ -2286,10 +2299,13 @@ async function openAnalytics() {
 
     try {
         const doc = await db.collection('users').doc(currentUser.uid).get();
-        // ISOLATED STATS (This is already correct as it uses getStoreKey)
+        // ISOLATED STATS: Uses the correct key (e.g., MBBS1_stats)
         const stats = doc.data()[getStoreKey('stats')] || {};
         
-        let html = `<div class="perf-section-title">📊 ${currentCourse} Performance</div>`;
+        // --- FIX: Use the readable name (e.g. "First Year") from config ---
+        const displayName = COURSE_CONFIG[currentCourse].name; 
+        
+        let html = `<div class="perf-section-title">📊 ${displayName} Performance</div>`;
         
         Object.keys(stats).forEach(subj => {
             const s = stats[subj];
@@ -2307,26 +2323,26 @@ async function openAnalytics() {
             </div>`;
         });
 
-        html += `<div class="perf-section-title" style="margin-top:30px;">📜 Recent ${currentCourse} Exams</div>
+        html += `<div class="perf-section-title" style="margin-top:30px;">📜 Recent ${displayName} Exams</div>
                  <table class="exam-table">
                     <thead><tr><th>Date</th><th>Subject</th><th>Score</th></tr></thead>
                     <tbody>`;
         
-        // 1. FETCH MORE RECORDS (Limit increased to 20 to ensure we find enough matches)
+        // 1. FETCH MORE RECORDS 
         const snaps = await db.collection('users').doc(currentUser.uid)
             .collection('results')
             .orderBy('date','desc')
             .limit(20) 
             .get();
         
-        // 2. FILTER THE RECORDS (The Fix)
-        // We convert docs to data and filter by the current course name
+        // 2. FILTER THE RECORDS 
         const allResults = snaps.docs.map(doc => doc.data());
+        // We filter by checking if the saved subject contains our current course key (e.g. MBBS_1)
         const filteredResults = allResults.filter(r => r.subject && r.subject.includes(currentCourse));
 
         // 3. CHECK IF EMPTY AFTER FILTERING
         if(filteredResults.length === 0) {
-            html += `<tr><td colspan="3">No ${currentCourse} exams yet.</td></tr>`;
+            html += `<tr><td colspan="3">No ${displayName} exams yet.</td></tr>`;
         } else {
             // 4. DISPLAY ONLY FILTERED RESULTS (Show max 5)
             filteredResults.slice(0, 5).forEach(d => {
@@ -2586,6 +2602,18 @@ async function resetAccountData() {
     }
 }
 
+// --- HELPER: Generate Dropdown Options for Admin ---
+function getCourseOptionsHTML(selectedValue) {
+    let html = "";
+    // Loop through every course in your config (FCPS, MBBS_1, MBBS_2, etc.)
+    Object.keys(COURSE_CONFIG).forEach(key => {
+        const course = COURSE_CONFIG[key];
+        const isSelected = (key === selectedValue) ? "selected" : "";
+        html += `<option value="${key}" ${isSelected}>${course.name}</option>`;
+    });
+    return html;
+}
+
 // =========================================================
 // 🎮 UNIVERSAL INPUT MANAGER (v6 - Bookmarks & Double Tap)
 // =========================================================
@@ -2735,4 +2763,5 @@ function backToMainMenu() {
     document.getElementById('mbbs-years-container').classList.add('hidden');
     document.getElementById('main-menu-container').classList.remove('hidden');
 }
+
 
