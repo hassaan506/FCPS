@@ -758,8 +758,251 @@ function checkStreak(data) {
 }
 
 // ======================================================
-// 5. DATA LOADING & PROCESSING
+// 5. UNIFIED ADMIN USER MANAGEMENT
 // ======================================================
+
+let adminUsersCache = {}; // Stores user data for the popup
+
+// 1. MAIN LOAD FUNCTION (Handles both List & Search)
+async function loadAllUsers() {
+    const list = document.getElementById('admin-user-result');
+    const searchInput = document.getElementById('admin-user-input');
+    const searchVal = searchInput ? searchInput.value.trim().toLowerCase() : "";
+
+    list.innerHTML = "<div style='text-align:center; padding:20px; color:#666;'>Loading users...</div>";
+
+    try {
+        // Fetch users (limit 100 to prevent slowness)
+        const snap = await db.collection('users').limit(100).get();
+        
+        if (snap.empty) {
+            list.innerHTML = "<div style='padding:20px; text-align:center;'>No users found.</div>";
+            return;
+        }
+
+        let html = "";
+        adminUsersCache = {}; // Clear cache
+
+        snap.forEach(doc => {
+            const u = doc.data();
+            const uid = doc.id;
+            
+            // Skip Guests
+            if (u.role === 'guest') return;
+
+            const email = (u.email || "No Email").toLowerCase();
+            const name = (u.displayName || "").toLowerCase();
+            const idStr = uid.toLowerCase();
+
+            // Search Filter
+            if (searchVal === "" || email.includes(searchVal) || name.includes(searchVal) || idStr.includes(searchVal)) {
+                
+                // Save data to cache
+                adminUsersCache[uid] = doc; 
+
+                // Render Compact Row
+                html += renderCompactUserRow(doc);
+            }
+        });
+
+        list.innerHTML = html || "<div style='padding:20px; text-align:center;'>No matching users.</div>";
+
+    } catch (e) {
+        console.error(e);
+        list.innerHTML = `<div style='color:red; padding:10px;'>Error: ${e.message}</div>`;
+    }
+}
+
+// 2. SEARCH BUTTON FUNCTION
+function adminLookupUser() {
+    loadAllUsers();
+}
+
+// 3. RENDER COMPACT ROW (Clean View)
+function renderCompactUserRow(doc) {
+    const u = doc.data();
+    const uid = doc.id;
+
+    // Determine Badge
+    let badge = `<span style="background:#f1f5f9; color:#64748b; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600;">FREE</span>`;
+    
+    // Check if Premium (Global or Specific)
+    let isPrem = false;
+    if (u.isPremium && u.premiumExpiry > Date.now()) isPrem = true;
+    Object.keys(COURSE_CONFIG).forEach(k => {
+        if(u[COURSE_CONFIG[k].prefix + 'isPremium']) isPrem = true;
+    });
+
+    if(isPrem) badge = `<span style="background:#dcfce7; color:#166534; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600; border:1px solid #bbf7d0;">PREMIUM</span>`;
+    if(u.disabled) badge = `<span style="background:#fee2e2; color:#991b1b; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600;">BANNED</span>`;
+
+    return `
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 15px; border-bottom:1px solid #f1f5f9; background:white;">
+        <div style="flex:1;">
+            <div style="font-weight:600; color:#334155; font-size:14px; margin-bottom:2px;">
+                ${u.displayName || "Unknown User"}
+            </div>
+            <div style="font-size:12px; color:#64748b;">
+                ${u.email || u.username || uid}
+            </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+            ${badge}
+            <button onclick="openManageUserModal('${uid}')" 
+                style="background:#3b82f6; color:white; border:none; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:500;">
+                ⚙️ Manage
+            </button>
+        </div>
+    </div>`;
+}
+
+// 4. POPUP MODAL LOGIC (Detailed View)
+function openManageUserModal(uid) {
+    const doc = adminUsersCache[uid];
+    if (!doc) return alert("Please refresh the list.");
+    
+    const u = doc.data();
+    const isBanned = u.disabled === true;
+
+    // List Active Subscriptions
+    let activeSubs = "";
+    Object.keys(COURSE_CONFIG).forEach(key => {
+        const conf = COURSE_CONFIG[key];
+        const prefix = conf.prefix;
+        
+        if (u[prefix + 'isPremium']) {
+            const expiry = u[prefix + 'expiryDate'];
+            let timeTxt = "Active";
+            
+            if(expiry) {
+                const d = (expiry.toDate ? expiry.toDate() : new Date(expiry));
+                const days = Math.ceil((d - Date.now()) / 86400000);
+                timeTxt = (days > 10000) ? "Lifetime" : `${days} days left`;
+            }
+
+            activeSubs += `
+            <div style="display:flex; justify-content:space-between; font-size:12px; padding:6px 0; border-bottom:1px dashed #eee;">
+                <span>✅ <b>${conf.name}</b></span>
+                <span style="color:#166534;">${timeTxt}</span>
+            </div>`;
+        }
+    });
+
+    if(activeSubs === "") activeSubs = `<div style="font-size:12px; color:#94a3b8; font-style:italic;">No active subscriptions.</div>`;
+
+    // Dropdown Options
+    let courseOpts = "";
+    Object.keys(COURSE_CONFIG).forEach(k => {
+        courseOpts += `<option value="${k}">${COURSE_CONFIG[k].name}</option>`;
+    });
+
+    const modalHtml = `
+    <div class="admin-modal-overlay" id="admin-modal" onclick="closeAdminModal(event)">
+        <div class="admin-modal-content">
+            <button class="close-modal-btn" onclick="closeAdminModal(true)">&times;</button>
+            
+            <div style="text-align:center; margin-bottom:20px;">
+                <h3 style="margin:0 0 5px 0; color:#1e293b;">${u.displayName || "User Profile"}</h3>
+                <div style="color:#64748b; font-size:13px;">${u.email || "No Email"}</div>
+                <div style="color:#cbd5e1; font-size:10px;">UID: ${uid}</div>
+            </div>
+
+            <div style="background:#f8fafc; padding:15px; border-radius:8px; margin-bottom:20px;">
+                <label style="font-size:10px; font-weight:700; color:#64748b; text-transform:uppercase; display:block; margin-bottom:8px;">Current Access</label>
+                ${activeSubs}
+            </div>
+
+            <div style="border:1px solid #dcfce7; background:#f0fdf4; padding:15px; border-radius:8px; margin-bottom:20px;">
+                <h4 style="margin:0 0 10px 0; color:#15803d; font-size:14px;">🎁 Add Subscription</h4>
+                <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <select id="modal-course" style="flex:1; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px;">${courseOpts}</select>
+                    
+                    <select id="modal-duration" style="flex:1; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px;">
+                        <option value="1">1 Day</option>
+                        <option value="7">1 Week</option>
+                        <option value="15">15 Days</option>
+                        <option value="30">1 Month</option>
+                        <option value="90">3 Months</option>
+                        <option value="180">6 Months</option>
+                        <option value="365">1 Year</option>
+                        <option value="9999">Lifetime</option>
+                    </select>
+
+                </div>
+                <button onclick="runModalGrant('${uid}')" style="width:100%; background:#16a34a; color:white; border:none; padding:10px; border-radius:6px; font-weight:600; cursor:pointer;">Grant Access</button>
+            </div>
+
+            <h4 style="margin:0 0 10px 0; color:#b91c1c; font-size:14px;">⚠️ Actions</h4>
+            <div style="display:flex; gap:10px;">
+                <button onclick="adminRevokePremium('${uid}')" style="flex:1; background:#f59e0b; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:500;">🚫 Revoke All</button>
+                ${isBanned 
+                    ? `<button onclick="adminToggleBan('${uid}', false)" style="flex:1; background:#10b981; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:500;">✅ Unban</button>`
+                    : `<button onclick="adminToggleBan('${uid}', true)" style="flex:1; background:#ef4444; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:500;">⛔ Ban User</button>`
+                }
+            </div>
+        </div>
+    </div>`;
+
+    const div = document.createElement('div');
+    div.innerHTML = modalHtml;
+    document.body.appendChild(div.firstElementChild);
+}
+
+function closeAdminModal(force) {
+    if (force === true || (event && event.target.id === 'admin-modal')) {
+        const modal = document.getElementById('admin-modal');
+        if (modal) modal.remove();
+    }
+}
+
+// 5. ACTION FUNCTIONS
+async function runModalGrant(uid) {
+    const course = document.getElementById('modal-course').value;
+    const days = parseInt(document.getElementById('modal-duration').value);
+    
+    if(!confirm(`Grant ${days} days for ${COURSE_CONFIG[course].name}?`)) return;
+
+    try {
+        const prefix = COURSE_CONFIG[course].prefix;
+        const durationMs = (days === 9999) ? 4000000000000 : (days * 86400000);
+        const newExpiry = new Date(Date.now() + durationMs);
+
+        await db.collection('users').doc(uid).update({
+            [`${prefix}isPremium`]: true,
+            [`${prefix}plan`]: (days===9999 ? 'lifetime' : 'admin_grant'),
+            [`${prefix}expiryDate`]: newExpiry
+        });
+        
+        alert("✅ Subscription Granted!");
+        closeAdminModal(true);
+        loadAllUsers(); // Refresh UI
+    } catch(e) { alert("Error: " + e.message); }
+}
+
+async function adminToggleBan(uid, shouldBan) {
+    if(!confirm(shouldBan ? "Ban this user?" : "Unban this user?")) return;
+    try {
+        await db.collection('users').doc(uid).update({ disabled: shouldBan });
+        alert("Status Updated.");
+        closeAdminModal(true);
+        loadAllUsers();
+    } catch(e) { alert("Error: " + e.message); }
+}
+
+async function adminRevokePremium(uid) {
+    if(!confirm("Remove ALL subscriptions?")) return;
+    try {
+        const updates = { isPremium: false, premiumExpiry: null };
+        Object.keys(COURSE_CONFIG).forEach(k => {
+            updates[COURSE_CONFIG[k].prefix + 'isPremium'] = false;
+            updates[COURSE_CONFIG[k].prefix + 'expiryDate'] = null;
+        });
+        await db.collection('users').doc(uid).update(updates);
+        alert("Revoked.");
+        closeAdminModal(true);
+        loadAllUsers();
+    } catch(e) { alert("Error: " + e.message); }
+}
 
 function loadQuestions(url) {
     const storageKey = 'cached_questions_' + currentCourse; // Unique key (e.g. cached_questions_MBBS_1)
@@ -1841,100 +2084,7 @@ function deleteReport(id) {
 
 function deleteReport(id) { db.collection('reports').doc(id).delete().then(()=>loadAdminReports()); }
 
-async function loadAllUsers() {
-    const list = document.getElementById('admin-user-result');
-    const searchInput = document.getElementById('admin-user-input');
-    const searchVal = searchInput ? searchInput.value.trim().toLowerCase() : "";
 
-    list.innerHTML = "<div style='text-align:center; padding:20px;'>Loading database...</div>";
-
-    try {
-        // 1. Fetch Users (No limit or strict ordering to ensure we get everyone)
-        const snap = await db.collection('users').limit(100).get();
-
-        if (snap.empty) {
-            list.innerHTML = "<div style='padding:20px; text-align:center;'>No users found.</div>";
-            return;
-        }
-
-        let html = "";
-        let count = 0;
-        let guestCount = 0;
-
-        // 2. Loop through users
-        snap.forEach(doc => {
-            const u = doc.data();
-            
-            // --- FILTER: SKIP GUESTS ---
-            if (u.role === 'guest') {
-                guestCount++;
-                return; // Stop here, do not add to HTML
-            }
-
-            const uid = doc.id.toLowerCase();
-            const email = (u.email || "No Email").toLowerCase();
-            
-            // 3. Search Filter
-            if (searchVal === "" || email.includes(searchVal) || uid.includes(searchVal)) {
-                html += renderAdminUserCard(doc); 
-                count++;
-            }
-        });
-
-        // 4. Show Results
-        if (count === 0) {
-             list.innerHTML = `<div style='padding:20px; text-align:center;'>No matching users found.<br><span style="font-size:11px; color:#999;">(Hidden Guests: ${guestCount})</span></div>`;
-        } else {
-             const header = `
-             <div style="padding:10px; font-size:12px; color:#666; text-align:right; border-bottom:1px solid #eee; margin-bottom:10px;">
-                Found: <b>${count}</b> Users <span style="color:#94a3b8; margin-left:10px;">(Hidden Guests: ${guestCount})</span>
-             </div>`;
-             list.innerHTML = header + html;
-        }
-
-    } catch (e) {
-        console.error(e);
-        list.innerHTML = `<div style='color:red; padding:10px;'>Error: ${e.message}</div>`;
-    }
-}
-
-
-function renderUserRow(u, extraLabel = "") {
-    const isAdmin = u.role === 'admin';
-    
-    // Check Statuses
-    const fcpsPrem = u.isPremium; 
-    const mbbsPrem = u.MBBS_isPremium;
-    const isBanned = u.disabled === true; // Check if banned
-    
-    let badgeHTML = "";
-    
-    // 1. Determine Subscription Badge
-    if (fcpsPrem && mbbsPrem) badgeHTML = `<span class="status-badge badge-premium" style="background:purple; color:white;">ALL ACCESS</span>`;
-    else if (fcpsPrem) badgeHTML = `<span class="status-badge badge-premium">FCPS Premium</span>`;
-    else if (mbbsPrem) badgeHTML = `<span class="status-badge badge-premium" style="background:#dcfce7; color:#166534;">MBBS Premium</span>`;
-    else badgeHTML = `<span class="status-badge badge-free">Free User</span>`;
-
-    // 2. Add Banned Badge if applicable
-    if (isBanned) {
-        badgeHTML += ` <span class="status-badge" style="background:#ef4444; color:white; margin-left:5px;">⛔ BANNED</span>`;
-    }
-
-    return `
-    <div class="user-list-item ${isAdmin ? "is-admin-row" : ""}" style="${isBanned ? 'opacity: 0.6; background: #fee2e2;' : ''}">
-        <div class="user-info-group">
-            <div class="user-email-text">
-                ${isAdmin ? '⭐' : ''} ${u.email || "Unknown User"} 
-                ${u.username ? `(@${u.username})` : ""} ${extraLabel}
-            </div>
-            <div class="user-meta-row">
-                ${badgeHTML}
-                <span style="border-left:1px solid #cbd5e1; padding-left:10px;">Joined: ${formatDateHelper(u.joined)}</span>
-            </div>
-        </div>
-        <button class="btn-manage-user" onclick="adminLookupUser('${u.id}')">⚙️ Manage</button>
-    </div>`;
-}
 
 async function loadAdminPayments() {
     const list = document.getElementById('admin-payments-list');
@@ -2106,135 +2256,6 @@ async function loadAdminKeys() {
 
 function deleteKey(id) {
     if(confirm("Delete key?")) db.collection('activation_keys').doc(id).delete().then(() => loadAdminKeys());
-}
-
-async function adminLookupUser(targetId) {
-    const input = targetId || document.getElementById('admin-user-input').value.trim();
-    const res = document.getElementById('admin-user-result');
-    res.innerHTML = "Searching...";
-    
-    let doc = null;
-
-    let directDoc = await db.collection('users').doc(input).get();
-    if(directDoc.exists) {
-        doc = directDoc;
-    } 
-    else {
-        let s = await db.collection('users').where('email','==',input).limit(1).get();
-        if(!s.empty) {
-            doc = s.docs[0];
-        } 
-        else {
-            let u = await db.collection('users').where('username','==',input.toLowerCase()).limit(1).get();
-            if(!u.empty) {
-                doc = u.docs[0];
-            }
-        }
-    }
-
-    if(!doc || !doc.exists) { res.innerHTML = "Not found (Check Email, Username or UID)"; return; }
-    res.innerHTML = renderAdminUserCard(doc); 
-}
-
-function renderAdminUserCard(doc) {
-    const u = doc.data();
-    const isBanned = u.disabled === true;
-
-    // Generate dynamic badges for all active courses
-    let statusHtml = "";
-    Object.keys(COURSE_CONFIG).forEach(key => {
-        const conf = COURSE_CONFIG[key];
-        // Check if user has this specific course active
-        const isPrem = u[conf.prefix + 'isPremium'];
-        const expiry = u[conf.prefix + 'expiryDate'];
-        
-        if (isPrem && isDateActive(expiry)) {
-            statusHtml += `<div style="background:#dcfce7; color:#166534; padding:5px 8px; border-radius:6px; font-size:11px; margin-bottom:5px; border:1px solid #bbf7d0;">
-                ✅ <b>${conf.name}</b> Active
-            </div>`;
-        }
-    });
-
-    if(statusHtml === "") statusHtml = `<div style="color:#64748b; font-size:12px;">No active subscriptions.</div>`;
-
-    return `
-    <div class="user-card">
-        <div style="margin-bottom:15px;">
-            <button onclick="loadAllUsers()" style="background:#64748b; color:white; border:none; padding:5px 10px; border-radius:4px; font-size:12px; cursor:pointer;">⬅ Back to Users List</button>
-        </div>
-
-        <h3>${u.email}</h3>
-        <p style="font-size:12px; color:#666;">UID: ${doc.id}</p>
-        
-        <div style="background:#f8fafc; padding:15px; border-radius:8px; margin:15px 0; border:1px solid #e2e8f0;">
-            <strong>Current Status:</strong><br>
-            ${statusHtml}
-        </div>
-        
-        <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
-
-        <h4>Grant Subscription</h4>
-        <div style="display:flex; gap:5px; flex-direction:column;">
-            <label style="font-size:11px; font-weight:bold; color:#64748b;">Select Course:</label>
-            <select id="adm-c-${doc.id}" style="padding:8px; border:1px solid #ccc; border-radius:4px; width:100%;">
-                ${getCourseOptionsHTML('FCPS')}
-            </select>
-
-            <label style="font-size:11px; font-weight:bold; color:#64748b; margin-top:5px;">Duration:</label>
-            <select id="adm-p-${doc.id}" style="padding:8px; border:1px solid #ccc; border-radius:4px; width:100%;">
-                <option value="1_day">1 Day</option>
-                <option value="1_week">1 Week</option>
-                <option value="15_days">15 Days</option>
-                <option value="1_month">1 Month</option>
-                <option value="3_months">3 Months</option>
-                <option value="6_months">6 Months</option>
-                <option value="12_months">12 Months</option>
-                <option value="lifetime">Lifetime</option>
-            </select>
-
-            <button onclick="adminGrantPremium('${doc.id}')" style="margin-top:10px; background:#10b981; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer; font-weight:bold;">✅ Grant Access</button>
-        </div>
-
-        <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
-
-        <h4>Danger Zone</h4>
-        <div style="display:flex; gap:10px;">
-            <button onclick="adminRevokePremium('${doc.id}')" style="background:#f59e0b; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">🚫 Revoke All</button>
-            ${isBanned 
-                ? `<button onclick="adminToggleBan('${doc.id}', false)" style="background:#10b981; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">✅ Unban User</button>`
-                : `<button onclick="adminToggleBan('${doc.id}', true)" style="background:#ef4444; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">⛔ Ban User</button>`
-            }
-        </div>
-    </div>`;
-}
-async function adminGrantPremium(uid) {
-    const course = document.getElementById(`adm-c-${uid}`).value;
-    const plan = document.getElementById(`adm-p-${uid}`).value;
-    const duration = PLAN_DURATIONS[plan];
-    const prefix = COURSE_CONFIG[course].prefix;
-    
-    let newExpiry = (plan === 'lifetime') ? new Date("2100-01-01") : new Date(Date.now() + duration);
-
-    await db.collection('users').doc(uid).update({
-        [`${prefix}isPremium`]: true,
-        [`${prefix}plan`]: plan,
-        [`${prefix}expiryDate`]: newExpiry
-    });
-    alert(`Granted ${course}!`);
-    adminLookupUser(uid);
-}
-
-async function adminRevokePremium(uid) {
-    if(!confirm("Revoke premium for both courses?")) return;
-    await db.collection('users').doc(uid).update({ isPremium: false, MBBS_isPremium: false });
-    alert("🚫 Revoked All Premium");
-    adminLookupUser(uid); 
-}
-
-async function adminToggleBan(uid, newStatus) {
-    await db.collection('users').doc(uid).update({ disabled: newStatus });
-    alert("Status Updated");
-    adminLookupUser(uid); 
 }
 
 // ======================================================
@@ -3037,6 +3058,7 @@ window.addEventListener('appinstalled', () => {
     deferredPrompt = null;
     console.log('✅ PWA was installed');
 });
+
 
 
 
