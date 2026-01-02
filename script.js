@@ -2814,3 +2814,56 @@ async function rejectPayment(id) {
         loadAdminPayments(); // Refresh the list
     } catch(e) { alert("Error: " + e.message); }
 }
+
+// ======================================================
+// 7. PWA INSTALL LOGIC
+// ======================================================
+let deferredPrompt; // Variable to store the install event
+
+// 1. Listen for the browser saying "This app can be installed!"
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Prevent the mini-infobar from appearing on mobile
+    e.preventDefault();
+    // Stash the event so it can be triggered later.
+    deferredPrompt = e;
+    
+    // Show the install button (if it was hidden)
+    const installBtn = document.getElementById('install-btn');
+    if (installBtn) {
+        installBtn.style.display = 'block';
+        installBtn.innerHTML = "📱 Install App";
+    }
+    console.log("✅ App is ready to install!");
+});
+
+// 2. Handle the Button Click
+const installBtn = document.getElementById('install-btn');
+if(installBtn) {
+    installBtn.addEventListener('click', async () => {
+        if (!deferredPrompt) {
+            alert("App is already installed or not supported in this browser. \n\n(Try using Chrome or Safari's 'Add to Home Screen' option).");
+            return;
+        }
+        
+        // Show the install prompt
+        deferredPrompt.prompt();
+        
+        // Wait for the user to respond to the prompt
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`User response to the install prompt: ${outcome}`);
+        
+        // We've used the prompt, so clear it
+        deferredPrompt = null;
+    });
+}
+
+// 3. Detect if App is already installed
+window.addEventListener('appinstalled', () => {
+    // Hide the install button
+    const installBtn = document.getElementById('install-btn');
+    if (installBtn) installBtn.style.display = 'none';
+    
+    // Clear the prompt
+    deferredPrompt = null;
+    console.log('✅ PWA was installed');
+});
