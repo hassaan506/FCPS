@@ -375,10 +375,11 @@ async function login() {
     
     if(!input || !p) return alert("Please enter credentials");
     msg.innerText = "Verifying...";
-   
+    
     let emailToUse = input;
 
-    // Username Lookup Logic
+    // --- 1. USERNAME LOOKUP LOGIC ---
+    // (This part often fails offline because it needs to search the DB)
     if (!input.includes('@')) {
         try {
             const snap = await db.collection('users').where('username', '==', input).limit(1).get();
@@ -389,14 +390,37 @@ async function login() {
             emailToUse = snap.docs[0].data().email;
         } catch (e) {
             console.error("Username lookup failed:", e);
-            msg.innerText = "Login Error: " + e.message;
+            // If offline, the DB search fails. Tell user to try Email.
+            if (e.message.includes('offline') || e.code === 'unavailable') {
+                 alert("⚠️ Offline Mode Limitation\n\nWe cannot search for Usernames while offline.\nPlease try logging in with your EMAIL address instead.");
+                 msg.innerText = "❌ Offline: Use Email to login.";
+            } else {
+                 msg.innerText = "Login Error: " + e.message;
+            }
             return;
         }
     }
     
+    // --- 2. AUTHENTICATION LOGIC ---
     auth.signInWithEmailAndPassword(emailToUse, p)
+        .then(() => {
+            msg.innerText = "✅ Success! Loading...";
+            // onAuthStateChanged will handle the redirect
+        })
         .catch(err => {
-            msg.innerText = "❌ " + err.message;
+            console.error("Login Failed:", err);
+            
+            // ✅ SPECIFIC OFFLINE ERROR HANDLING
+            if (err.code === 'auth/network-request-failed') {
+                alert("⚠️ CONNECTION REQUIRED\n\nYou are currently OFFLINE.\n\nYou must connect to the internet to Log In.\n(Once logged in, you can go offline anytime).");
+                msg.innerText = "❌ Offline. Please connect to internet.";
+            } else if (err.code === 'auth/wrong-password') {
+                msg.innerText = "❌ Incorrect Password.";
+            } else if (err.code === 'auth/user-not-found') {
+                msg.innerText = "❌ User not found.";
+            } else {
+                msg.innerText = "❌ " + err.message;
+            }
         });
 }
 
@@ -3010,6 +3034,7 @@ window.addEventListener('appinstalled', () => {
     deferredPrompt = null;
     console.log('✅ PWA was installed');
 });
+
 
 
 
