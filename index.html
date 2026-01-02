@@ -57,36 +57,64 @@
 </div>
 
 <div id="course-selection-screen" class="screen hidden">
-    <div class="joinCard" style="max-width: 800px;">
-        <h1 class="gameTitle">Select Course</h1>
-        <p class="subTitle">Choose your area of study</p>
+<div class="joinCard" style="max-width: 900px;">
+    <h1 class="gameTitle">Select Course</h1>
+    <p class="subTitle">Choose your area of study</p>
+    
+    <div id="main-menu-container" class="course-grid" style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
         
-        <div class="course-grid" style="display: flex; flex-wrap: wrap; gap: 20px; margin-top: 30px; justify-content: center;">
-            
-            <div class="course-card" onclick="selectCourse('FCPS')" style="flex: 1; min-width: 250px; border: 2px solid #0072ff; padding: 25px; border-radius: 15px; cursor: pointer; background: white; transition: transform 0.2s; position: relative;">
-                <div style="font-size: 40px; margin-bottom: 15px;">🩺</div>
-                <h2 style="color: #0072ff; margin: 0 0 10px 0;">FCPS-1</h2>
-                <p style="color: #64748b; font-size: 13px; line-height: 1.5;">Complete preparation for FCPS Part 1. Extensive question bank.</p>
-                <div id="status-badge-FCPS" style="margin-top: 15px; display: inline-block; padding: 4px 10px; border-radius: 5px; font-size: 11px; font-weight: bold; background: #e2e8f0; color: #475569;">
-                    Checking...
-                </div>
-            </div>
-
-            <div class="course-card" onclick="selectCourse('MBBS')" style="flex: 1; min-width: 250px; border: 2px solid #10b981; padding: 25px; border-radius: 15px; cursor: pointer; background: white; transition: transform 0.2s; position: relative;">
-                <div style="font-size: 40px; margin-bottom: 15px;">🎓</div>
-                <h2 style="color: #10b981; margin: 0 0 10px 0;">MBBS Final Year</h2>
-                <p style="color: #64748b; font-size: 13px; line-height: 1.5;">Specialized focus on Final Year subjects and past papers.</p>
-                <div id="status-badge-MBBS" style="margin-top: 15px; display: inline-block; padding: 4px 10px; border-radius: 5px; font-size: 11px; font-weight: bold; background: #e2e8f0; color: #475569;">
-                    Checking...
-                </div>
-            </div>
-
+        <div class="course-card" onclick="selectCourse('FCPS')" style="flex: 1; min-width: 250px; border: 2px solid #0072ff; padding: 30px; border-radius: 15px; cursor: pointer; background: white;">
+            <div style="font-size: 50px; margin-bottom: 15px;">🩺</div>
+            <h2 style="color: #0072ff; margin: 0 0 10px 0;">FCPS Part 1</h2>
+            <p style="color: #64748b;">Complete preparation for FCPS.</p>
+            <div id="status-badge-FCPS" style="margin-top: 15px; display: inline-block; padding: 4px 10px; border-radius: 5px; font-size: 11px; font-weight: bold; background: #e2e8f0; color: #475569;">Checking...</div>
         </div>
 
-        <div style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px;">
-            <button class="secondary" onclick="logout()" style="width: auto;">Log Out</button>
+        <div class="course-card" onclick="showMbbsYears()" style="flex: 1; min-width: 250px; border: 2px solid #10b981; padding: 30px; border-radius: 15px; cursor: pointer; background: white;">
+            <div style="font-size: 50px; margin-bottom: 15px;">🎓</div>
+            <h2 style="color: #10b981; margin: 0 0 10px 0;">MBBS</h2>
+            <p style="color: #64748b;">Year 1 to Final Year.</p>
+            <div style="margin-top: 15px; font-size: 12px; color: #10b981; font-weight: bold;">Select Year ➜</div>
         </div>
     </div>
+
+    <div id="mbbs-years-container" class="hidden">
+        <button onclick="backToMainMenu()" class="secondary" style="width: auto; padding: 8px 20px; margin-bottom: 20px;">⬅ Back to Main Menu</button>
+        
+        <div class="course-grid" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
+            
+            <div class="course-card" onclick="selectCourse('MBBS_1')" style="flex: 1; min-width: 200px; border: 2px solid #10b981; padding: 20px; border-radius: 15px; cursor: pointer;">
+                <h3 style="color: #10b981; margin:0;">1st Year</h3>
+                <div id="status-badge-MBBS1" style="font-size: 10px; background:#f1f5f9; padding:2px 8px; border-radius:4px; display:inline-block; margin-top:5px;">Check</div>
+            </div>
+
+            <div class="course-card" onclick="selectCourse('MBBS_2')" style="flex: 1; min-width: 200px; border: 2px solid #10b981; padding: 20px; border-radius: 15px; cursor: pointer;">
+                <h3 style="color: #10b981; margin:0;">2nd Year</h3>
+                <div id="status-badge-MBBS2" style="font-size: 10px; background:#f1f5f9; padding:2px 8px; border-radius:4px; display:inline-block; margin-top:5px;">Check</div>
+            </div>
+
+            <div class="course-card" onclick="selectCourse('MBBS_3')" style="flex: 1; min-width: 200px; border: 2px solid #10b981; padding: 20px; border-radius: 15px; cursor: pointer;">
+                <h3 style="color: #10b981; margin:0;">3rd Year</h3>
+                <div id="status-badge-MBBS3" style="font-size: 10px; background:#f1f5f9; padding:2px 8px; border-radius:4px; display:inline-block; margin-top:5px;">Check</div>
+            </div>
+
+            <div class="course-card" onclick="selectCourse('MBBS_4')" style="flex: 1; min-width: 200px; border: 2px solid #10b981; padding: 20px; border-radius: 15px; cursor: pointer;">
+                <h3 style="color: #10b981; margin:0;">4th Year</h3>
+                <div id="status-badge-MBBS4" style="font-size: 10px; background:#f1f5f9; padding:2px 8px; border-radius:4px; display:inline-block; margin-top:5px;">Check</div>
+            </div>
+
+            <div class="course-card" onclick="selectCourse('MBBS_5')" style="flex: 1; min-width: 200px; border: 2px solid #10b981; padding: 20px; border-radius: 15px; cursor: pointer; background: #ecfdf5;">
+                <h3 style="color: #10b981; margin:0;">Final Year</h3>
+                <div id="status-badge-MBBS5" style="font-size: 10px; background:#d1fae5; padding:2px 8px; border-radius:4px; display:inline-block; margin-top:5px;">Check</div>
+            </div>
+
+        </div>
+    </div>
+
+    <div style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px;">
+        <button class="secondary" onclick="logout()" style="width: auto;">Log Out</button>
+    </div>
+</div>
 </div>
 <div id="dashboard-screen" class="screen hidden">        
     <div class="topBar">
@@ -588,6 +616,7 @@
 <script src="script.js"></script>
 </body>
 </html>
+
 
 
 
