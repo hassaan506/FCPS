@@ -758,12 +758,12 @@ function checkStreak(data) {
 }
 
 // ======================================================
-// 5. UNIFIED ADMIN USER MANAGEMENT
+// 5. UNIFIED ADMIN USER MANAGEMENT (Fixed Guests & Badges)
 // ======================================================
 
-let adminUsersCache = {}; // Stores user data for the popup
+let adminUsersCache = {}; 
 
-// 1. MAIN LOAD FUNCTION (Handles both List & Search)
+// 1. MAIN LOAD FUNCTION
 async function loadAllUsers() {
     const list = document.getElementById('admin-user-result');
     const searchInput = document.getElementById('admin-user-input');
@@ -772,7 +772,6 @@ async function loadAllUsers() {
     list.innerHTML = "<div style='text-align:center; padding:20px; color:#666;'>Loading users...</div>";
 
     try {
-        // Fetch users (limit 100 to prevent slowness)
         const snap = await db.collection('users').limit(100).get();
         
         if (snap.empty) {
@@ -781,14 +780,20 @@ async function loadAllUsers() {
         }
 
         let html = "";
-        adminUsersCache = {}; // Clear cache
+        let visibleCount = 0;
+        let guestCount = 0; // ✅ Counter for guests
+
+        adminUsersCache = {}; 
 
         snap.forEach(doc => {
             const u = doc.data();
             const uid = doc.id;
             
-            // Skip Guests
-            if (u.role === 'guest') return;
+            // ✅ COUNT GUESTS, BUT DO NOT SHOW THEM
+            if (u.role === 'guest') {
+                guestCount++;
+                return; 
+            }
 
             const email = (u.email || "No Email").toLowerCase();
             const name = (u.displayName || "").toLowerCase();
@@ -796,16 +801,20 @@ async function loadAllUsers() {
 
             // Search Filter
             if (searchVal === "" || email.includes(searchVal) || name.includes(searchVal) || idStr.includes(searchVal)) {
-                
-                // Save data to cache
                 adminUsersCache[uid] = doc; 
-
-                // Render Compact Row
                 html += renderCompactUserRow(doc);
+                visibleCount++;
             }
         });
 
-        list.innerHTML = html || "<div style='padding:20px; text-align:center;'>No matching users.</div>";
+        // ✅ SHOW COUNT + GUESTS AT THE TOP
+        const header = `
+        <div style="padding:10px 15px; font-size:12px; color:#64748b; background:#f8fafc; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between;">
+            <span>Showing: <b>${visibleCount}</b> Users</span>
+            <span style="color:#94a3b8;">(Hidden Guests: <b>${guestCount}</b>)</span>
+        </div>`;
+
+        list.innerHTML = header + (html || "<div style='padding:20px; text-align:center;'>No matching users.</div>");
 
     } catch (e) {
         console.error(e);
@@ -814,19 +823,17 @@ async function loadAllUsers() {
 }
 
 // 2. SEARCH BUTTON FUNCTION
-function adminLookupUser() {
-    loadAllUsers();
-}
+function adminLookupUser() { loadAllUsers(); }
 
-// 3. RENDER COMPACT ROW (Clean View)
+// 3. RENDER COMPACT ROW (With Admin Badge)
 function renderCompactUserRow(doc) {
     const u = doc.data();
     const uid = doc.id;
 
-    // Determine Badge
+    // ✅ DEFAULT BADGE
     let badge = `<span style="background:#f1f5f9; color:#64748b; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600;">FREE</span>`;
     
-    // Check if Premium (Global or Specific)
+    // ✅ CHECK PREMIUM
     let isPrem = false;
     if (u.isPremium && u.premiumExpiry > Date.now()) isPrem = true;
     Object.keys(COURSE_CONFIG).forEach(k => {
@@ -834,6 +841,13 @@ function renderCompactUserRow(doc) {
     });
 
     if(isPrem) badge = `<span style="background:#dcfce7; color:#166534; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600; border:1px solid #bbf7d0;">PREMIUM</span>`;
+    
+    // ✅ CHECK ADMIN (Purple Badge)
+    if(u.role === 'admin') {
+        badge = `<span style="background:#7e22ce; color:white; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600;">ADMIN</span>`;
+    }
+
+    // ✅ CHECK BANNED
     if(u.disabled) badge = `<span style="background:#fee2e2; color:#991b1b; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600;">BANNED</span>`;
 
     return `
@@ -2703,38 +2717,31 @@ async function submitReportFinal() {
     
     if (!text) return alert("Please describe the issue.");
 
-    // 1. Get Readable Course Name (e.g. "Final Year")
     const courseName = COURSE_CONFIG[currentCourse] ? COURSE_CONFIG[currentCourse].name : currentCourse;
-
-    // 2. Calculate Google Sheet Row
-    // The array starts at 0. In Sheets, Row 1 is Header. So Data starts at Row 2.
-    // Logic: Array Index + 2 = Excel Row
     const rowIndex = allQuestions.findIndex(q => q._uid === qId);
     const excelRow = (rowIndex !== -1) ? (rowIndex + 2) : "Unknown";
 
-    // 3. Prepare the Report
     const reportData = {
         questionId: qId,
-        excelRow: excelRow,        // <--- NEW: The exact row in your sheet
-        courseId: currentCourse,   // e.g. MBBS_5
-        courseName: courseName,    // <--- NEW: e.g. Final Year
+        excelRow: excelRow,       
+        courseId: currentCourse,   
+        courseName: courseName,    
         issue: text,
         reportedBy: currentUser ? currentUser.email : 'Guest',
         timestamp: new Date(),
-        status: 'open'
+        
+        // ✅ CHANGE THIS FROM 'open' TO 'pending'
+        status: 'pending' 
     };
 
-    // 4. Save to Database
     try {
         await db.collection('reports').add(reportData);
         
-        // UI Cleanup
         document.getElementById('report-modal').classList.remove('active');
         setTimeout(() => document.getElementById('report-modal').classList.add('hidden'), 300);
         document.getElementById('report-text').value = "";
         
-        // Helper Message for You
-        alert(`✅ Report Sent!\n\n(Note for Admin: This is Row ${excelRow} in the ${courseName} sheet)`);
+        alert(`✅ Report Sent!\n\n(Row ${excelRow} in ${courseName})`);
         
     } catch (e) {
         alert("Error sending report: " + e.message);
@@ -3058,6 +3065,7 @@ window.addEventListener('appinstalled', () => {
     deferredPrompt = null;
     console.log('✅ PWA was installed');
 });
+
 
 
 
