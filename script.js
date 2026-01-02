@@ -845,10 +845,9 @@ function renderCompactUserRow(doc) {
     const u = doc.data();
     const uid = doc.id;
 
-    // ✅ DEFAULT BADGE
+    // 1. Badge Logic
     let badge = `<span style="background:#f1f5f9; color:#64748b; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600;">FREE</span>`;
     
-    // ✅ CHECK PREMIUM
     let isPrem = false;
     if (u.isPremium && u.premiumExpiry > Date.now()) isPrem = true;
     Object.keys(COURSE_CONFIG).forEach(k => {
@@ -856,30 +855,40 @@ function renderCompactUserRow(doc) {
     });
 
     if(isPrem) badge = `<span style="background:#dcfce7; color:#166534; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600; border:1px solid #bbf7d0;">PREMIUM</span>`;
-    
-    // ✅ CHECK ADMIN (Purple Badge)
-    if(u.role === 'admin') {
-        badge = `<span style="background:#7e22ce; color:white; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600;">ADMIN</span>`;
-    }
-
-    // ✅ CHECK BANNED
+    if(u.role === 'admin') badge = `<span style="background:#7e22ce; color:white; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600;">ADMIN</span>`;
     if(u.disabled) badge = `<span style="background:#fee2e2; color:#991b1b; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600;">BANNED</span>`;
 
+    // 2. Name Display Logic (Handle Unknowns)
+    const displayName = u.displayName 
+        ? u.displayName 
+        : `<span style="color:#ef4444; font-style:italic;">Unknown User</span>`;
+
+    // 3. Email Display Logic (Handle missing emails)
+    const displayEmail = u.email || `<span style="color:#94a3b8; font-family:monospace;">${uid}</span>`;
+
     return `
-    <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 15px; border-bottom:1px solid #f1f5f9; background:white;">
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 15px; border-bottom:1px solid #f1f5f9; background:white;">
+        
         <div style="flex:1;">
-            <div style="font-weight:600; color:#334155; font-size:14px; margin-bottom:2px;">
-                ${u.displayName || "Unknown User"}
+            <div style="font-weight:600; color:#334155; font-size:14px;">
+                ${displayName}
             </div>
             <div style="font-size:12px; color:#64748b;">
-                ${u.email || u.username || uid}
+                ${displayEmail}
             </div>
         </div>
-        <div style="display:flex; align-items:center; gap:12px;">
+
+        <div style="display:flex; align-items:center; gap:8px;">
             ${badge}
+            
             <button onclick="openManageUserModal('${uid}')" 
-                style="background:#3b82f6; color:white; border:none; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:500;">
-                ⚙️ Manage
+                style="background:#3b82f6; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-size:12px;">
+                ⚙️
+            </button>
+
+            <button onclick="adminDeleteUserDoc('${uid}')" 
+                style="background:#fee2e2; color:#991b1b; border:1px solid #fecaca; padding:6px 10px; border-radius:6px; cursor:pointer; font-size:12px;" title="Permanently Delete User">
+                🗑️
             </button>
         </div>
     </div>`;
@@ -3128,3 +3137,4 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
