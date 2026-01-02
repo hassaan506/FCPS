@@ -1785,47 +1785,50 @@ function switchAdminTab(tab) {
 
 async function loadAdminReports() {
     const list = document.getElementById('admin-reports-list');
-    list.innerHTML = "Loading issues...";
+    list.innerHTML = '<div style="padding:20px; text-align:center;">Loading reports...</div>';
 
     try {
-        const snap = await db.collection('reports').orderBy('timestamp', 'desc').limit(50).get();
-        if(snap.empty) { list.innerHTML = "No reports found."; return; }
+        const snap = await db.collection('reports').where('status', '==', 'pending').get();
+        if(snap.empty) {
+            list.innerHTML = "<div style='padding:20px; text-align:center; color:#888;'>✅ No pending reports.</div>";
+            return;
+        }
 
         let html = "";
         snap.forEach(doc => {
             const r = doc.data();
-            const dateStr = r.timestamp ? formatDateHelper(r.timestamp.toDate()) : "-";
             
-            // Fallback if old reports don't have the new fields yet
-            const displayCourse = r.courseName || r.courseId || "Unknown Course";
-            const displayRow = r.excelRow || "Unknown Row";
+            // --- FIND THE QUESTION TEXT ---
+            // We search your loaded Excel data for the matching ID
+            const qData = allQuestions.find(q => q._uid === r.questionID || q.id === r.questionID);
+            
+            // Fallback text if question not found (e.g. from a different course)
+            const questionText = qData 
+                ? `<div style="font-weight:bold; color:#333; margin-bottom:4px;">Q: ${qData.Question.substring(0, 100)}...</div>` 
+                : `<div style="color:red; font-size:12px;">(Question Data Not Found - ID: ${r.questionID})</div>`;
 
             html += `
-            <div class="report-card" style="border-left: 5px solid #ef4444; background: white; padding: 15px; margin-bottom: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-                <div style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:10px;">
-                    <div>
-                        <span style="background:#fee2e2; color:#b91c1c; padding:4px 8px; border-radius:6px; font-weight:bold; font-size:11px; text-transform:uppercase;">${displayCourse}</span>
-                        <span style="background:#e0f2fe; color:#0369a1; padding:4px 8px; border-radius:6px; font-weight:bold; font-size:11px; margin-left:5px;">ROW ${displayRow}</span>
-                    </div>
-                    <span style="font-size:11px; color:#94a3b8;">${dateStr}</span>
-                </div>
-
-                <p style="font-size:13px; color:#334155; margin:0 0 10px 0;">
-                    <b>Issue:</b> ${r.issue}
-                </p>
-                <div style="font-size:11px; color:#64748b;">
-                    Reported by: ${r.reportedBy}
+            <div class="admin-card" style="border-left:4px solid var(--danger);">
+                <div style="font-size:12px; color:#666; margin-bottom:5px;">
+                    <span style="background:#fee2e2; color:#991b1b; padding:2px 6px; border-radius:4px;">${r.issueType || "Issue"}</span>
+                    Reported by: <b>${r.userEmail || "Unknown"}</b>
                 </div>
                 
-                <div style="margin-top:10px; text-align:right;">
-                    <button onclick="resolveReport('${doc.id}')" style="background:white; border:1px solid #cbd5e1; color:#475569; padding:5px 10px; border-radius:6px; font-size:11px; cursor:pointer;">✅ Mark Resolved</button>
-                    <button onclick="deleteReport('${doc.id}')" style="background:white; border:1px solid #fca5a5; color:#ef4444; padding:5px 10px; border-radius:6px; font-size:11px; cursor:pointer; margin-left:5px;">🗑️ Delete</button>
+                ${questionText}
+                
+                <div style="background:#f8f9fa; padding:8px; border-radius:6px; margin:8px 0; font-size:13px; color:#444;">
+                    "${r.details || "No details provided."}"
+                </div>
+
+                <div style="text-align:right; margin-top:8px;">
+                    <button class="btn-sm" style="background:#10b981; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;" onclick="resolveReport('${doc.id}')">✅ Mark Resolved</button>
+                    <button class="btn-sm" style="background:#ef4444; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; margin-left:5px;" onclick="deleteReport('${doc.id}')">🗑️ Delete</button>
                 </div>
             </div>`;
         });
         list.innerHTML = html;
     } catch(e) {
-        list.innerHTML = "Error loading reports: " + e.message;
+        list.innerHTML = "Error: " + e.message;
     }
 }
 
@@ -3034,6 +3037,7 @@ window.addEventListener('appinstalled', () => {
     deferredPrompt = null;
     console.log('✅ PWA was installed');
 });
+
 
 
 
