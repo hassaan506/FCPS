@@ -1,3 +1,15 @@
+// ======================================================
+// PWA & OFFLINE SETUP
+// ======================================================
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        navigator.serviceWorker
+            .register("sw.js")
+            .then((reg) => console.log("✅ Service Worker Registered"))
+            .catch((err) => console.log("❌ SW Failed:", err));
+    });
+}
+
 // HANDLE PWA SHORTCUTS
 window.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
@@ -624,17 +636,31 @@ function checkStreak(data) {
 // 5. DATA LOADING & PROCESSING
 // ======================================================
 
-function loadQuestions(sheetURLOverride) {
-    const url = sheetURLOverride || GOOGLE_SHEET_URL; // Fallback
+function loadQuestions(url) {
+    const storageKey = 'cached_questions_' + currentCourse; // Unique key (e.g. cached_questions_MBBS_1)
     
-    // Clear menus while loading
-    const menu = document.getElementById('dynamic-menus');
-    if(menu) menu.innerHTML = "<p style='padding:20px; text-align:center;'>Loading Data...</p>";
-
+    // 1. Try to fetch from Internet
     Papa.parse(url, {
-        download: true, header: true, skipEmptyLines: true,
-        complete: function(results) { processData(results.data); },
-        error: function(e) { alert("Data Load Error: " + e.message); }
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+            console.log("✅ Online: Questions downloaded");
+            // SAVE to phone memory
+            localStorage.setItem(storageKey, JSON.stringify(results.data));
+            processData(results.data);
+        },
+        error: function(e) {
+            console.log("⚠️ Offline: Switching to saved data...");
+            // 2. If Offline, load from phone memory
+            const cached = localStorage.getItem(storageKey);
+            if (cached) {
+                alert("You are currently OFFLINE.\nLoaded saved questions.");
+                processData(JSON.parse(cached));
+            } else {
+                alert("You are Offline and no data is saved.\nPlease connect to internet once to download the course.");
+            }
+        }
     });
 }
 
@@ -2877,4 +2903,5 @@ window.addEventListener('appinstalled', () => {
     deferredPrompt = null;
     console.log('✅ PWA was installed');
 });
+
 
