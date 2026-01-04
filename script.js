@@ -944,9 +944,10 @@ async function loadAllUsers() {
                 visibleCount++;
                 adminUsersCache[uid] = doc;
 
-                // --------- PLAN LOGIC FOR MULTIPLE PREMIUM COURSES ---------
+                // --------- PLAN LOGIC FOR MULTIPLE PREMIUM COURSES (PILLS) ---------
                 let displayPlan = `<span style="color:#64748b;">Free</span>`;
-                let durationText = "";
+                let premiumPillsHTML = "";
+
                 let premiumCourses = [];
 
                 Object.keys(COURSE_CONFIG).forEach(key => {
@@ -972,9 +973,22 @@ async function loadAllUsers() {
                 if (premiumCourses.length > 0) {
                     displayPlan = `<span style="color:#059669; font-weight:600;">Premium</span>`;
 
-                    // Format as: COURSE NAME (DAYS LEFT) | COURSE NAME (DAYS LEFT)
-                    durationText = premiumCourses.map(pc => `${pc.name} (${pc.daysLeft})`).join(" | ");
-                    durationText = `<span style="color:#64748b;">${durationText}</span>`;
+                    // Create pill HTML for each premium course
+                    premiumPillsHTML = premiumCourses.map(pc => `
+                        <span style="
+                            display:inline-block;
+                            background:#d1fae5;
+                            color:#065f46;
+                            font-size:10px;
+                            font-weight:600;
+                            padding:2px 6px;
+                            border-radius:12px;
+                            margin-right:4px;
+                            white-space:nowrap;
+                        ">
+                            ${pc.name} (${pc.daysLeft})
+                        </span>
+                    `).join("");
                 }
 
                 // --------- ADMIN HIGHLIGHT ---------
@@ -988,13 +1002,14 @@ async function loadAllUsers() {
                     display:flex;
                     justify-content:space-between;
                     align-items:center;
+                    flex-wrap:wrap;
                 ">
                     <div style="flex:1; padding-right:10px;">
                         <div style="font-weight:700; color:#1e293b; font-size:14px; margin-bottom:4px;">
                             ${u.email}
                         </div>
 
-                        <div style="font-size:11px; display:flex; align-items:center; gap:6px;">
+                        <div style="font-size:11px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
                             <span style="
                                 font-weight:700;
                                 color:${isAdmin ? '#7e22ce' : '#475569'};
@@ -1004,7 +1019,7 @@ async function loadAllUsers() {
                             </span>
                             <span style="color:#cbd5e1;">|</span>
                             ${displayPlan}
-                            ${durationText}
+                            ${premiumPillsHTML}
                         </div>
                     </div>
 
@@ -3825,6 +3840,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
