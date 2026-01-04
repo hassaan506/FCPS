@@ -886,12 +886,8 @@ const SUPER_ADMIN_ID = "2eDvczf0OVdUdFEYLa1IjvzKrb32";
 
 let adminUsersCache = {}; 
 
-// ======================================================
-// 5. UNIFIED ADMIN USER MANAGEMENT (FORMATTING FIX)
-// ======================================================
-
 async function loadAllUsers() {
-    console.log("🚀 Loading Users (Admin Sorted Version)...");
+    console.log("🚀 Loading Users (FINAL FIXED)...");
 
     window.scrollTo(0, 0);
 
@@ -948,15 +944,29 @@ async function loadAllUsers() {
                 visibleCount++;
                 adminUsersCache[uid] = doc;
 
-                // ----- PLAN LOGIC (CORRECT) -----
+                // --------- NORMALIZE planExpiry (CRITICAL FIX) ---------
+                let planExpiryMs = null;
+
+                if (u.planExpiry) {
+                    // Firestore Timestamp
+                    if (typeof u.planExpiry.toMillis === "function") {
+                        planExpiryMs = u.planExpiry.toMillis();
+                    }
+                    // Already milliseconds
+                    else if (typeof u.planExpiry === "number") {
+                        planExpiryMs = u.planExpiry;
+                    }
+                }
+
+                // --------- PLAN LOGIC (NOW 100% CORRECT) ---------
                 let displayPlan = `<span style="color:#64748b;">Free</span>`;
                 let durationText = "";
 
                 if (
                     u.plan &&
                     u.plan.toLowerCase() !== 'free' &&
-                    u.planExpiry &&
-                    u.planExpiry > now
+                    planExpiryMs &&
+                    planExpiryMs > now
                 ) {
                     const cleanPlan = u.plan
                         .replace(/_/g, ' ')
@@ -969,7 +979,7 @@ async function loadAllUsers() {
                     `;
                 }
 
-                // ----- ADMIN HIGHLIGHT -----
+                // --------- ADMIN HIGHLIGHT ---------
                 const isAdmin = u.role === 'admin';
 
                 const rowHTML = `
@@ -1000,7 +1010,6 @@ async function loadAllUsers() {
                         </div>
                     </div>
 
-                    <!-- BUTTON WRAPPER (PREVENTS FLEX STRETCH) -->
                     <div style="flex:none; display:flex; align-items:center;">
                         <button onclick="openManageUserModal('${uid}')"
                             style="
@@ -1032,21 +1041,10 @@ async function loadAllUsers() {
             }
         }
 
-        // ----- EXTRA BUTTONS -----
-        let extraButtons = "";
-
-        if (ghostCount > 0) {
-            extraButtons += `
-                <button onclick="adminDeleteGhosts()"
-                    style="margin-left:6px; font-size:10px; background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; border-radius:4px; cursor:pointer; padding:2px 6px;">
-                    🗑️ Clean ${ghostCount} Ghosts
-                </button>`;
-        }
-
-        // ----- FINAL RENDER (ADMINS FIRST) -----
+        // --------- FINAL RENDER ---------
         list.innerHTML = `
             <div style="padding:10px; font-size:12px; background:#f8fafc; border-bottom:1px solid #e2e8f0; position:sticky; top:0; z-index:10;">
-                <b>${visibleCount}</b> Users (Hidden: ${guestCount}) ${extraButtons}
+                <b>${visibleCount}</b> Users (Hidden: ${guestCount})
             </div>
             ${admins.join("")}
             ${users.join("")}
@@ -3779,6 +3777,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
