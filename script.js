@@ -170,25 +170,36 @@ auth.onAuthStateChanged(async (user) => {
         currentUser = user;
         isGuest = false;
         
-        // Hide Auth, Show Course Selection immediately to prevent "stuck" feeling
-        showScreen('course-selection-screen'); 
-        
-        // Hide Auth UI explicitly
+        // 1. First, hide the Auth UI explicitly
         const authScreen = document.getElementById('auth-screen');
         if(authScreen) {
             authScreen.classList.add('hidden');
             authScreen.classList.remove('active');
         }
-        
-        await checkLoginSecurity(user);
-        
-        // Safety Check: If HTML is missing the new screen, fallback
-        if(document.getElementById('course-selection-screen')) {
-            updateCourseSelectionUI();
-        } else {
-            console.warn("Course Selection Screen missing. Loading default.");
-            selectCourse('FCPS');
+
+        // 2. 🔥 NEW: Check if we have a saved course
+        const lastCourse = localStorage.getItem('last_active_course');
+
+        // CONDITION A: We have a saved course -> Go straight to Dashboard
+        if (lastCourse && typeof COURSE_CONFIG !== 'undefined' && COURSE_CONFIG[lastCourse]) {
+            console.log("🔄 Restoring previous session:", lastCourse);
+            selectCourse(lastCourse); // This loads the dashboard immediately
+        } 
+        // CONDITION B: No saved course -> Go to Course Selection
+        else {
+            showScreen('course-selection-screen'); 
+            
+            // Safety Check: If HTML is missing the new screen, fallback
+            if(document.getElementById('course-selection-screen')) {
+                updateCourseSelectionUI();
+            } else {
+                console.warn("Course Selection Screen missing. Loading default.");
+                selectCourse('FCPS');
+            }
         }
+        
+        // 3. Run Security Check (Runs in background for both cases)
+        await checkLoginSecurity(user);
         
     } else {
         if (!isGuest) {
@@ -200,9 +211,6 @@ auth.onAuthStateChanged(async (user) => {
         }
     }
 });
-
-let userListener = null; // Variable to track the real-time connection
-
 async function checkLoginSecurity(user) {
     try {
         const docRef = db.collection('users').doc(user.uid);
@@ -310,28 +318,29 @@ function setBadgeUI(element, isActive) {
 function selectCourse(courseName) {
     if (!COURSE_CONFIG[courseName]) return alert("Course coming soon!");
     
+    // 🔥 NEW: Save this course to memory
+    localStorage.setItem('last_active_course', courseName);
+
     currentCourse = courseName;
     const config = COURSE_CONFIG[courseName];
 
+    // ... (rest of your existing code below is fine) ...
     // 1. Apply Visual Theme
     document.body.className = config.theme; 
     
-    // 2. Update Header with the NICE NAME, not the ID
+    // 2. Update Header
     const badge = document.getElementById('active-course-badge');
     if(badge) badge.innerText = config.name; 
     
     const title = document.getElementById('stats-title');
     if(title) title.innerText = `📊 ${config.name} Progress`; 
 
-    // 3. Load Data & Dashboard (CONDITIONAL LOGIC)
-    
-    // 🔥 NEW: Check if the Admin Panel is currently open
+    // 3. Load Data & Dashboard (Your existing admin check)
     const adminScreen = document.getElementById('admin-screen');
     const isAdminActive = adminScreen && 
                           !adminScreen.classList.contains('hidden') && 
                           adminScreen.style.display !== 'none';
 
-    // Only force the dashboard if we are NOT in the admin panel
     if (!isAdminActive) {
         showScreen('dashboard-screen');
     } else {
@@ -345,16 +354,18 @@ function selectCourse(courseName) {
     loadQuestions(config.sheet); 
     loadUserData(); 
 }
-
 function returnToCourseSelection() {
-    // 1. 🔥 FIX: Unhide the menu container if Admin Panel hid it
+    // 🔥 NEW: Clear saved course so the menu appears next time
+    localStorage.removeItem('last_active_course');
+
+    // 1. Fix: Unhide the menu container if Admin Panel hid it
     const menu = document.getElementById('main-menu-container');
     if(menu) {
-        menu.style.display = ''; // Clear inline 'display: none'
+        menu.style.display = ''; 
         menu.classList.remove('hidden');
     }
 
-    // 2. Ensure MBBS sub-menu is reset (optional cleanup)
+    // 2. Ensure MBBS sub-menu is reset
     const mbbsContainer = document.getElementById('mbbs-years-container');
     if(mbbsContainer) {
         mbbsContainer.style.display = ''; 
@@ -367,7 +378,6 @@ function returnToCourseSelection() {
     allQuestions = [];
     filteredQuestions = [];
 }
-
 
 // --- HELPER: GET ISOLATED DB KEY ---
 function getStoreKey(baseKey) {
@@ -3716,6 +3726,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
