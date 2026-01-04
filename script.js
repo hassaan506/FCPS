@@ -949,27 +949,28 @@ async function loadAllUsers() {
                 if(u.role === 'admin') badge = `<span style="background:#7e22ce; color:white; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;">ADMIN</span>`;
                 if(u.disabled) badge = `<span style="background:#fee2e2; color:#991b1b; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;">BANNED</span>`;
                 
-                // --- 🔥 UPDATED: PLAN & DURATION LOGIC ---
+               // --- 🔥 UPDATED: PLAN & DURATION LOGIC ---
                 let rawPlan = u.plan || 'Free';
                 let displayPlan = 'Free';
-                let durationText = ""; // To store the duration/expiry info
+                let durationText = ""; 
                 const now = Date.now();
 
+                // Determine if they are Premium or Free
                 if (rawPlan.toLowerCase() !== 'free') {
-                    // Format the name (1_week -> 1 Week)
                     let cleanPlanName = rawPlan.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
                     
                     if (u.planExpiry && u.planExpiry < now) {
-                        displayPlan = `<span style="color:#ef4444;">Expired</span>`;
+                        displayPlan = `<span style="color:#ef4444; font-weight:600;">Expired</span>`;
                     } else {
                         displayPlan = `<span style="color:#059669; font-weight:600;">Premium</span>`;
                     }
-                    durationText = `| <span style="color:#64748b;">${cleanPlanName}</span>`;
+                    // This creates the "Duration" part
+                    durationText = `<span style="color:#cbd5e1;">|</span> <span style="color:#64748b;">${cleanPlanName}</span>`;
                 } else {
                     displayPlan = `<span style="color:#64748b;">Free</span>`;
                 }
 
-               // --- RENDER ROW (Updated Layout) ---
+               // --- RENDER ROW ---
                 html += `
                 <div style="background:white; border-bottom:1px solid #f1f5f9; padding:12px; display:flex; justify-content:space-between; align-items:center;">
                     <div style="flex:1; padding-right:10px;">
@@ -978,7 +979,7 @@ async function loadAllUsers() {
                         </div>
                         
                         <div style="font-size:11px; display:flex; align-items:center; gap:6px;">
-                            ${badge} 
+                            <span style="font-weight:600; color:#475569; text-transform: capitalize;">${u.role || 'Student'}</span>
                             <span style="color:#cbd5e1;">|</span> 
                             ${displayPlan} 
                             ${durationText}
@@ -989,7 +990,7 @@ async function loadAllUsers() {
                         ⚙️
                     </button>
                 </div>`;
-
+                
         // --- EXTRA BUTTONS ---
         let extraButtons = "";
         if (ghostCount > 0) {
@@ -3739,6 +3740,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
