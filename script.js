@@ -901,17 +901,17 @@ async function loadAllUsers() {
     const searchVal = searchInput ? searchInput.value.trim().toLowerCase() : "";
 
     if (!list) return alert("❌ Error: 'admin-user-result' missing.");
-    
+
     // Fix Scrolling
-    list.style.maxHeight = "60vh"; 
+    list.style.maxHeight = "60vh";
     list.style.overflowY = "auto";
-    
+
     list.innerHTML = `
         <div style='text-align:center; padding:30px; color:#64748b;'>
             <div style="font-size:24px; margin-bottom:10px;">⏳</div>
             <b>Fetching Database...</b>
         </div>`;
-        
+
     try {
         const snap = await db.collection('users').get();
         if (snap.empty) {
@@ -925,97 +925,122 @@ async function loadAllUsers() {
         let ghostCount = 0;
 
         // Reset Cache
-        if (typeof adminUsersCache === 'undefined') adminUsersCache = {};
-        adminUsersCache = {}; 
+        adminUsersCache = {};
 
         for (const doc of snap.docs) {
             const u = doc.data();
             const uid = doc.id;
-            
-            // Filter Guests/Ghosts
+
+            // Filter Guests / Ghosts
             if (u.role === 'guest') { guestCount++; continue; }
             if (!u.email) { ghostCount++; continue; }
 
-            const email = (u.email || "").toLowerCase();
+            const email = u.email.toLowerCase();
             const name = (u.displayName || "").toLowerCase();
             const idStr = uid.toLowerCase();
-            
+
             // Search Filter
-            if (searchVal === "" || email.includes(searchVal) || name.includes(searchVal) || idStr.includes(searchVal)) {
+            if (
+                searchVal === "" ||
+                email.includes(searchVal) ||
+                name.includes(searchVal) ||
+                idStr.includes(searchVal)
+            ) {
+
+                visibleCount++;
                 adminUsersCache[uid] = doc;
-                
+
                 // --- BADGE LOGIC ---
                 let badge = `<span style="background:#f1f5f9; color:#64748b; padding:2px 6px; border-radius:4px; font-size:10px;">Student</span>`;
-                if(u.role === 'admin') badge = `<span style="background:#7e22ce; color:white; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;">ADMIN</span>`;
-                if(u.disabled) badge = `<span style="background:#fee2e2; color:#991b1b; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;">BANNED</span>`;
-                
-               // --- 🔥 UPDATED: PLAN & DURATION LOGIC ---
+                if (u.role === 'admin') badge = `<span style="background:#7e22ce; color:white; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;">ADMIN</span>`;
+                if (u.disabled) badge = `<span style="background:#fee2e2; color:#991b1b; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;">BANNED</span>`;
+
+                // --- PLAN & DURATION ---
                 let rawPlan = u.plan || 'Free';
                 let displayPlan = 'Free';
-                let durationText = ""; 
+                let durationText = "";
                 const now = Date.now();
 
-                // Determine if they are Premium or Free
                 if (rawPlan.toLowerCase() !== 'free') {
-                    let cleanPlanName = rawPlan.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                    
+                    let cleanPlanName = rawPlan
+                        .replace(/_/g, ' ')
+                        .replace(/\b\w/g, l => l.toUpperCase());
+
                     if (u.planExpiry && u.planExpiry < now) {
                         displayPlan = `<span style="color:#ef4444; font-weight:600;">Expired</span>`;
                     } else {
                         displayPlan = `<span style="color:#059669; font-weight:600;">Premium</span>`;
                     }
-                    // This creates the "Duration" part
+
                     durationText = `<span style="color:#cbd5e1;">|</span> <span style="color:#64748b;">${cleanPlanName}</span>`;
                 } else {
                     displayPlan = `<span style="color:#64748b;">Free</span>`;
                 }
 
-               // --- RENDER ROW ---
+                // --- RENDER ROW ---
                 html += `
                 <div style="background:white; border-bottom:1px solid #f1f5f9; padding:12px; display:flex; justify-content:space-between; align-items:center;">
                     <div style="flex:1; padding-right:10px;">
                         <div style="font-weight:700; color:#1e293b; font-size:14px; margin-bottom:4px;">
                             ${u.email}
                         </div>
-                        
                         <div style="font-size:11px; display:flex; align-items:center; gap:6px;">
-                            <span style="font-weight:600; color:#475569; text-transform: capitalize;">${u.role || 'Student'}</span>
-                            <span style="color:#cbd5e1;">|</span> 
-                            ${displayPlan} 
+                            <span style="font-weight:600; color:#475569; text-transform: capitalize;">
+                                ${u.role || 'Student'}
+                            </span>
+                            <span style="color:#cbd5e1;">|</span>
+                            ${displayPlan}
                             ${durationText}
                         </div>
                     </div>
-                    
-                    <button onclick="openManageUserModal('${uid}')" style="background:#3b82f6; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-size:14px; width:auto !important; flex:none;">
+
+                    <button onclick="openManageUserModal('${uid}')"
+                        style="background:#3b82f6; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-size:14px;">
                         ⚙️
                     </button>
                 </div>`;
-                
+            }
+        }
+
         // --- EXTRA BUTTONS ---
         let extraButtons = "";
+
         if (ghostCount > 0) {
-            extraButtons += ` <button onclick="adminDeleteGhosts()" style="margin-left:5px; font-size:10px; background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; border-radius:4px; cursor:pointer; padding:2px 6px; width:auto !important;">🗑️ Clean ${ghostCount} Ghosts</button>`;
+            extraButtons += `
+                <button onclick="adminDeleteGhosts()"
+                    style="margin-left:5px; font-size:10px; background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; border-radius:4px; cursor:pointer; padding:2px 6px;">
+                    🗑️ Clean ${ghostCount} Ghosts
+                </button>`;
         }
 
         if (currentUser && currentUser.uid === SUPER_ADMIN_ID) {
             try {
-                const reqSnap = await db.collection('admin_requests').where('status', '==', 'pending').get();
+                const reqSnap = await db.collection('admin_requests')
+                    .where('status', '==', 'pending')
+                    .get();
+
                 if (!reqSnap.empty) {
-                    extraButtons += ` <button onclick="openAdminRequests()" style="margin-left:10px; font-size:11px; background:#7e22ce; color:white; border:none; border-radius:4px; cursor:pointer; padding:4px 10px; width:auto !important;">🔔 ${reqSnap.size} Requests</button>`;
+                    extraButtons += `
+                        <button onclick="openAdminRequests()"
+                            style="margin-left:10px; font-size:11px; background:#7e22ce; color:white; border:none; border-radius:4px; cursor:pointer; padding:4px 10px;">
+                            🔔 ${reqSnap.size} Requests
+                        </button>`;
                 }
-            } catch(e) { console.log("Req check failed", e); }
+            } catch (e) {
+                console.log("Req check failed", e);
+            }
         }
 
-        // Final Render
+        // --- FINAL RENDER ---
         list.innerHTML = `
-        <div style="padding:10px; font-size:12px; background:#f8fafc; border-bottom:1px solid #e2e8f0; position:sticky; top:0; z-index:10;">
-            <b>${visibleCount}</b> Users (Hidden: ${guestCount}) ${extraButtons}
-        </div>
-        ${html}`;
-        
+            <div style="padding:10px; font-size:12px; background:#f8fafc; border-bottom:1px solid #e2e8f0; position:sticky; top:0; z-index:10;">
+                <b>${visibleCount}</b> Users (Hidden: ${guestCount}) ${extraButtons}
+            </div>
+            ${html}`;
+
     } catch (e) {
         console.error(e);
-        list.innerHTML = `<div style='color:red; padding:10px;'>Error: ${e.message}</div>`;
+        list.innerHTML = `<div style="color:red; padding:10px;">Error: ${e.message}</div>`;
     }
 }
 
@@ -3740,6 +3765,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
