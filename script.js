@@ -891,9 +891,8 @@ let adminUsersCache = {};
 // ======================================================
 
 async function loadAllUsers() {
-    console.log("🚀 Loading Users (Formatted Version)...");
+    console.log("🚀 Loading Users (Fixed Version)...");
 
-    // 1. SCROLL TO TOP
     window.scrollTo(0, 0);
 
     const list = document.getElementById('admin-user-result');
@@ -902,20 +901,21 @@ async function loadAllUsers() {
 
     if (!list) return alert("❌ Error: 'admin-user-result' missing.");
 
-    // Fix Scrolling
     list.style.maxHeight = "60vh";
     list.style.overflowY = "auto";
 
     list.innerHTML = `
-        <div style='text-align:center; padding:30px; color:#64748b;'>
+        <div style="text-align:center; padding:30px; color:#64748b;">
             <div style="font-size:24px; margin-bottom:10px;">⏳</div>
             <b>Fetching Database...</b>
-        </div>`;
+        </div>
+    `;
 
     try {
         const snap = await db.collection('users').get();
+
         if (snap.empty) {
-            list.innerHTML = "<div style='padding:20px; text-align:center;'>No users found.</div>";
+            list.innerHTML = `<div style="padding:20px; text-align:center;">No users found.</div>`;
             return;
         }
 
@@ -924,14 +924,13 @@ async function loadAllUsers() {
         let guestCount = 0;
         let ghostCount = 0;
 
-        // Reset Cache
         adminUsersCache = {};
+        const now = Date.now();
 
         for (const doc of snap.docs) {
             const u = doc.data();
             const uid = doc.id;
 
-            // Filter Guests / Ghosts
             if (u.role === 'guest') { guestCount++; continue; }
             if (!u.email) { ghostCount++; continue; }
 
@@ -939,7 +938,6 @@ async function loadAllUsers() {
             const name = (u.displayName || "").toLowerCase();
             const idStr = uid.toLowerCase();
 
-            // Search Filter
             if (
                 searchVal === "" ||
                 email.includes(searchVal) ||
@@ -950,42 +948,43 @@ async function loadAllUsers() {
                 visibleCount++;
                 adminUsersCache[uid] = doc;
 
-                // --- BADGE LOGIC ---
+                // ----- ROLE / STATUS BADGE -----
                 let badge = `<span style="background:#f1f5f9; color:#64748b; padding:2px 6px; border-radius:4px; font-size:10px;">Student</span>`;
                 if (u.role === 'admin') badge = `<span style="background:#7e22ce; color:white; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;">ADMIN</span>`;
                 if (u.disabled) badge = `<span style="background:#fee2e2; color:#991b1b; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;">BANNED</span>`;
 
-                // --- PLAN & DURATION ---
-                let rawPlan = u.plan || 'Free';
-                let displayPlan = 'Free';
+                // ----- PLAN LOGIC (100% CORRECT) -----
+                let displayPlan = `<span style="color:#64748b;">Free</span>`;
                 let durationText = "";
-                const now = Date.now();
 
-                if (rawPlan.toLowerCase() !== 'free') {
-                    let cleanPlanName = rawPlan
+                if (
+                    u.plan &&
+                    u.plan.toLowerCase() !== 'free' &&
+                    u.planExpiry &&
+                    u.planExpiry > now
+                ) {
+                    const cleanPlan = u.plan
                         .replace(/_/g, ' ')
                         .replace(/\b\w/g, l => l.toUpperCase());
 
-                    if (u.planExpiry && u.planExpiry < now) {
-                        displayPlan = `<span style="color:#ef4444; font-weight:600;">Expired</span>`;
-                    } else {
-                        displayPlan = `<span style="color:#059669; font-weight:600;">Premium</span>`;
-                    }
-
-                    durationText = `<span style="color:#cbd5e1;">|</span> <span style="color:#64748b;">${cleanPlanName}</span>`;
-                } else {
-                    displayPlan = `<span style="color:#64748b;">Free</span>`;
+                    displayPlan = `<span style="color:#059669; font-weight:600;">Premium</span>`;
+                    durationText = `
+                        <span style="color:#cbd5e1;">|</span>
+                        <span style="color:#64748b;">${cleanPlan}</span>
+                    `;
                 }
 
-                // --- RENDER ROW ---
+                // ----- RENDER USER ROW -----
                 html += `
                 <div style="background:white; border-bottom:1px solid #f1f5f9; padding:12px; display:flex; justify-content:space-between; align-items:center;">
+                    
                     <div style="flex:1; padding-right:10px;">
                         <div style="font-weight:700; color:#1e293b; font-size:14px; margin-bottom:4px;">
                             ${u.email}
                         </div>
+
                         <div style="font-size:11px; display:flex; align-items:center; gap:6px;">
-                            <span style="font-weight:600; color:#475569; text-transform: capitalize;">
+                            <span style="font-weight:600; color:#475569; text-transform:capitalize;">
                                 ${u.role || 'Student'}
                             </span>
                             <span style="color:#cbd5e1;">|</span>
@@ -995,20 +994,31 @@ async function loadAllUsers() {
                     </div>
 
                     <button onclick="openManageUserModal('${uid}')"
-                        style="background:#3b82f6; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-size:14px;">
+                        style="
+                            background:#3b82f6;
+                            color:white;
+                            border:none;
+                            padding:6px 10px;
+                            border-radius:6px;
+                            cursor:pointer;
+                            font-size:13px;
+                            height:32px;
+                            align-self:center;
+                            flex-shrink:0;
+                        ">
                         ⚙️
                     </button>
                 </div>`;
             }
         }
 
-        // --- EXTRA BUTTONS ---
+        // ----- EXTRA ADMIN BUTTONS -----
         let extraButtons = "";
 
         if (ghostCount > 0) {
             extraButtons += `
                 <button onclick="adminDeleteGhosts()"
-                    style="margin-left:5px; font-size:10px; background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; border-radius:4px; cursor:pointer; padding:2px 6px;">
+                    style="margin-left:6px; font-size:10px; background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; border-radius:4px; cursor:pointer; padding:2px 6px;">
                     🗑️ Clean ${ghostCount} Ghosts
                 </button>`;
         }
@@ -1022,21 +1032,22 @@ async function loadAllUsers() {
                 if (!reqSnap.empty) {
                     extraButtons += `
                         <button onclick="openAdminRequests()"
-                            style="margin-left:10px; font-size:11px; background:#7e22ce; color:white; border:none; border-radius:4px; cursor:pointer; padding:4px 10px;">
+                            style="margin-left:8px; font-size:11px; background:#7e22ce; color:white; border:none; border-radius:4px; cursor:pointer; padding:4px 10px;">
                             🔔 ${reqSnap.size} Requests
                         </button>`;
                 }
             } catch (e) {
-                console.log("Req check failed", e);
+                console.log("Admin request check failed", e);
             }
         }
 
-        // --- FINAL RENDER ---
+        // ----- FINAL RENDER -----
         list.innerHTML = `
             <div style="padding:10px; font-size:12px; background:#f8fafc; border-bottom:1px solid #e2e8f0; position:sticky; top:0; z-index:10;">
                 <b>${visibleCount}</b> Users (Hidden: ${guestCount}) ${extraButtons}
             </div>
-            ${html}`;
+            ${html}
+        `;
 
     } catch (e) {
         console.error(e);
@@ -3765,6 +3776,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
