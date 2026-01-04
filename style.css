@@ -2477,4 +2477,40 @@ DELETE IF POSSIBLE
     }
 }
 
+/* =========================================
+   MOBILE LAYOUT FIX (Force Order)
+   Paste this at the VERY BOTTOM of style.css
+   ========================================= */
+
+@media screen and (max-width: 950px) {
+    
+    /* 1. Disable Grid, Enable Flexbox Stack */
+    #dashboard-screen .gameContainer {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 20px !important;
+    }
+
+    /* 2. Reset the Study Panel (Questions) */
+    /* This removes the "grid-row: 1" that was forcing it to the top */
+    #study-panel {
+        grid-row: auto !important; 
+        grid-column: auto !important;
+        
+        order: 3 !important; /* Explicitly force it to be 3rd */
+        width: 100% !important;
+        height: auto !important; /* Allow it to grow */
+        max-height: 600px !important; /* Prevent it from being infinite height */
+    }
+
+    /* 3. Ensure the Progress/Settings wrapper comes first */
+    /* If you used my previous HTML, the wrapper is the first child.
+       This ensures any .panel behaves correctly. */
+    .panel {
+        width: 100% !important;
+        grid-column: auto !important;
+        margin-bottom: 0 !important;
+    }
+}
+
 
