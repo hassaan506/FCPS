@@ -958,46 +958,46 @@ async function loadAllUsers() {
                     }
                 }
 
-                // --------- PLAN LOGIC (FIXED FOR MULTI-COURSE) ---------
+// --------- PLAN LOGIC (FIXED WITH DAYS REMAINING) ---------
                 let displayPlan = `<span style="color:#64748b;">Free</span>`;
                 let durationText = "";
                 let isAnyPremium = false;
                 let activeCourseName = "";
+                let daysLeftText = ""; // New variable for expiry info
 
-                // 1. Check all courses in COURSE_CONFIG (FCPS, MBBS_1 to 5)
                 Object.keys(COURSE_CONFIG).forEach(key => {
                     const config = COURSE_CONFIG[key];
-                    const prefix = config.prefix; // e.g., "MBBS1_" or "MBBS_" [cite: 48]
+                    const prefix = config.prefix; 
                     
                     const isPrem = u[prefix + 'isPremium'];
                     const expiryRaw = u[prefix + 'expiryDate'];
 
-                    // Use your existing helper to check if the date is still active [cite: 175]
                     if (isPrem && isDateActive(expiryRaw)) {
                         isAnyPremium = true;
-                        activeCourseName = config.name; // e.g., "First Year" [cite: 6]
+                        activeCourseName = config.name;
+
+                        // Calculate Days Remaining 
+                        const d = (expiryRaw.toDate ? expiryRaw.toDate() : new Date(expiryRaw));
+                        const diffMs = d - now;
+                        const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                        
+                        // Handle Lifetime vs regular days 
+                        daysLeftText = (daysLeft > 10000) ? "Lifetime" : `${daysLeft} days left`;
                     }
                 });
 
-                // 2. Fallback: Check Legacy/Global plan fields
-                if (!isAnyPremium && u.plan && u.plan.toLowerCase() !== 'free') {
-                    if (planExpiryMs && planExpiryMs > now) {
-                        isAnyPremium = true;
-                        activeCourseName = u.plan.replace(/_/g, ' ');
-                    }
-                }
-
-                // 3. Update UI if any active subscription was found
                 if (isAnyPremium) {
                     displayPlan = `<span style="color:#059669; font-weight:600;">Premium</span>`;
                     durationText = `
                         <span style="color:#cbd5e1;">|</span>
                         <span style="color:#64748b;">${activeCourseName}</span>
+                        <span style="color:#cbd5e1;">|</span>
+                        <span style="color:#f59e0b; font-weight:bold;">${daysLeftText}</span>
                     `;
                 }
 
                 // --------- ADMIN HIGHLIGHT ---------
-                const isAdmin = u.role === 'admin';
+                const isAdmin = u.role === 'Admin';
 
                 const rowHTML = `
                 <div style="
@@ -3850,6 +3850,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
