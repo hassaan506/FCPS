@@ -1352,10 +1352,10 @@ function setMode(mode) {
 }
 
 function startPractice(subject, topic) {
-    // 1. First, get ALL questions for the entire SUBJECT (ignore topic for now)
+    // 1. Get ALL questions for this Subject
     let subjectPool = allQuestions.filter(q => q.Subject === subject);
 
-    // 2. Check Premium Status & Role
+    // 2. Check Premium Status
     const premKey = getStoreKey('isPremium');
     const expKey = getStoreKey('expiryDate');
     const isPrem = userProfile && userProfile[premKey] && isDateActive(userProfile[expKey]);
@@ -1375,11 +1375,11 @@ function startPractice(subject, topic) {
         userType = "Free";
     }
 
-    // 4. 🔥 BALANCED DISTRIBUTION LOGIC (Round-Robin)
-    // If the subject has more questions than the limit, we pick evenly from all topics.
+    // 4. 🔥 CREATE THE "FREE SAMPLE" (Round-Robin Logic)
+    // If the subject is too big, we create a 50-question sample with a mix of ALL topics.
     if (subjectPool.length > limit) {
         
-        // A. Group questions by Topic
+        // A. Group by Topic
         const topicMap = {};
         const topicNames = [];
         
@@ -1392,73 +1392,67 @@ function startPractice(subject, topic) {
             topicMap[tName].push(q);
         });
 
-        // B. Round-Robin Selection
-        // Pick 1 from Topic A, 1 from Topic B, 1 from Topic C... repeat until we hit 50.
+        // B. Pick evenly from each topic until we hit the limit
         let balancedList = [];
-        let i = 0; // Index tracker
+        let i = 0; 
         let addedSomething = true;
 
         while (balancedList.length < limit && addedSomething) {
             addedSomething = false;
-            
-            // Loop through every topic available in this subject
             for (const tName of topicNames) {
-                // Stop immediately if we hit the limit (e.g., 50)
                 if (balancedList.length >= limit) break; 
                 
-                const questionsInThisTopic = topicMap[tName];
-                
-                // If this topic has a question at index 'i', take it
-                if (questionsInThisTopic[i]) {
-                    balancedList.push(questionsInThisTopic[i]);
+                if (topicMap[tName][i]) {
+                    balancedList.push(topicMap[tName][i]);
                     addedSomething = true;
                 }
             }
-            i++; // Move to the next question index
+            i++;
         }
 
-        // C. Update the pool to be this new "Balanced" list
+        // C. REPLACE the full subject with this small sample
         subjectPool = balancedList;
 
-        // Optional: Alert user (only once per session)
+        // Reset alert flag (optional)
         if (currentIndex === 0 && !window.hasShownLimitAlert) {
-            // console.log(`Limit applied: Balanced distribution of ${limit} questions.`);
-            window.hasShownLimitAlert = true; 
+             window.hasShownLimitAlert = true; 
         }
     }
 
-    // 5. NOW Filter by Specific Topic (If user clicked a specific button)
-    // We are filtering INSIDE the "Free Sample" we just created.
+    // 5. 🔥 FIX: STRICT FILTERING
+    // We filter INSIDE the "Free Sample" we just created.
     let pool = [];
-    if (topic) {
+
+    // Check if 'topic' exists and is a valid string
+    if (topic && typeof topic === 'string' && topic.trim() !== "") {
+        // Filter the 50-question sample to show ONLY the requested topic
         pool = subjectPool.filter(q => q.Topic === topic);
+        console.log(`Filtered: Showing ${pool.length} questions for topic '${topic}'`);
     } else {
-        pool = subjectPool; // User clicked "Practice All"
+        // If no topic selected (Practice All), show the whole mixed sample
+        pool = subjectPool;
     }
 
-    // 6. Handle Empty Pool 
-    // (If a topic exists but wasn't included in the sample, or sample is empty)
+    // 6. Handle Empty Pool (e.g. Topic exists in DB but not in the Sample)
     if (pool.length === 0) {
-        // Check if the topic exists in the FULL database (to give a better error message)
         const topicExists = allQuestions.some(q => q.Subject === subject && q.Topic === topic);
         
         if (topicExists && limit !== Infinity) {
-             return alert(`🔒 Premium Content\n\n${userType} users get a balanced sample of ${limit} questions from the entire ${subject} course.\n\nQuestions for this specific topic happen to fall outside that free sample.\n\nUpgrade to Premium to unlock everything!`);
+             return alert(`🔒 Premium Content\n\n${userType} users get a sample of ${limit} questions from the entire ${subject} course.\n\nQuestions for '${topic}' happen to fall outside this free sample.\n\nUpgrade to Premium to unlock everything!`);
         } else {
              return alert("No questions available.");
         }
     }
 
-    // 7. Handle "Unattempted Only" Filter
+    // 7. Handle "Unattempted Only"
     const onlyUnattempted = document.getElementById('unattempted-only').checked;
     if (onlyUnattempted) {
         pool = pool.filter(q => !userSolvedIDs.includes(q._uid));
         if (pool.length === 0) return alert("You have solved all available free questions in this section!");
     }
 
-    // 8. Setup Quiz Environment
+    // 8. Launch Quiz
     filteredQuestions = pool;
-    
     let startIndex = 0;
     if (!onlyUnattempted) {
         startIndex = filteredQuestions.findIndex(q => !userSolvedIDs.includes(q._uid));
@@ -1468,7 +1462,7 @@ function startPractice(subject, topic) {
     currentMode = 'practice';
     isMistakeReview = false;
     currentIndex = startIndex;
-    
+
     showScreen('quiz-screen');
     renderPage();
     renderPracticeNavigator();
@@ -3281,6 +3275,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
