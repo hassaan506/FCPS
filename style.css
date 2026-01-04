@@ -685,35 +685,41 @@ button {
     flex-shrink: 0; /* Never shrink the header */
 }
 
+/* 1. The Scrollable Text Area */
 .dynamic-explanation {
-    background: #f8fafc; 
-    color: #475569; 
-    line-height: 1.8; 
-    white-space: pre-wrap; 
+    background: #f8fafc;
+    color: #475569;
+    line-height: 1.8;
+    white-space: pre-wrap;
     font-size: 15px;
     border-top: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
     
-    flex: 1;            /* Take all available remaining height */
-    overflow-y: auto;   /* Scroll ONLY this part */
-    min-height: 0;      /* Critical for Flexbox scrolling */
+    flex: 1;                /* Allow this to Grow AND Shrink */
+    overflow-y: auto;       /* Enable Scrollbar */
+    min-height: 0;          /* Critical for Flexbox scrolling */
     
-    padding: 20px 25px; /* Internal padding */
-    margin: 0 !important; /* Reset margins */
-    max-height: none !important; /* Override any inline style */
+    padding: 20px 25px;
+    margin: 0 !important;
+    max-height: none !important;
 }
 
-.modal-overlay .joinCard > div:last-child,
-.modal-overlay .joinCard > div:nth-last-child(2) {
-    padding: 15px 25px 25px 25px;
-    flex-shrink: 0; /* Never shrink the buttons */
-    background: var(--card-bg);
+/* 2. Freeze the Header and Footer (So they don't scroll) */
+.modal-overlay .joinCard h2,                 /* Target the Header */
+.modal-overlay .joinCard > div:last-child {  /* Target the Footer buttons */
+    padding: 20px 25px;
+    flex-shrink: 0;         /* Never let these shrink */
+    background: white;
+    z-index: 5;
 }
 
-#explanation-text {
-    /* Ensure the specific ID also follows the rules */
-    display: block;
-    width: 100%;
+/* 3. Force the Card to fit the screen */
+#explanation-modal .joinCard {
+    display: flex !important;
+    flex-direction: column !important;
+    max-height: 80vh !important; /* Cap height at 80% of screen */
+    overflow: hidden !important; 
+    padding: 0 !important;
 }
 
 /* =========================================
@@ -2457,3 +2463,4 @@ button.secondary {
     background: #f1f5f9; border: none; font-size: 24px; line-height: 1;
     color: #64748b; cursor: pointer; padding: 0; width: 30px; height: 30px; border-radius: 50%;
 }
+
