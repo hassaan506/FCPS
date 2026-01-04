@@ -634,20 +634,19 @@ async function updateUserStats(isCorrect, subject, questionUID) {
     if (isGuest || !currentUser) return;
     if (!userProfile) return;
 
-    // 2. Initialize the stats object if missing
-    const storeKey = getStoreKey('stats'); // e.g., 'MBBS1_stats'
+    // 2. Initialize the stats object
+    const storeKey = getStoreKey('stats'); 
     if (!userProfile[storeKey]) userProfile[storeKey] = {};
     if (!userProfile[storeKey][subject]) userProfile[storeKey][subject] = { total: 0, correct: 0 };
 
-    // 3. Update the Numbers (In Memory)
+    // 3. Update the Numbers
     userProfile[storeKey][subject].total += 1;
     if (isCorrect) userProfile[storeKey][subject].correct += 1;
 
-    // 4. Update the Lists (Solved / Mistakes)
-    const solvedKey = getStoreKey('solved');     // e.g., 'MBBS1_solved'
-    const mistakesKey = getStoreKey('mistakes'); // e.g., 'MBBS1_mistakes'
+    // 4. Update the Lists
+    const solvedKey = getStoreKey('solved');     
+    const mistakesKey = getStoreKey('mistakes'); 
     
-    // Ensure arrays exist
     if (!userProfile[solvedKey]) userProfile[solvedKey] = [];
     if (!userProfile[mistakesKey]) userProfile[mistakesKey] = [];
 
@@ -656,22 +655,26 @@ async function updateUserStats(isCorrect, subject, questionUID) {
         userProfile[solvedKey].push(questionUID);
     }
 
-    // Handle Mistakes Logic
+    // --- LOGIC CHANGE IS HERE ---
     if (!isCorrect) {
-        // If wrong, add to mistakes
+        // If WRONG: Always add to mistakes
         if (!userProfile[mistakesKey].includes(questionUID)) {
             userProfile[mistakesKey].push(questionUID);
         }
     } else {
-        // If correct, REMOVE from mistakes (because they fixed it!)
-        userProfile[mistakesKey] = userProfile[mistakesKey].filter(id => id !== questionUID);
+        // If CORRECT:
+        // Only remove it if we are actually inside "Mistake Review" mode
+        if (isMistakeReview === true) {
+            userProfile[mistakesKey] = userProfile[mistakesKey].filter(id => id !== questionUID);
+        } else {
+            // In Normal Practice, we keep it (so you can review it later)
+        }
     }
 
-    // 5. CRITICAL: Save to Phone Memory Immediately (Offline Protection)
-    // This ensures if they close the app right now, the progress is saved locally.
+    // 5. Save to Phone Memory
     localStorage.setItem('cached_user_profile', JSON.stringify(userProfile));
 
-    // 6. Send to Cloud (Firebase handles the offline queue)
+    // 6. Send to Cloud
     try {
         await db.collection('users').doc(currentUser.uid).update({
             [storeKey]: userProfile[storeKey],
@@ -679,8 +682,6 @@ async function updateUserStats(isCorrect, subject, questionUID) {
             [mistakesKey]: userProfile[mistakesKey]
         });
     } catch (e) {
-        // If this fails, it means we are offline. 
-        // That's okay! Firebase queues it, and Step 5 saved it locally.
         console.log("⚠️ Saved locally (Queueing for Cloud)");
     }
 }
@@ -1705,11 +1706,11 @@ async function saveProgressToDB(q, isCorrect) {
     const batch = db.batch();
 
     // ==========================================
-    // 1. AGAR JAWAB SAHI HAI (CORRECT)
+    // 1. IF ANSWER IS CORRECT
     // ==========================================
     if (isCorrect) {
         
-        // A. Solved List me daal do (Green karne ke liye)
+        // A. Add to Solved List
         if (!userSolvedIDs.includes(q._uid)) {
             userSolvedIDs.push(q._uid);
             batch.update(userRef, {
@@ -1719,24 +1720,30 @@ async function saveProgressToDB(q, isCorrect) {
             });
         }
 
+        // B. CHECK MODE BEFORE REMOVING
         if (isMistakeReview === true) {
-            // Local se nikalo
+            // ONLY remove if we are in Mistake Review Mode
+            
+            // Remove from Local Array
             const idx = userMistakes.indexOf(q._uid);
             if (idx > -1) userMistakes.splice(idx, 1);
 
-            // Database se nikalo
+            // Remove from Database
             batch.update(userRef, {
                 [mKey]: firebase.firestore.FieldValue.arrayRemove(q._uid)
             });
             console.log("Deleted from mistakes (Review Mode)");
         } else {
-            console.log("Correct Answer: Mistake NOT deleted (Normal Mode)");
+            // In Normal Mode, do NOT remove it
+            console.log("Correct Answer: Kept in history (Normal Mode)");
         }
 
     } 
-
+    // ==========================================
+    // 2. IF ANSWER IS WRONG
+    // ==========================================
     else {
-        // Mistake List me daal do
+        // Add to Mistake List
         if (!userMistakes.includes(q._uid)) {
             userMistakes.push(q._uid);
             
@@ -1750,7 +1757,6 @@ async function saveProgressToDB(q, isCorrect) {
     // Save Changes
     try {
         await batch.commit();
-        // UI ke numbers update karo
         if (typeof updateLiveStatsUI === "function") updateLiveStatsUI();
     } catch(e) {
         console.error(e);
@@ -3119,5 +3125,6 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
