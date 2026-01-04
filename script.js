@@ -545,9 +545,21 @@ function handleAuthAction() {
 // ======================================================
 
 async function loadUserData() {
-    if (isGuest) return;
+    // ✅ 1. Guest Mode Handling (Show Message instead of returning)
+    if (isGuest) {
+        const statsBox = document.getElementById('quick-stats');
+        if(statsBox) {
+            statsBox.style.opacity = "1";
+            statsBox.innerHTML = `
+                <div style="text-align:center; padding:15px; color:#64748b; font-size:13px; background:#f8fafc; border-radius:8px; border:1px dashed #cbd5e1;">
+                    🔒 Please login to save your progress
+                </div>`;
+        }
+        // NOW we return, after updating the UI
+        return;
+    }
     
-    // Wait for Auth to be ready
+    // 2. Wait for Auth to be ready (for logged-in users)
     if (!currentUser) { setTimeout(loadUserData, 500); return; }
 
     if (currentUser.displayName) {
@@ -560,7 +572,7 @@ async function loadUserData() {
 
     let freshData = null;
 
-    // --- 1. TRY LOADING FROM INTERNET ---
+    // --- 3. TRY LOADING FROM INTERNET ---
     try {
         // We set a short timeout so the app doesn't freeze waiting for internet
         const doc = await db.collection('users').doc(currentUser.uid).get({ source: 'default' });
@@ -574,7 +586,7 @@ async function loadUserData() {
         console.log("⚠️ Internet Failed. Switching to Offline Mode...");
     }
 
-    // --- 2. IF INTERNET FAILED, LOAD FROM PHONE ---
+    // --- 4. IF INTERNET FAILED, LOAD FROM PHONE ---
     if (!freshData) {
         const cached = localStorage.getItem('cached_user_profile');
         if (cached) {
@@ -603,7 +615,6 @@ async function loadUserData() {
     checkPremiumExpiry();
     if (allQuestions.length > 0) processData(allQuestions, true);
 }
-
 // Helper to draw the stats box
 function renderStatsUI(statsBox) {
     if(!statsBox) return;
@@ -2678,19 +2689,27 @@ function updateBadgeButton() {
 }
 
 async function openAnalytics() {
+    // ✅ 1. Guest Check (Immediate Popup)
+    // This runs BEFORE opening the modal
+    if (isGuest) {
+        return alert("Login to view your detailed analytics.");
+    }
+
     const modal = document.getElementById('analytics-modal');
     const content = document.getElementById('analytics-content');
+    
+    // Only open the modal if they are NOT a guest
     modal.classList.remove('hidden');
     content.innerHTML = "Loading...";
 
-    if(!currentUser || isGuest) { content.innerHTML = "Guest mode."; return; }
+    if(!currentUser) { content.innerHTML = "Please log in."; return; }
 
     try {
         const doc = await db.collection('users').doc(currentUser.uid).get();
         // ISOLATED STATS: Uses the correct key (e.g., MBBS1_stats)
         const stats = doc.data()[getStoreKey('stats')] || {};
         
-        // --- FIX: Use the readable name (e.g. "First Year") from config ---
+        // Use the readable name (e.g. "First Year") from config
         const displayName = COURSE_CONFIG[currentCourse].name; 
         
         let html = `<div class="perf-section-title">📊 ${displayName} Performance</div>`;
@@ -3277,6 +3296,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
