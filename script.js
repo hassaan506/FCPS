@@ -2865,8 +2865,19 @@ function getOptionText(q, letter) {
 }
 
 function showExplanation(q) {
-    document.getElementById('explanation-text').innerText = q.Explanation || "No explanation.";
-    document.getElementById('explanation-modal').classList.remove('hidden');
+    const textEl = document.getElementById('explanation-text');
+    
+    // 🔥 FIX: Use 'innerHTML' so <b> and <span> tags actually work
+    textEl.innerHTML = q.Explanation || "No explanation.";
+    
+    // Show the modal
+    const modal = document.getElementById('explanation-modal');
+    modal.classList.remove('hidden');
+    
+    // Optional: Add active class for animation
+    setTimeout(() => {
+        modal.classList.add('active');
+    }, 10);
 }
 
 function closeModal() { document.getElementById('explanation-modal').classList.add('hidden'); }
@@ -3705,6 +3716,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
