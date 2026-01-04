@@ -1064,37 +1064,73 @@ function renderCompactUserRow(doc) {
     const u = doc.data();
     const uid = doc.id;
 
-    // Badges
     let badge = `<span style="background:#f1f5f9; color:#64748b; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600;">FREE</span>`;
-    
-    // --- SMART CHECK: Verify Dates (Don't just trust the boolean) ---
+
     let isPrem = false;
     const now = Date.now();
 
-    // Check Multi-Course Premium
+    // ---------- COURSE-BASED PREMIUM ----------
     Object.keys(COURSE_CONFIG).forEach(k => { 
         const prefix = COURSE_CONFIG[k].prefix;
-        // We check if the boolean is true AND if the date is in the future
+
         if (u[prefix + 'isPremium'] && u[prefix + 'expiryDate']) {
-            const d = (u[prefix + 'expiryDate'].toDate ? u[prefix + 'expiryDate'].toDate() : new Date(u[prefix + 'expiryDate']));
-            // Only count as premium if date is in the FUTURE
-            if (d > now) isPrem = true; 
+            let expiryMs = null;
+
+            if (typeof u[prefix + 'expiryDate'].toMillis === 'function') {
+                expiryMs = u[prefix + 'expiryDate'].toMillis();
+            } else {
+                expiryMs = new Date(u[prefix + 'expiryDate']).getTime();
+            }
+
+            if (expiryMs && expiryMs > now) isPrem = true;
         }
     });
 
-    // Legacy check (fallback)
-    if (u.isPremium && u.premiumExpiry) {
-        const d = (u.premiumExpiry.toDate ? u.premiumExpiry.toDate() : new Date(u.premiumExpiry));
-        if (d > now) isPrem = true;
+    // ---------- LEGACY PREMIUM ----------
+    if (!isPrem && u.isPremium && u.premiumExpiry) {
+        let expiryMs = null;
+
+        if (typeof u.premiumExpiry.toMillis === 'function') {
+            expiryMs = u.premiumExpiry.toMillis();
+        } else {
+            expiryMs = new Date(u.premiumExpiry).getTime();
+        }
+
+        if (expiryMs && expiryMs > now) isPrem = true;
     }
 
-    if(isPrem) badge = `<span style="background:#dcfce7; color:#166534; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600; border:1px solid #bbf7d0;">PREMIUM</span>`;
-    
-    if(u.role === 'admin') badge = `<span style="background:#7e22ce; color:white; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600;">ADMIN</span>`;
-    if(u.disabled) badge = `<span style="background:#fee2e2; color:#991b1b; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600;">BANNED</span>`;
+    // ---------- NEW PLAN-BASED PREMIUM (CRITICAL FIX) ----------
+    if (
+        !isPrem &&
+        u.plan &&
+        u.plan.toLowerCase() !== 'free' &&
+        u.planExpiry
+    ) {
+        let expiryMs = null;
 
-    // Name/Email Display
-    const displayName = u.displayName ? u.displayName : `<span style="color:#ef4444; font-style:italic;">Unknown User</span>`;
+        if (typeof u.planExpiry.toMillis === 'function') {
+            expiryMs = u.planExpiry.toMillis();
+        } else if (typeof u.planExpiry === 'number') {
+            expiryMs = u.planExpiry;
+        }
+
+        if (expiryMs && expiryMs > now) isPrem = true;
+    }
+
+    // ---------- BADGE PRIORITY ----------
+    if (isPrem) {
+        badge = `<span style="background:#dcfce7; color:#166534; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600; border:1px solid #bbf7d0;">PREMIUM</span>`;
+    }
+
+    if (u.role === 'admin') {
+        badge = `<span style="background:#7e22ce; color:white; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600;">ADMIN</span>`;
+    }
+
+    if (u.disabled) {
+        badge = `<span style="background:#fee2e2; color:#991b1b; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600;">BANNED</span>`;
+    }
+
+    const displayName = u.displayName || `<span style="color:#ef4444; font-style:italic;">Unknown User</span>`;
     const displayEmail = u.email || `<span style="color:#94a3b8;">${uid}</span>`;
 
     return `
@@ -1103,18 +1139,38 @@ function renderCompactUserRow(doc) {
             <div style="font-weight:600; color:#334155; font-size:14px;">${displayName}</div>
             <div style="font-size:12px; color:#64748b;">${displayEmail}</div>
         </div>
+
         <div style="display:flex; align-items:center; gap:8px;">
             ${badge}
-            <button onclick="openManageUserModal('${uid}')" style="background:#3b82f6; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer;">⚙️</button>
-            
-            ${uid === SUPER_ADMIN_ID ? '' : 
-            `<button onclick="adminDeleteUserDoc('${uid}')" style="background:#fee2e2; color:#991b1b; border:1px solid #fecaca; padding:6px 10px; border-radius:6px; cursor:pointer;">🗑️</button>`}
+
+            <button onclick="openManageUserModal('${uid}')"
+                style="
+                    width:32px;
+                    height:32px;
+                    display:inline-flex;
+                    align-items:center;
+                    justify-content:center;
+                    background:#3b82f6;
+                    color:white;
+                    border:none;
+                    border-radius:6px;
+                    cursor:pointer;
+                    font-size:16px;
+                    padding:0;
+                ">
+                ⚙️
+            </button>
+
+            ${uid === SUPER_ADMIN_ID ? '' : `
+                <button onclick="adminDeleteUserDoc('${uid}')"
+                    style="background:#fee2e2; color:#991b1b; border:1px solid #fecaca; padding:6px 10px; border-radius:6px; cursor:pointer;">
+                    🗑️
+                </button>
+            `}
         </div>
     </div>`;
 }
 
-
-// 4. POPUP MODAL (Shows Date + Days Left)
 // 4. POPUP MODAL (Shows Date + Days Left)
 function openManageUserModal(uid) {
     const doc = adminUsersCache[uid];
@@ -3777,6 +3833,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
