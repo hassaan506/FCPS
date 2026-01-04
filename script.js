@@ -626,9 +626,6 @@ function renderStatsUI(statsBox) {
         </div>`;
 }
 
-// ======================================================
-// HELPER: SAVE PROGRESS (Offline & Online)
-// ======================================================
 async function updateUserStats(isCorrect, subject, questionUID) {
     // 1. Safety Checks
     if (isGuest || !currentUser) return;
@@ -643,36 +640,48 @@ async function updateUserStats(isCorrect, subject, questionUID) {
     userProfile[storeKey][subject].total += 1;
     if (isCorrect) userProfile[storeKey][subject].correct += 1;
 
-    // 4. Update Lists
+    // 4. Update Lists (Database Object)
     const solvedKey = getStoreKey('solved');     
     const mistakesKey = getStoreKey('mistakes'); 
     
     if (!userProfile[solvedKey]) userProfile[solvedKey] = [];
     if (!userProfile[mistakesKey]) userProfile[mistakesKey] = [];
 
-    // Add to 'Solved'
+    // --- A. SYNC SOLVED LIST (Green) ---
+    // Update Database Profile
     if (!userProfile[solvedKey].includes(questionUID)) {
         userProfile[solvedKey].push(questionUID);
     }
+    // ✅ SYNC GLOBAL VARIABLE (For Instant UI Update)
+    if (!userSolvedIDs.includes(questionUID)) {
+        userSolvedIDs.push(questionUID);
+    }
 
-    // --- LOGIC CHANGE HERE ---
+    // --- B. SYNC MISTAKES LIST (Red) ---
     if (!isCorrect) {
-        // WRONG ANSWER: Always add to mistakes
+        // WRONG ANSWER: Add to everything
         if (!userProfile[mistakesKey].includes(questionUID)) {
             userProfile[mistakesKey].push(questionUID);
         }
-    } else {
-        // CORRECT ANSWER: Only remove if inside "Mistake Review" mode
-        if (isMistakeReview === true) {
-            userProfile[mistakesKey] = userProfile[mistakesKey].filter(id => id !== questionUID);
+        // ✅ SYNC GLOBAL VARIABLE
+        if (!userMistakes.includes(questionUID)) {
+            userMistakes.push(questionUID);
         }
-        // If Normal Practice mode, we DO NOTHING (so it stays in the list)
+    } else {
+        // CORRECT ANSWER: Logic depends on Mode
+        if (isMistakeReview === true) {
+            // Remove from Profile
+            userProfile[mistakesKey] = userProfile[mistakesKey].filter(id => id !== questionUID);
+            // ✅ SYNC GLOBAL VARIABLE
+            userMistakes = userMistakes.filter(id => id !== questionUID);
+        }
+        // If Normal Mode, we do nothing (keep it in history)
     }
 
     // 5. Save to Phone Memory
     localStorage.setItem('cached_user_profile', JSON.stringify(userProfile));
 
-    // 6. Sync to Cloud
+    // 6. Send to Cloud
     try {
         await db.collection('users').doc(currentUser.uid).update({
             [storeKey]: userProfile[storeKey],
@@ -3123,6 +3132,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
