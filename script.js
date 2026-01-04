@@ -166,51 +166,51 @@ const PLAN_DURATIONS = {
 let userListener = null;
 auth.onAuthStateChanged(async (user) => {
     if (user) {
-        console.log("✅ User detected:", user.email);
         currentUser = user;
         isGuest = false;
         
-        // 1. First, hide the Auth UI explicitly
         const authScreen = document.getElementById('auth-screen');
         if(authScreen) {
             authScreen.classList.add('hidden');
             authScreen.classList.remove('active');
         }
 
-        // 2. 🔥 NEW: Check if we have a saved course
         const lastCourse = localStorage.getItem('last_active_course');
+        
+        // 🔥 NEW LOGIC: Check if the Admin Panel should be the priority
+        const adminScreen = document.getElementById('admin-screen');
+        const isAdminActive = localStorage.getItem('admin_mode') === 'true';
 
-        // CONDITION A: We have a saved course -> Go straight to Dashboard
-        if (lastCourse && typeof COURSE_CONFIG !== 'undefined' && COURSE_CONFIG[lastCourse]) {
-            console.log("🔄 Restoring previous session:", lastCourse);
-            selectCourse(lastCourse); // This loads the dashboard immediately
+        if (isAdminActive) {
+            // Stay on Admin Screen and just load the data in the background
+            if (lastCourse && COURSE_CONFIG[lastCourse]) {
+                currentCourse = lastCourse;
+                loadQuestions(COURSE_CONFIG[lastCourse].sheet);
+                loadUserData();
+            }
         } 
-        // CONDITION B: No saved course -> Go to Course Selection
+        else if (lastCourse && COURSE_CONFIG[lastCourse]) {
+            // Standard Auto-Redirect to Dashboard
+            selectCourse(lastCourse); 
+        } 
         else {
-            showScreen('course-selection-screen'); 
-            
-            // Safety Check: If HTML is missing the new screen, fallback
+            showScreen('course-selection-screen');
             if(document.getElementById('course-selection-screen')) {
                 updateCourseSelectionUI();
-            } else {
-                console.warn("Course Selection Screen missing. Loading default.");
-                selectCourse('FCPS');
             }
         }
         
-        // 3. Run Security Check (Runs in background for both cases)
         await checkLoginSecurity(user);
         
     } else {
         if (!isGuest) {
-            console.log("🔒 No user signed in.");
             currentUser = null;
             userProfile = null;
-            
             showScreen('auth-screen');
         }
     }
 });
+
 async function checkLoginSecurity(user) {
     try {
         const docRef = db.collection('users').doc(user.uid);
@@ -354,6 +354,7 @@ function selectCourse(courseName) {
     loadQuestions(config.sheet); 
     loadUserData(); 
 }
+
 function returnToCourseSelection() {
     // 🔥 NEW: Clear saved course so the menu appears next time
     localStorage.removeItem('last_active_course');
@@ -912,7 +913,7 @@ async function loadAllUsers() {
         </div>`;
         
     try {
-        const snap = await db.collection('users').get({ source: 'server' });
+        const snap = await db.collection('users').get();
         if (snap.empty) {
             list.innerHTML = "<div style='padding:20px; text-align:center;'>No users found.</div>";
             return;
@@ -2471,7 +2472,7 @@ async function submitPaymentProof() {
 // ==========================================
 function openAdminPanel() {
     console.log("🚀 Force Opening Admin Panel...");
-
+    localStorage.setItem('current_screen', 'admin-screen');
     // 1. Security Check
     if (!userProfile || userProfile.role !== 'admin') {
         return alert("⛔ Access Denied: Admins only.");
@@ -2552,8 +2553,9 @@ function openAdminPanel() {
         document.documentElement.scrollTop = 0; // For Chrome/Firefox
     }, 10);
 
-    // 9. Load Data
-    loadAllUsers();
+ // 9. Load Data
+if (typeof adminUsersCache !== 'undefined') adminUsersCache = null; // Clear old cache
+loadAllUsers();
 }
 // 2. TAB SWITCHER (Standard Logic)
 function switchAdminTab(tabName) {
@@ -3728,6 +3730,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
