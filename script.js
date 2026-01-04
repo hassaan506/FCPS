@@ -870,15 +870,30 @@ function renderCompactUserRow(doc) {
     // Badges
     let badge = `<span style="background:#f1f5f9; color:#64748b; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600;">FREE</span>`;
     
+    // --- SMART CHECK: Verify Dates (Don't just trust the boolean) ---
     let isPrem = false;
-    if (u.isPremium && u.premiumExpiry > Date.now()) isPrem = true;
-    Object.keys(COURSE_CONFIG).forEach(k => { if(u[COURSE_CONFIG[k].prefix + 'isPremium']) isPrem = true; });
+    const now = Date.now();
+
+    // Check Multi-Course Premium
+    Object.keys(COURSE_CONFIG).forEach(k => { 
+        const prefix = COURSE_CONFIG[k].prefix;
+        // We check if the boolean is true AND if the date is in the future
+        if (u[prefix + 'isPremium'] && u[prefix + 'expiryDate']) {
+            const d = (u[prefix + 'expiryDate'].toDate ? u[prefix + 'expiryDate'].toDate() : new Date(u[prefix + 'expiryDate']));
+            // Only count as premium if date is in the FUTURE
+            if (d > now) isPrem = true; 
+        }
+    });
+
+    // Legacy check (fallback)
+    if (u.isPremium && u.premiumExpiry) {
+        const d = (u.premiumExpiry.toDate ? u.premiumExpiry.toDate() : new Date(u.premiumExpiry));
+        if (d > now) isPrem = true;
+    }
 
     if(isPrem) badge = `<span style="background:#dcfce7; color:#166534; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600; border:1px solid #bbf7d0;">PREMIUM</span>`;
     
-    // Admin Badge
     if(u.role === 'admin') badge = `<span style="background:#7e22ce; color:white; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600;">ADMIN</span>`;
-    
     if(u.disabled) badge = `<span style="background:#fee2e2; color:#991b1b; padding:3px 8px; border-radius:12px; font-size:10px; font-weight:600;">BANNED</span>`;
 
     // Name/Email Display
@@ -901,24 +916,65 @@ function renderCompactUserRow(doc) {
     </div>`;
 }
 
-// 4. POPUP MODAL (With Promote/Demote Logic)
+
+// 4. POPUP MODAL (Shows Date + Days Left)
 function openManageUserModal(uid) {
     const doc = adminUsersCache[uid];
     if (!doc) return alert("Please refresh the list.");
     const u = doc.data();
     
-    const isSuperAdmin = (uid === SUPER_ADMIN_ID);
-    const isAdmin = (u.role === 'admin'); // Check if they are ALREADY admin
+    const isSuperAdmin = (uid === SUPER_ADMIN_ID); 
+    const isAdmin = (u.role === 'admin');
 
-    // Generate Subscription List
+    // --- GENERATE SUBSCRIPTION LIST ---
     let activeSubs = "";
+    const now = Date.now();
+
     Object.keys(COURSE_CONFIG).forEach(key => {
         const conf = COURSE_CONFIG[key];
-        if (u[conf.prefix + 'isPremium']) {
-            activeSubs += `<div style="font-size:12px; border-bottom:1px dashed #eee; padding:5px 0;">✅ ${conf.name} Active</div>`;
+        const prefix = conf.prefix;
+        
+        // Check if subscription exists
+        if (u[prefix + 'isPremium']) {
+            const rawDate = u[prefix + 'expiryDate'];
+            let displayString = "";
+            let colorStyle = "";
+            
+            if (rawDate) {
+                // 1. Calculate Date & Days
+                const d = (rawDate.toDate ? rawDate.toDate() : new Date(rawDate));
+                const diffMs = d - now;
+                const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                
+                // Format Date (DD/MM/YYYY)
+                const dateStr = d.toLocaleDateString('en-GB'); 
+
+                if (daysLeft > 0) {
+                    // ACTIVE
+                    const daysTxt = (daysLeft > 10000) ? "Lifetime" : `${daysLeft} days left`;
+                    displayString = `<b>${dateStr}</b> <span style="font-weight:normal;">(${daysTxt})</span>`;
+                    colorStyle = "color:#166534; background:#dcfce7; border:1px solid #bbf7d0;";
+                } else {
+                    // EXPIRED
+                    displayString = `<b>${dateStr}</b> (Expired)`;
+                    colorStyle = "color:#991b1b; background:#fee2e2; border:1px solid #fca5a5;";
+                }
+            } else {
+                displayString = "Unknown Date";
+                colorStyle = "color:#666; background:#f1f5f9;";
+            }
+
+            activeSubs += `
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:8px 0; border-bottom:1px dashed #eee;">
+                <span>✅ <b>${conf.name}</b></span>
+                <span style="${colorStyle} padding:3px 8px; border-radius:4px; font-size:11px;">
+                    ${displayString}
+                </span>
+            </div>`;
         }
     });
-    if(!activeSubs) activeSubs = "<div style='font-size:12px; color:#999;'>No subscriptions.</div>";
+
+    if(!activeSubs) activeSubs = "<div style='font-size:12px; color:#94a3b8; font-style:italic;'>No active subscriptions.</div>";
 
     // Options HTML
     let courseOpts = "";
@@ -928,10 +984,8 @@ function openManageUserModal(uid) {
     let actionButtons = "";
     
     if (isSuperAdmin) {
-        // If it's YOU, show safe message
         actionButtons = `<div style="text-align:center; color:#7e22ce; font-weight:bold; padding:10px; background:#f3e8ff; border-radius:6px;">👑 This is the Main Admin.<br>Cannot be modified.</div>`;
     } else {
-        // If it's someone else, show buttons
         actionButtons = `
             <h4 style="margin:0 0 10px 0; color:#b91c1c; font-size:14px;">⚠️ Actions</h4>
             <div style="display:flex; flex-direction:column; gap:8px;">
@@ -962,13 +1016,16 @@ function openManageUserModal(uid) {
                 <div style="font-size:10px; color:#aaa;">${uid}</div>
             </div>
 
-            <div style="background:#f8fafc; padding:10px; border-radius:8px; margin-bottom:15px;">${activeSubs}</div>
+            <div style="background:#f8fafc; padding:15px; border-radius:8px; margin-bottom:15px;">
+                <label style="font-size:10px; font-weight:700; color:#64748b; text-transform:uppercase; display:block; margin-bottom:8px;">Current Status</label>
+                ${activeSubs}
+            </div>
 
             <div style="border:1px solid #dcfce7; background:#f0fdf4; padding:15px; border-radius:8px; margin-bottom:15px;">
                 <h4 style="margin:0 0 10px 0; color:#15803d; font-size:14px;">🎁 Grant Access</h4>
                 <div style="display:flex; gap:5px; margin-bottom:10px;">
-                    <select id="modal-course" style="flex:1;">${courseOpts}</select>
-                    <select id="modal-duration" style="flex:1;">
+                    <select id="modal-course" style="flex:1; padding:8px; border-radius:4px; border:1px solid #ccc;">${courseOpts}</select>
+                    <select id="modal-duration" style="flex:1; padding:8px; border-radius:4px; border:1px solid #ccc;">
                         <option value="1">1 Day</option>
                         <option value="7">1 Week</option>
                         <option value="15">15 Days</option>
@@ -979,7 +1036,7 @@ function openManageUserModal(uid) {
                         <option value="9999">Lifetime</option>
                     </select>
                 </div>
-                <button onclick="runModalGrant('${uid}')" style="width:100%; background:#16a34a; color:white; padding:10px; border:none; border-radius:6px; cursor:pointer;">Grant</button>
+                <button onclick="runModalGrant('${uid}')" style="width:100%; background:#16a34a; color:white; padding:10px; border:none; border-radius:6px; cursor:pointer;">Grant Access</button>
             </div>
 
             ${actionButtons}
@@ -990,7 +1047,6 @@ function openManageUserModal(uid) {
     div.innerHTML = modalHtml;
     document.body.appendChild(div.firstElementChild);
 }
-
 // 5. HELPER FUNCTIONS
 function closeAdminModal(force) {
     if (force === true || (event && event.target.id === 'admin-modal')) {
@@ -1296,45 +1352,111 @@ function setMode(mode) {
 }
 
 function startPractice(subject, topic) {
-    let pool = allQuestions.filter(q => q.Subject === subject && (!topic || q.Topic === topic));
-    
-    // Check Premium Status
+    // 1. First, get ALL questions for the entire SUBJECT (ignore topic for now)
+    let subjectPool = allQuestions.filter(q => q.Subject === subject);
+
+    // 2. Check Premium Status & Role
     const premKey = getStoreKey('isPremium');
     const expKey = getStoreKey('expiryDate');
     const isPrem = userProfile && userProfile[premKey] && isDateActive(userProfile[expKey]);
     const isAdmin = userProfile && userProfile.role === 'admin';
 
-    // --- NEW LIMIT LOGIC ---
+    // 3. Define Limits
     let limit = Infinity;
     let userType = "Premium";
 
     if (isAdmin) {
         limit = Infinity;
     } else if (isGuest) {
-        limit = 20; // Guest Limit
+        limit = 20;
         userType = "Guest";
     } else if (!isPrem) {
-        limit = 50; // Free User Limit (Non-Premium)
+        limit = 50; 
         userType = "Free";
     }
 
-    // Apply Limit
-    if (pool.length > limit) {
-        pool = pool.slice(0, limit);
-        if (currentIndex === 0) {
-            alert(`🔒 ${userType} Limit Reached\n\nYou are limited to ${limit} questions per section in ${userType} mode.\n\nUpgrade to Premium to unlock the full ${currentCourse} bank!`);
+    // 4. 🔥 BALANCED DISTRIBUTION LOGIC (Round-Robin)
+    // If the subject has more questions than the limit, we pick evenly from all topics.
+    if (subjectPool.length > limit) {
+        
+        // A. Group questions by Topic
+        const topicMap = {};
+        const topicNames = [];
+        
+        subjectPool.forEach(q => {
+            const tName = q.Topic || "General";
+            if (!topicMap[tName]) {
+                topicMap[tName] = [];
+                topicNames.push(tName);
+            }
+            topicMap[tName].push(q);
+        });
+
+        // B. Round-Robin Selection
+        // Pick 1 from Topic A, 1 from Topic B, 1 from Topic C... repeat until we hit 50.
+        let balancedList = [];
+        let i = 0; // Index tracker
+        let addedSomething = true;
+
+        while (balancedList.length < limit && addedSomething) {
+            addedSomething = false;
+            
+            // Loop through every topic available in this subject
+            for (const tName of topicNames) {
+                // Stop immediately if we hit the limit (e.g., 50)
+                if (balancedList.length >= limit) break; 
+                
+                const questionsInThisTopic = topicMap[tName];
+                
+                // If this topic has a question at index 'i', take it
+                if (questionsInThisTopic[i]) {
+                    balancedList.push(questionsInThisTopic[i]);
+                    addedSomething = true;
+                }
+            }
+            i++; // Move to the next question index
+        }
+
+        // C. Update the pool to be this new "Balanced" list
+        subjectPool = balancedList;
+
+        // Optional: Alert user (only once per session)
+        if (currentIndex === 0 && !window.hasShownLimitAlert) {
+            // console.log(`Limit applied: Balanced distribution of ${limit} questions.`);
+            window.hasShownLimitAlert = true; 
         }
     }
-    // -----------------------
 
-    if (pool.length === 0) return alert("No questions available.");
+    // 5. NOW Filter by Specific Topic (If user clicked a specific button)
+    // We are filtering INSIDE the "Free Sample" we just created.
+    let pool = [];
+    if (topic) {
+        pool = subjectPool.filter(q => q.Topic === topic);
+    } else {
+        pool = subjectPool; // User clicked "Practice All"
+    }
 
+    // 6. Handle Empty Pool 
+    // (If a topic exists but wasn't included in the sample, or sample is empty)
+    if (pool.length === 0) {
+        // Check if the topic exists in the FULL database (to give a better error message)
+        const topicExists = allQuestions.some(q => q.Subject === subject && q.Topic === topic);
+        
+        if (topicExists && limit !== Infinity) {
+             return alert(`🔒 Premium Content\n\n${userType} users get a balanced sample of ${limit} questions from the entire ${subject} course.\n\nQuestions for this specific topic happen to fall outside that free sample.\n\nUpgrade to Premium to unlock everything!`);
+        } else {
+             return alert("No questions available.");
+        }
+    }
+
+    // 7. Handle "Unattempted Only" Filter
     const onlyUnattempted = document.getElementById('unattempted-only').checked;
     if (onlyUnattempted) {
         pool = pool.filter(q => !userSolvedIDs.includes(q._uid));
-        if (pool.length === 0) return alert("You have solved all questions in this section!");
+        if (pool.length === 0) return alert("You have solved all available free questions in this section!");
     }
 
+    // 8. Setup Quiz Environment
     filteredQuestions = pool;
     
     let startIndex = 0;
@@ -3159,6 +3281,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
