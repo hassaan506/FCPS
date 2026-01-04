@@ -318,13 +318,25 @@ function selectCourse(courseName) {
     
     // 2. Update Header with the NICE NAME, not the ID
     const badge = document.getElementById('active-course-badge');
-    if(badge) badge.innerText = config.name; // <--- This fixes the top badge
+    if(badge) badge.innerText = config.name; 
     
     const title = document.getElementById('stats-title');
-    if(title) title.innerText = `📊 ${config.name} Progress`; // <--- This fixes the dashboard title
+    if(title) title.innerText = `📊 ${config.name} Progress`; 
 
-    // 3. Load Data & Dashboard
-    showScreen('dashboard-screen');
+    // 3. Load Data & Dashboard (CONDITIONAL LOGIC)
+    
+    // 🔥 NEW: Check if the Admin Panel is currently open
+    const adminScreen = document.getElementById('admin-screen');
+    const isAdminActive = adminScreen && 
+                          !adminScreen.classList.contains('hidden') && 
+                          adminScreen.style.display !== 'none';
+
+    // Only force the dashboard if we are NOT in the admin panel
+    if (!isAdminActive) {
+        showScreen('dashboard-screen');
+    } else {
+        console.log("✅ Admin Panel is open: Staying on Admin Screen...");
+    }
     
     // Reset Data
     allQuestions = [];
@@ -1032,7 +1044,10 @@ function openManageUserModal(uid) {
     if (!doc) return alert("Please refresh the list.");
     const u = doc.data();
     
-    const isSuperAdmin = (currentUser.uid === SUPER_ADMIN_ID); 
+    // CURRENT VIEWER info
+    const isSuperAdmin = (currentUser.uid === SUPER_ADMIN_ID);
+    
+    // TARGET USER info
     const isAdmin = (u.role === 'admin');
 
     // --- GENERATE SUBSCRIPTION LIST ---
@@ -1047,7 +1062,7 @@ function openManageUserModal(uid) {
             const rawDate = u[prefix + 'expiryDate'];
             let displayString = "Unknown Date";
             let colorStyle = "color:#666; background:#f1f5f9;";
-            
+             
             if (rawDate) {
                 const d = (rawDate.toDate ? rawDate.toDate() : new Date(rawDate));
                 const diffMs = d - now;
@@ -1073,16 +1088,18 @@ function openManageUserModal(uid) {
     });
 
     if(!activeSubs) activeSubs = "<div style='font-size:12px; color:#94a3b8; font-style:italic;'>No active subscriptions.</div>";
-
+    
     let courseOpts = "";
     Object.keys(COURSE_CONFIG).forEach(k => { courseOpts += `<option value="${k}">${COURSE_CONFIG[k].name}</option>`; });
-
-    // --- ACTION BUTTONS ---
-    let actionButtons = "";
     
-    if (isSuperAdmin && uid === SUPER_ADMIN_ID) {
-        actionButtons = `<div style="text-align:center; color:#7e22ce; font-weight:bold; padding:10px; background:#f3e8ff; border-radius:6px;">👑 This is the Main Admin.</div>`;
+    // --- ACTION BUTTONS (FIXED LOGIC) ---
+    let actionButtons = "";
+
+    // 🔥 FIX: If the TARGET is the Super Admin, NO ONE can edit them (not even themselves via this UI)
+    if (uid === SUPER_ADMIN_ID) {
+        actionButtons = `<div style="text-align:center; color:#7e22ce; font-weight:bold; padding:10px; background:#f3e8ff; border-radius:6px; border:1px solid #d8b4fe;">👑 This is the Main Admin (Protected).</div>`;
     } else {
+        // Standard Action Buttons for everyone else
         actionButtons = `
             <h4 style="margin:0 0 10px 0; color:#b91c1c; font-size:14px;">⚠️ Actions</h4>
             <div style="display:flex; flex-direction:column; gap:8px;">
@@ -1141,6 +1158,7 @@ function openManageUserModal(uid) {
     div.innerHTML = modalHtml;
     document.body.appendChild(div.firstElementChild);
 }
+
 // 3. CLOSE MODAL HELPER
 function closeAdminModal(force) {
     if (force === true || (event && event.target.id === 'admin-modal')) {
@@ -3005,9 +3023,27 @@ function openBadges() {
 }
 
 function updateBadgeButton() {
-    // Basic implementation for now
-    if(userSolvedIDs.length > 10) document.getElementById('main-badge-btn').innerText = "👶";
-    else document.getElementById('main-badge-btn').innerText = "🏆";
+    const btn = document.getElementById('main-badge-btn');
+    if(!btn) return;
+
+    const solvedCount = (typeof userSolvedIDs !== 'undefined') ? userSolvedIDs.length : 0;
+
+    // Check from Highest to Lowest
+    if (solvedCount >= 5000) {
+        btn.innerText = "👑"; // Master
+    } else if (solvedCount >= 2000) {
+        btn.innerText = "💎"; // Diamond
+    } else if (solvedCount >= 1000) {
+        btn.innerText = "🥇"; // Gold
+    } else if (solvedCount >= 500) {
+        btn.innerText = "🥈"; // Silver
+    } else if (solvedCount >= 100) {
+        btn.innerText = "🥉"; // Bronze <--- You will see this now
+    } else if (solvedCount >= 10) {
+        btn.innerText = "👶"; // Novice
+    } else {
+        btn.innerText = "🏆"; // Default (No Badge)
+    }
 }
 
 async function openAnalytics() {
@@ -3618,6 +3654,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
