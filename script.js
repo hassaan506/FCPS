@@ -847,27 +847,29 @@ let adminUsersCache = {};
 
 async function loadAllUsers() {
     console.log("🚀 Loading Users (Merged Version)...");
+    
+    // 1. FIX: Scroll to top immediately when this loads
+    window.scrollTo(0,0);
 
     const list = document.getElementById('admin-user-result');
     const searchInput = document.getElementById('admin-user-input');
     const searchVal = searchInput ? searchInput.value.trim().toLowerCase() : "";
 
     if (!list) return alert("❌ Error: 'admin-user-result' missing.");
-
-    // ✅ FIX SCROLLING: Keep list inside the box
+    
+    // Fix Scrolling: Keep list inside the box
     list.style.maxHeight = "60vh"; 
     list.style.overflowY = "auto";
-
+    
     list.innerHTML = `
         <div style='text-align:center; padding:30px; color:#64748b;'>
             <div style="font-size:24px; margin-bottom:10px;">⏳</div>
             <b>Fetching Database...</b>
         </div>`;
-
+        
     try {
         // Force Server Fetch
         const snap = await db.collection('users').get({ source: 'server' });
-
         if (snap.empty) {
             list.innerHTML = "<div style='padding:20px; text-align:center;'>No users found.</div>";
             return;
@@ -896,21 +898,22 @@ async function loadAllUsers() {
             
             // Search Filter
             if (searchVal === "" || email.includes(searchVal) || name.includes(searchVal) || idStr.includes(searchVal)) {
-                adminUsersCache[uid] = doc; 
-
-                // Badges for the list row
+                adminUsersCache[uid] = doc;
+                
+                // Badges
                 let badge = `<span style="background:#f1f5f9; color:#64748b; padding:2px 6px; border-radius:4px; font-size:10px;">Student</span>`;
                 if(u.role === 'admin') badge = `<span style="background:#7e22ce; color:white; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;">ADMIN</span>`;
                 if(u.disabled) badge = `<span style="background:#fee2e2; color:#991b1b; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;">BANNED</span>`;
-
-                // Simple Row with Gear Icon
+                
+                // --- VISUAL FIX HERE ---
+                // Added: width:auto, flex-shrink:0, flex:none to the button
                 html += `
                 <div style="background:white; border-bottom:1px solid #f1f5f9; padding:12px; display:flex; justify-content:space-between; align-items:center;">
-                    <div style="flex:1;">
+                    <div style="flex:1; padding-right:10px;">
                         <div style="font-weight:600; color:#1e293b; font-size:13px;">${u.email}</div>
                         <div style="font-size:10px; color:#94a3b8; margin-top:2px;">${badge} <span style="margin-left:5px;">${u.plan || 'Free'}</span></div>
                     </div>
-                    <button onclick="openManageUserModal('${uid}')" style="background:#3b82f6; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-size:14px;">
+                    <button onclick="openManageUserModal('${uid}')" style="background:#3b82f6; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-size:14px; width:auto !important; flex:none; flex-shrink:0;">
                         ⚙️
                     </button>
                 </div>`;
@@ -920,7 +923,6 @@ async function loadAllUsers() {
 
         // --- BUTTONS LOGIC (Ghosts & Requests) ---
         let extraButtons = "";
-        
         if (ghostCount > 0) {
             extraButtons += ` <button onclick="adminDeleteGhosts()" style="margin-left:5px; font-size:10px; background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; border-radius:4px; cursor:pointer; padding:2px 6px;">🗑️ Clean ${ghostCount} Ghosts</button>`;
         }
@@ -940,13 +942,12 @@ async function loadAllUsers() {
             <b>${visibleCount}</b> Users (Hidden: ${guestCount}) ${extraButtons}
         </div>
         ${html}`;
-
+        
     } catch (e) {
         console.error(e);
         list.innerHTML = `<div style='color:red; padding:10px;'>Error: ${e.message}</div>`;
     }
 }
-
 // 2. SEARCH REDIRECT
 function adminLookupUser() { loadAllUsers(); }
 
@@ -2388,36 +2389,49 @@ async function submitPaymentProof() {
 // ==========================================
 
 // 1. OPEN PANEL & FORCE DISPLAY
+// ==========================================
+// 1. OPEN PANEL & FORCE DISPLAY (FIXED)
+// ==========================================
 function openAdminPanel() {
     console.log("🚀 Force Opening Admin Panel...");
 
-    // Security Check
+    // 1. Security Check
     if (!userProfile || userProfile.role !== 'admin') {
         return alert("⛔ Access Denied: Admins only.");
     }
 
-    // A. HIDE ALL OTHER SCREENS
+    // 2. FORCE SCROLL TO TOP (Fixes the "scrolled down" bug)
+    window.scrollTo(0, 0);
+
+    // 3. HIDE ALL SCREENS (Standard)
     document.querySelectorAll('.screen').forEach(s => {
-        s.style.display = 'none'; // Force hide inline
+        s.style.display = 'none'; 
         s.classList.add('hidden');
     });
 
-    // B. SHOW ADMIN SCREEN
+    // 4. 🔥 HIDE EXTRA CONTAINERS (Fixes content pushing admin down)
+    // These might be left open if they don't have the 'screen' class
+    const extras = ['mbbs-years-container', 'main-menu-container', 'test-sidebar', 'practice-nav-container'];
+    extras.forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.classList.add('hidden');
+    });
+
+    // 5. SHOW ADMIN SCREEN
     const adminScreen = document.getElementById('admin-screen');
     if (!adminScreen) return alert("❌ Error: 'admin-screen' ID missing in HTML.");
     
     adminScreen.classList.remove('hidden');
-    adminScreen.style.display = 'block'; // Force show inline
+    adminScreen.style.display = 'block'; 
 
-    // C. FORCE SHOW 'USERS' TAB CONTAINER
-    // This is likely where your bug was. We manually unhide the container.
+    // 6. FORCE SHOW 'USERS' TAB CONTAINER
     const userTab = document.getElementById('tab-users');
     if (userTab) {
         userTab.classList.remove('hidden');
-        userTab.style.display = 'block'; // Force show inline
+        userTab.style.display = 'block'; 
     }
 
-    // Hide other tabs just in case
+    // 7. Hide other tabs just in case
     ['tab-reports', 'tab-payments', 'tab-keys'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -2426,18 +2440,17 @@ function openAdminPanel() {
         }
     });
 
-    // D. VISUAL TABS UPDATE
+    // 8. VISUAL TABS UPDATE
     document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
-    // Highlight the Users button
+    
     const buttons = document.querySelectorAll('.admin-tab');
     buttons.forEach(btn => {
-        if(btn.innerText.includes('Users') || btn.getAttribute('onclick').includes('users')) {
+        if(btn.innerText.includes('Users') || (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes('users'))) {
             btn.classList.add('active');
         }
     });
 
-    // E. LOAD DATA
-    // We call this directly.
+    // 9. LOAD DATA
     loadAllUsers();
 }
 
@@ -3573,6 +3586,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
