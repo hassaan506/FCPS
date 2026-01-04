@@ -891,7 +891,7 @@ let adminUsersCache = {};
 // ======================================================
 
 async function loadAllUsers() {
-    console.log("🚀 Loading Users (Fixed Version)...");
+    console.log("🚀 Loading Users (Admin Sorted Version)...");
 
     window.scrollTo(0, 0);
 
@@ -913,19 +913,20 @@ async function loadAllUsers() {
 
     try {
         const snap = await db.collection('users').get();
-
         if (snap.empty) {
             list.innerHTML = `<div style="padding:20px; text-align:center;">No users found.</div>`;
             return;
         }
 
-        let html = "";
+        adminUsersCache = {};
+        const now = Date.now();
+
+        let admins = [];
+        let users = [];
+
         let visibleCount = 0;
         let guestCount = 0;
         let ghostCount = 0;
-
-        adminUsersCache = {};
-        const now = Date.now();
 
         for (const doc of snap.docs) {
             const u = doc.data();
@@ -944,16 +945,10 @@ async function loadAllUsers() {
                 name.includes(searchVal) ||
                 idStr.includes(searchVal)
             ) {
-
                 visibleCount++;
                 adminUsersCache[uid] = doc;
 
-                // ----- ROLE / STATUS BADGE -----
-                let badge = `<span style="background:#f1f5f9; color:#64748b; padding:2px 6px; border-radius:4px; font-size:10px;">Student</span>`;
-                if (u.role === 'admin') badge = `<span style="background:#7e22ce; color:white; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;">ADMIN</span>`;
-                if (u.disabled) badge = `<span style="background:#fee2e2; color:#991b1b; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;">BANNED</span>`;
-
-                // ----- PLAN LOGIC (100% CORRECT) -----
+                // ----- PLAN LOGIC (CORRECT) -----
                 let displayPlan = `<span style="color:#64748b;">Free</span>`;
                 let durationText = "";
 
@@ -974,17 +969,29 @@ async function loadAllUsers() {
                     `;
                 }
 
-                // ----- RENDER USER ROW -----
-                html += `
-                <div style="background:white; border-bottom:1px solid #f1f5f9; padding:12px; display:flex; justify-content:space-between; align-items:center;">
-                    
+                // ----- ADMIN HIGHLIGHT -----
+                const isAdmin = u.role === 'admin';
+
+                const rowHTML = `
+                <div style="
+                    background:${isAdmin ? '#f5f3ff' : 'white'};
+                    border-bottom:1px solid #f1f5f9;
+                    padding:12px;
+                    display:flex;
+                    justify-content:space-between;
+                    align-items:center;
+                ">
                     <div style="flex:1; padding-right:10px;">
                         <div style="font-weight:700; color:#1e293b; font-size:14px; margin-bottom:4px;">
                             ${u.email}
                         </div>
 
                         <div style="font-size:11px; display:flex; align-items:center; gap:6px;">
-                            <span style="font-weight:600; color:#475569; text-transform:capitalize;">
+                            <span style="
+                                font-weight:700;
+                                color:${isAdmin ? '#7e22ce' : '#475569'};
+                                text-transform:capitalize;
+                            ">
                                 ${u.role || 'Student'}
                             </span>
                             <span style="color:#cbd5e1;">|</span>
@@ -993,26 +1000,39 @@ async function loadAllUsers() {
                         </div>
                     </div>
 
-                    <button onclick="openManageUserModal('${uid}')"
-                        style="
-                            background:#3b82f6;
-                            color:white;
-                            border:none;
-                            padding:6px 10px;
-                            border-radius:6px;
-                            cursor:pointer;
-                            font-size:13px;
-                            height:32px;
-                            align-self:center;
-                            flex-shrink:0;
-                        ">
-                        ⚙️
-                    </button>
+                    <!-- BUTTON WRAPPER (PREVENTS FLEX STRETCH) -->
+                    <div style="flex:none; display:flex; align-items:center;">
+                        <button onclick="openManageUserModal('${uid}')"
+                            style="
+                                width:32px;
+                                height:32px;
+                                min-width:32px;
+                                min-height:32px;
+                                max-width:32px;
+                                max-height:32px;
+                                display:inline-flex;
+                                align-items:center;
+                                justify-content:center;
+                                line-height:1;
+                                background:#3b82f6;
+                                color:white;
+                                border:none;
+                                border-radius:6px;
+                                cursor:pointer;
+                                font-size:16px;
+                                padding:0;
+                            ">
+                            ⚙️
+                        </button>
+                    </div>
                 </div>`;
+
+                if (isAdmin) admins.push(rowHTML);
+                else users.push(rowHTML);
             }
         }
 
-        // ----- EXTRA ADMIN BUTTONS -----
+        // ----- EXTRA BUTTONS -----
         let extraButtons = "";
 
         if (ghostCount > 0) {
@@ -1023,30 +1043,13 @@ async function loadAllUsers() {
                 </button>`;
         }
 
-        if (currentUser && currentUser.uid === SUPER_ADMIN_ID) {
-            try {
-                const reqSnap = await db.collection('admin_requests')
-                    .where('status', '==', 'pending')
-                    .get();
-
-                if (!reqSnap.empty) {
-                    extraButtons += `
-                        <button onclick="openAdminRequests()"
-                            style="margin-left:8px; font-size:11px; background:#7e22ce; color:white; border:none; border-radius:4px; cursor:pointer; padding:4px 10px;">
-                            🔔 ${reqSnap.size} Requests
-                        </button>`;
-                }
-            } catch (e) {
-                console.log("Admin request check failed", e);
-            }
-        }
-
-        // ----- FINAL RENDER -----
+        // ----- FINAL RENDER (ADMINS FIRST) -----
         list.innerHTML = `
             <div style="padding:10px; font-size:12px; background:#f8fafc; border-bottom:1px solid #e2e8f0; position:sticky; top:0; z-index:10;">
                 <b>${visibleCount}</b> Users (Hidden: ${guestCount}) ${extraButtons}
             </div>
-            ${html}
+            ${admins.join("")}
+            ${users.join("")}
         `;
 
     } catch (e) {
@@ -3776,6 +3779,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
