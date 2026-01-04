@@ -887,7 +887,7 @@ const SUPER_ADMIN_ID = "2eDvczf0OVdUdFEYLa1IjvzKrb32";
 let adminUsersCache = {}; 
 
 async function loadAllUsers() {
-    console.log("🚀 Loading Users (FINAL FIXED)...");
+    console.log("🚀 Loading Users...");
 
     window.scrollTo(0, 0);
 
@@ -972,13 +972,9 @@ async function loadAllUsers() {
                 if (premiumCourses.length > 0) {
                     displayPlan = `<span style="color:#059669; font-weight:600;">Premium</span>`;
 
-                    // Build the durationText for all active premium courses
-                    durationText = premiumCourses.map(pc => `
-                        <span style="color:#cbd5e1;">|</span>
-                        <span style="color:#64748b;">${pc.name}</span>
-                        <span style="color:#cbd5e1;">|</span>
-                        <span style="color:#f59e0b; font-weight:bold;">${pc.daysLeft}</span>
-                    `).join(" ");
+                    // Format as: COURSE NAME (DAYS LEFT) | COURSE NAME (DAYS LEFT)
+                    durationText = premiumCourses.map(pc => `${pc.name} (${pc.daysLeft})`).join(" | ");
+                    durationText = `<span style="color:#64748b;">${durationText}</span>`;
                 }
 
                 // --------- ADMIN HIGHLIGHT ---------
@@ -3829,6 +3825,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
