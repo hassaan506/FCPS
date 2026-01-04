@@ -640,48 +640,60 @@ async function updateUserStats(isCorrect, subject, questionUID) {
     userProfile[storeKey][subject].total += 1;
     if (isCorrect) userProfile[storeKey][subject].correct += 1;
 
-    // 4. Update Lists (Database Object)
+    // 4. Update Lists (The Database Object)
     const solvedKey = getStoreKey('solved');     
     const mistakesKey = getStoreKey('mistakes'); 
     
     if (!userProfile[solvedKey]) userProfile[solvedKey] = [];
     if (!userProfile[mistakesKey]) userProfile[mistakesKey] = [];
 
-    // --- A. SYNC SOLVED LIST (Green) ---
-    // Update Database Profile
+    // Add to 'Solved' Database Object
     if (!userProfile[solvedKey].includes(questionUID)) {
         userProfile[solvedKey].push(questionUID);
     }
-    // ✅ SYNC GLOBAL VARIABLE (For Instant UI Update)
-    if (!userSolvedIDs.includes(questionUID)) {
+
+    // ============================================================
+    // ✅ 4.5. CRITICAL FIX: SYNC LIVE GLOBAL VARIABLES
+    // This makes the Navigator change color WITHOUT refreshing
+    // ============================================================
+    
+    // A. Sync Solved (Green)
+    // We check if the global array exists, then update it
+    if (typeof userSolvedIDs !== 'undefined' && !userSolvedIDs.includes(questionUID)) {
         userSolvedIDs.push(questionUID);
     }
 
-    // --- B. SYNC MISTAKES LIST (Red) ---
+    // B. Sync Mistakes (Red)
     if (!isCorrect) {
-        // WRONG ANSWER: Add to everything
+        // Database Object
         if (!userProfile[mistakesKey].includes(questionUID)) {
             userProfile[mistakesKey].push(questionUID);
         }
-        // ✅ SYNC GLOBAL VARIABLE
-        if (!userMistakes.includes(questionUID)) {
+        // ✅ Live Global Variable (Updates Navigator Red)
+        if (typeof userMistakes !== 'undefined' && !userMistakes.includes(questionUID)) {
             userMistakes.push(questionUID);
         }
     } else {
-        // CORRECT ANSWER: Logic depends on Mode
+        // If Correct...
         if (isMistakeReview === true) {
-            // Remove from Profile
+            // Remove from Database Object
             userProfile[mistakesKey] = userProfile[mistakesKey].filter(id => id !== questionUID);
-            // ✅ SYNC GLOBAL VARIABLE
-            userMistakes = userMistakes.filter(id => id !== questionUID);
+            
+            // ✅ Remove from Live Global Variable
+            if (typeof userMistakes !== 'undefined') {
+                const idx = userMistakes.indexOf(questionUID);
+                if (idx > -1) userMistakes.splice(idx, 1);
+            }
         }
-        // If Normal Mode, we do nothing (keep it in history)
+        // Normal Mode: We do nothing (It stays in history)
     }
+    // ============================================================
+
 
     // 5. Save to Phone Memory
     localStorage.setItem('cached_user_profile', JSON.stringify(userProfile));
 
-    // 6. Send to Cloud
+    // 6. Sync to Cloud
     try {
         await db.collection('users').doc(currentUser.uid).update({
             [storeKey]: userProfile[storeKey],
@@ -691,6 +703,21 @@ async function updateUserStats(isCorrect, subject, questionUID) {
     } catch (e) {
         console.log("⚠️ Saved locally (Queueing for Cloud)");
     }
+
+    // 7. 🔥 OPTIONAL: INSTANT UI PAINT
+    // If you want the button to change color instantly before any other logic runs:
+    try {
+        // Assuming your navigator buttons have IDs like 'nav-btn-0', 'nav-btn-1'
+        const navBtn = document.getElementById(`nav-btn-${currentQuestionIndex}`);
+        if(navBtn) {
+            if(isCorrect) {
+                navBtn.classList.add('solved');
+                if(isMistakeReview) navBtn.classList.remove('mistake');
+            } else {
+                navBtn.classList.add('mistake');
+            }
+        }
+    } catch(err) { console.log("UI Paint error", err); }
 }
 
 function checkPremiumExpiry() {
@@ -3132,6 +3159,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
