@@ -949,37 +949,46 @@ async function loadAllUsers() {
                 if(u.role === 'admin') badge = `<span style="background:#7e22ce; color:white; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;">ADMIN</span>`;
                 if(u.disabled) badge = `<span style="background:#fee2e2; color:#991b1b; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;">BANNED</span>`;
                 
-                // --- 🔥 NEW: PLAN TEXT FORMATTING ---
-let rawPlan = u.plan || 'Free';
-let displayPlan = 'Free';
+                // --- 🔥 UPDATED: PLAN & DURATION LOGIC ---
+                let rawPlan = u.plan || 'Free';
+                let displayPlan = 'Free';
+                let durationText = ""; // To store the duration/expiry info
+                const now = Date.now();
 
-if (rawPlan !== 'Free' && rawPlan !== 'free') {
-    // 1. Replace underscores with spaces (1_week -> 1 week)
-    let cleanText = rawPlan.replace(/_/g, ' ');
-    // 2. Capitalize First Letters (1 week -> 1 Week)
-    cleanText = cleanText.replace(/\b\w/g, l => l.toUpperCase());
-    // 3. Add Prefix
-    displayPlan = `<span style="color:#059669; font-weight:600;">Premium | ${cleanText}</span>`;
-} else {
-    displayPlan = `<span style="color:#64748b;">Free</span>`;
-}
+                if (rawPlan.toLowerCase() !== 'free') {
+                    // Format the name (1_week -> 1 Week)
+                    let cleanPlanName = rawPlan.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    
+                    if (u.planExpiry && u.planExpiry < now) {
+                        displayPlan = `<span style="color:#ef4444;">Expired</span>`;
+                    } else {
+                        displayPlan = `<span style="color:#059669; font-weight:600;">Premium</span>`;
+                    }
+                    durationText = `| <span style="color:#64748b;">${cleanPlanName}</span>`;
+                } else {
+                    displayPlan = `<span style="color:#64748b;">Free</span>`;
+                }
 
-                // --- RENDER ROW ---
+               // --- RENDER ROW (Updated Layout) ---
                 html += `
                 <div style="background:white; border-bottom:1px solid #f1f5f9; padding:12px; display:flex; justify-content:space-between; align-items:center;">
                     <div style="flex:1; padding-right:10px;">
-                        <div style="font-weight:600; color:#1e293b; font-size:13px;">${u.email}</div>
-                        <div style="font-size:10px; color:#94a3b8; margin-top:2px;">
-                            ${badge} <span style="margin-left:5px;">${displayPlan}</span>
+                        <div style="font-weight:700; color:#1e293b; font-size:14px; margin-bottom:4px;">
+                            ${u.email}
+                        </div>
+                        
+                        <div style="font-size:11px; display:flex; align-items:center; gap:6px;">
+                            ${badge} 
+                            <span style="color:#cbd5e1;">|</span> 
+                            ${displayPlan} 
+                            ${durationText}
                         </div>
                     </div>
+                    
                     <button onclick="openManageUserModal('${uid}')" style="background:#3b82f6; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-size:14px; width:auto !important; flex:none;">
                         ⚙️
                     </button>
                 </div>`;
-                visibleCount++;
-            }
-        }
 
         // --- EXTRA BUTTONS ---
         let extraButtons = "";
@@ -3730,6 +3739,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
