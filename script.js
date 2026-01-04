@@ -1153,49 +1153,41 @@ async function adminToggleRole(uid, newRole) {
 }
 // ✅ SECURE DELETE USER (Robust Version)
 async function adminDeleteUserDoc(uid) {
-    // 1. Protect Super Admin (Hardcoded ID Check)
+    // 1. Super Admin Protection
     if(uid === SUPER_ADMIN_ID) return alert("❌ YOU CANNOT DELETE THE MAIN ADMIN!");
 
-    // 2. Get Target User Data
     const targetDoc = adminUsersCache[uid];
     if (!targetDoc) return alert("Error: User data missing. Please refresh the list.");
     
     const targetUser = targetDoc.data();
     const isSuper = (currentUser.uid === SUPER_ADMIN_ID);
 
-    // 3. LOGIC: PREVENT SUB-ADMINS FROM DELETING OTHER ADMINS
+    // 2. Sub-Admin Protection
     if (targetUser.role === 'admin' && !isSuper) {
-        return alert("⛔ Access Denied.\n\nYou do not have permission to delete another Admin.\nOnly the Super Admin can perform this action.");
+        return alert("⛔ Access Denied.\n\nOnly the Super Admin can delete another Admin.");
     }
 
-    // 4. Detailed Confirmation Message
+    // 3. Confirmation
     const userType = targetUser.role === 'admin' ? "ADMIN" : "User";
-    const confirmMsg = `⚠️ PERMANENTLY DELETE ${userType}: ${targetUser.email}?\n\nNOTE: This will wipe their Data, Progress, and Admin Rights.\n(It does not remove the email from the Login list, but their account will be fully reset.)`;
+    if(!confirm(`⚠️ PERMANENTLY DELETE ${userType}: ${targetUser.email}?\n\nThis will wipe their Data & Progress.`)) return;
     
-    if(!confirm(confirmMsg)) return;
-    
-    // 5. Execute Delete with Visual Feedback
+    // 4. Perform Deletion
     const listDiv = document.getElementById('admin-user-result');
     try {
-        // Dim the list to show processing
-        if(listDiv) listDiv.style.opacity = "0.5";
+        if(listDiv) listDiv.style.opacity = "0.5"; // Visual feedback
         
-        // 🔥 This deletes the DATA from the database
+        // 🔥 Delete from Firestore
         await db.collection('users').doc(uid).delete();
         
-        // Success Message
-        alert(`✅ ${userType} data deleted successfully.\nIf they login again, they will start as a new user.`);
+        alert("✅ User Deleted Successfully.");
         
-        // Refresh the list immediately
         if(listDiv) listDiv.style.opacity = "1";
-        closeAdminModal(true);
-        loadAllUsers(); 
+        loadAllUsers(); // Refresh list
 
     } catch(e) { 
         if(listDiv) listDiv.style.opacity = "1";
         console.error(e);
-        // Hint at the solution if it fails
-        alert("❌ Delete Failed: " + e.message + "\n\n(IMPORTANT: Did you update the Firestore Rules in the Firebase Console? Deletions are blocked by default.)"); 
+        alert("❌ Delete Failed: " + e.message + "\n\n(Did you update the Firestore Rules in Firebase Console?)"); 
     }
 }
 
@@ -2397,45 +2389,93 @@ async function submitPaymentProof() {
 // --- ADMIN PANEL (UPDATED) ---
 
 function openAdminPanel() {
+    console.log("🚀 Opening Admin Screen...");
+
     // 1. Security Check
     if (!userProfile || userProfile.role !== 'admin') {
         return alert("⛔ Access Denied: Admins only.");
     }
 
-    const modal = document.getElementById('admin-modal');
+    // 2. SCREEN SWITCHING (The Fix for your HTML)
+    // Hide all other screens first
+    document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+    
+    // Show the Admin Screen
+    const adminScreen = document.getElementById('admin-screen');
+    if (!adminScreen) return alert("❌ Error: 'admin-screen' not found in HTML.");
+    adminScreen.classList.remove('hidden');
+
+    // 3. 🔥 HARD WIPE: Clear Previous Data
     const resultList = document.getElementById('admin-user-result');
-    
-    // 2. SHOW the modal
-    modal.classList.remove('hidden');
-
-    // 3. 🔥 CRITICAL FIX: Clear previous session data immediately
-    // This wipes the HTML so you never see the "Old" view while it loads
-    resultList.innerHTML = "<div style='padding:20px; text-align:center; color:#666;'>Loading fresh data...</div>";
-    
-    // 4. Force a fresh fetch from the database
-    loadAllUsers();
-}
-
-function switchAdminTab(tab) {
-    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
-    if(event) event.target.classList.add('active');
-    
-    ['reports', 'payments', 'keys', 'users'].forEach(t => document.getElementById('tab-'+t).classList.add('hidden'));
-    document.getElementById('tab-'+tab).classList.remove('hidden');
-    
-    if(tab==='reports') loadAdminReports();
-    if(tab==='payments') loadAdminPayments();
-    
-    if(tab==='keys') {
-        // --- FIX: POPULATE KEY GENERATOR DROPDOWN DYNAMICALLY ---
-        const select = document.getElementById('key-course-select');
-        if(select) select.innerHTML = getCourseOptionsHTML('FCPS');
-        loadAdminKeys();
+    if (resultList) {
+        resultList.innerHTML = "<div style='padding:40px; text-align:center; color:#94a3b8;'>Loading fresh database...</div>";
     }
-    
-    if(tab==='users') loadAllUsers();
-}
 
+    // 4. Reset Memory Cache
+    if (typeof adminUsersCache !== 'undefined') {
+        adminUsersCache = {};
+    }
+
+    // 5. Switch to Users Tab & Load Data
+    // This ensures you see the user list immediately
+    switchAdminTab('users'); 
+    
+    // Force Fetch from Server
+    setTimeout(() => {
+        loadAllUsers(); 
+    }, 100);
+}
+function switchAdminTab(tab) {
+    // 1. Hide all Tab Contents
+    ['reports', 'payments', 'keys', 'users'].forEach(t => {
+        const el = document.getElementById('tab-' + t);
+        if (el) el.classList.add('hidden');
+    });
+
+    // 2. Remove 'active' class from all buttons
+    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+
+    // 3. Show the Selected Tab Content
+    const targetContent = document.getElementById('tab-' + tab);
+    if (targetContent) targetContent.classList.remove('hidden');
+
+    // 4. Highlight the Correct Button (Works programmatically too)
+    // We look for the button that has the matching onclick function
+    const buttons = document.querySelectorAll('.admin-tab');
+    buttons.forEach(btn => {
+        const onclickAttr = btn.getAttribute('onclick');
+        if (onclickAttr && onclickAttr.includes(`'${tab}'`)) {
+            btn.classList.add('active');
+        }
+    });
+
+    // 5. Load Data for the Specific Tab
+    if (tab === 'reports') {
+        if (typeof loadAdminReports === 'function') loadAdminReports();
+    }
+
+    if (tab === 'payments') {
+        if (typeof loadAdminPayments === 'function') loadAdminPayments();
+    }
+
+    if (tab === 'keys') {
+        // --- KEY GENERATOR DROPDOWN LOGIC ---
+        const select = document.getElementById('key-course-select');
+        
+        // Only run this if the helper function exists, otherwise keep HTML defaults
+        if (select && typeof getCourseOptionsHTML === 'function') {
+            // Using FCPS as default, or you can change to currentCourse
+            select.innerHTML = getCourseOptionsHTML('FCPS'); 
+        }
+        
+        if (typeof loadAdminKeys === 'function') loadAdminKeys();
+    }
+
+    if (tab === 'users') {
+        // Always force a reload to prevent "Old Data" issues
+        if (typeof loadAllUsers === 'function') loadAllUsers();
+    }
+}
 async function loadAdminReports() {
     const list = document.getElementById('admin-reports-list');
     list.innerHTML = '<div style="padding:20px; text-align:center;">Loading reports...</div>';
@@ -3525,6 +3565,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
