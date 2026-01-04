@@ -1151,13 +1151,12 @@ async function adminToggleRole(uid, newRole) {
         alert("Failed to send request: " + e.message);
     }
 }
-// ✅ SECURE DELETE USER (Hard Blocks)
+// ✅ SECURE DELETE USER (Robust Version)
 async function adminDeleteUserDoc(uid) {
     // 1. Protect Super Admin (Hardcoded ID Check)
     if(uid === SUPER_ADMIN_ID) return alert("❌ YOU CANNOT DELETE THE MAIN ADMIN!");
 
     // 2. Get Target User Data
-    // We need to know if the person you are trying to delete is an Admin
     const targetDoc = adminUsersCache[uid];
     if (!targetDoc) return alert("Error: User data missing. Please refresh the list.");
     
@@ -1165,27 +1164,39 @@ async function adminDeleteUserDoc(uid) {
     const isSuper = (currentUser.uid === SUPER_ADMIN_ID);
 
     // 3. LOGIC: PREVENT SUB-ADMINS FROM DELETING OTHER ADMINS
-    // If the target is an Admin... AND ... You are NOT the Super Admin
     if (targetUser.role === 'admin' && !isSuper) {
         return alert("⛔ Access Denied.\n\nYou do not have permission to delete another Admin.\nOnly the Super Admin can perform this action.");
     }
 
-    // 4. Standard Delete Confirmation
+    // 4. Detailed Confirmation Message
     const userType = targetUser.role === 'admin' ? "ADMIN" : "User";
-    if(!confirm(`⚠️ PERMANENTLY DELETE THIS ${userType}?\n\n${targetUser.email}\n\nThis cannot be undone.`)) return;
+    const confirmMsg = `⚠️ PERMANENTLY DELETE ${userType}: ${targetUser.email}?\n\nNOTE: This will wipe their Data, Progress, and Admin Rights.\n(It does not remove the email from the Login list, but their account will be fully reset.)`;
     
-    // 5. Execute Delete
+    if(!confirm(confirmMsg)) return;
+    
+    // 5. Execute Delete with Visual Feedback
+    const listDiv = document.getElementById('admin-user-result');
     try {
+        // Dim the list to show processing
+        if(listDiv) listDiv.style.opacity = "0.5";
+        
+        // 🔥 This deletes the DATA from the database
         await db.collection('users').doc(uid).delete();
         
-        // If we just deleted an admin, maybe log it or alert
-        if (targetUser.role === 'admin') {
-            alert("✅ Admin account deleted successfully.");
-        }
+        // Success Message
+        alert(`✅ ${userType} data deleted successfully.\nIf they login again, they will start as a new user.`);
         
+        // Refresh the list immediately
+        if(listDiv) listDiv.style.opacity = "1";
         closeAdminModal(true);
         loadAllUsers(); 
-    } catch(e) { alert("Error: " + e.message); }
+
+    } catch(e) { 
+        if(listDiv) listDiv.style.opacity = "1";
+        console.error(e);
+        // Hint at the solution if it fails
+        alert("❌ Delete Failed: " + e.message + "\n\n(IMPORTANT: Did you update the Firestore Rules in the Firebase Console? Deletions are blocked by default.)"); 
+    }
 }
 
 // ===========================================
@@ -2386,15 +2397,23 @@ async function submitPaymentProof() {
 // --- ADMIN PANEL (UPDATED) ---
 
 function openAdminPanel() {
-    if (!currentUser) return;
-    db.collection('users').doc(currentUser.uid).get().then(doc => {
-        if (doc.data().role === 'admin') {
-            showScreen('admin-screen');
-            switchAdminTab('reports');
-        } else {
-            alert("⛔ Access Denied.");
-        }
-    });
+    // 1. Security Check
+    if (!userProfile || userProfile.role !== 'admin') {
+        return alert("⛔ Access Denied: Admins only.");
+    }
+
+    const modal = document.getElementById('admin-modal');
+    const resultList = document.getElementById('admin-user-result');
+    
+    // 2. SHOW the modal
+    modal.classList.remove('hidden');
+
+    // 3. 🔥 CRITICAL FIX: Clear previous session data immediately
+    // This wipes the HTML so you never see the "Old" view while it loads
+    resultList.innerHTML = "<div style='padding:20px; text-align:center; color:#666;'>Loading fresh data...</div>";
+    
+    // 4. Force a fresh fetch from the database
+    loadAllUsers();
 }
 
 function switchAdminTab(tab) {
@@ -3506,6 +3525,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
