@@ -950,19 +950,19 @@ async function loadAllUsers() {
                 if(u.disabled) badge = `<span style="background:#fee2e2; color:#991b1b; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;">BANNED</span>`;
                 
                 // --- 🔥 NEW: PLAN TEXT FORMATTING ---
-                let rawPlan = u.plan || 'Free';
-                let displayPlan = 'Free';
+let rawPlan = u.plan || 'Free';
+let displayPlan = 'Free';
 
-                if (rawPlan !== 'Free' && rawPlan !== 'free') {
-                    // 1. Replace underscores with spaces (1_week -> 1 week)
-                    let cleanText = rawPlan.replace(/_/g, ' ');
-                    // 2. Capitalize First Letters (1 week -> 1 Week)
-                    cleanText = cleanText.replace(/\b\w/g, l => l.toUpperCase());
-                    // 3. Add Prefix
-                    displayPlan = `<span style="color:#059669; font-weight:600;">Premium | ${cleanText}</span>`;
-                } else {
-                    displayPlan = `<span style="color:#64748b;">Free</span>`;
-                }
+if (rawPlan !== 'Free' && rawPlan !== 'free') {
+    // 1. Replace underscores with spaces (1_week -> 1 week)
+    let cleanText = rawPlan.replace(/_/g, ' ');
+    // 2. Capitalize First Letters (1 week -> 1 Week)
+    cleanText = cleanText.replace(/\b\w/g, l => l.toUpperCase());
+    // 3. Add Prefix
+    displayPlan = `<span style="color:#059669; font-weight:600;">Premium | ${cleanText}</span>`;
+} else {
+    displayPlan = `<span style="color:#64748b;">Free</span>`;
+}
 
                 // --- RENDER ROW ---
                 html += `
@@ -3730,6 +3730,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
