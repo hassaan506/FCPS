@@ -163,7 +163,7 @@ const PLAN_DURATIONS = {
 // ======================================================
 // 3. AUTHENTICATION & ROUTING (FIXED)
 // ======================================================
-
+let userListener = null;
 auth.onAuthStateChanged(async (user) => {
     if (user) {
         console.log("✅ User detected:", user.email);
@@ -3726,6 +3726,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
