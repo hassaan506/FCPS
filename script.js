@@ -533,40 +533,41 @@ async function signup() {
 async function logout() {
     console.log("👋 Logging out & Wiping Session Data...");
 
+    // 1. 🔥 PRESERVE: Save the course preference before wiping memory
+    const savedCourse = localStorage.getItem('last_active_course');
+
     try {
-        // 1. Firebase SignOut (Wait for it to finish)
+        // 2. Firebase SignOut (Wait for it to finish)
         await firebase.auth().signOut();
 
-        // 2. 🔥 HARD WIPE: Clear Admin Cache & DOM
-        // This destroys the old list immediately so it cannot reappear
+        // 3. 🔥 HARD WIPE: Clear Admin Cache & DOM
         if (typeof adminUsersCache !== 'undefined') {
             adminUsersCache = {}; 
         }
         
-        // Physically remove the data from the screen
         const adminList = document.getElementById('admin-user-result');
         if (adminList) adminList.innerHTML = "";
 
-        // 3. Reset Global Variables
+        // 4. Reset Global Variables
         currentUser = null;
         userProfile = null;
         isGuest = false;
 
-        // 4. Clear Local Storage (Your existing list)
-        localStorage.removeItem('cached_user_profile');
-        localStorage.removeItem('cached_questions_FCPS');
-        localStorage.removeItem('cached_questions_MBBS_1');
-        localStorage.removeItem('cached_questions_MBBS_2');
-        localStorage.removeItem('cached_questions_MBBS_3');
-        localStorage.removeItem('cached_questions_MBBS_4');
-        localStorage.removeItem('cached_questions_MBBS_5');
-        
-        // 5. Reset UI: Hide all screens, show Auth
+        // 5. 🔥 SECURITY WIPE: Clear ALL Local Storage
+        // This is safer than removing items one by one
+        localStorage.clear(); 
+
+        // 6. 🔥 RESTORE: Put the course preference back
+        if (savedCourse) {
+            localStorage.setItem('last_active_course', savedCourse);
+        }
+
+        // 7. Reset UI: Hide all screens, show Auth
         document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
         document.querySelectorAll('.modal-overlay').forEach(m => m.classList.add('hidden'));
         document.getElementById('auth-screen').classList.remove('hidden');
 
-        // 6. Force Reload (To clear any remaining script listeners)
+        // 8. Force Reload (To ensure a completely fresh state)
         setTimeout(() => {
             window.location.reload();
         }, 100);
@@ -577,6 +578,7 @@ async function logout() {
         window.location.reload();
     }
 }
+
 let isSignupMode = false;
 
 function toggleAuthMode() {
@@ -3726,6 +3728,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
