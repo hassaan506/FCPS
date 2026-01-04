@@ -845,18 +845,19 @@ const SUPER_ADMIN_ID = "2eDvczf0OVdUdFEYLa1IjvzKrb32";
 
 let adminUsersCache = {}; 
 
-// 1. MAIN LOAD FUNCTION
-// 1. MAIN LOAD FUNCTION (Updated with Approval System & Ghost Cleanup)
 async function loadAllUsers() {
-    console.log("🚀 Starting loadAllUsers...");
+    console.log("🚀 Loading Users (Popup Mode)...");
 
     const list = document.getElementById('admin-user-result');
     const searchInput = document.getElementById('admin-user-input');
     const searchVal = searchInput ? searchInput.value.trim().toLowerCase() : "";
 
-    if (!list) return alert("❌ Error: 'admin-user-result' element missing.");
+    if (!list) return alert("❌ Error: 'admin-user-result' missing.");
 
-    // Visual Loading Indicator
+    // FIX SCROLLING: Keep list inside the box
+    list.style.maxHeight = "60vh"; 
+    list.style.overflowY = "auto";
+
     list.innerHTML = `
         <div style='text-align:center; padding:30px; color:#64748b;'>
             <div style="font-size:24px; margin-bottom:10px;">⏳</div>
@@ -864,9 +865,9 @@ async function loadAllUsers() {
         </div>`;
 
     try {
-        console.log("📡 Fetching users from Firestore...");
+        // Force Server Fetch
         const snap = await db.collection('users').get({ source: 'server' });
-        
+
         if (snap.empty) {
             list.innerHTML = "<div style='padding:20px; text-align:center;'>No users found.</div>";
             return;
@@ -876,6 +877,7 @@ async function loadAllUsers() {
         let visibleCount = 0;
         let guestCount = 0;
 
+        // Reset Cache
         if (typeof adminUsersCache === 'undefined') adminUsersCache = {};
         adminUsersCache = {}; 
 
@@ -883,58 +885,43 @@ async function loadAllUsers() {
             const u = doc.data();
             const uid = doc.id;
             
+            // Filter Guests/Ghosts
             if (u.role === 'guest') { guestCount++; continue; }
             if (!u.email) continue; 
 
             const email = (u.email || "").toLowerCase();
             
-            // Basic Filter
             if (searchVal === "" || email.includes(searchVal)) {
                 adminUsersCache[uid] = doc; 
+
+                // Badges for the list row
+                let badge = `<span style="background:#f1f5f9; color:#64748b; padding:2px 6px; border-radius:4px; font-size:10px;">Student</span>`;
+                if(u.role === 'admin') badge = `<span style="background:#7e22ce; color:white; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;">ADMIN</span>`;
                 
-                const isAdmin = (u.role === 'admin');
-                const bg = isAdmin ? '#ecfdf5' : 'white';
-                const border = isAdmin ? '#6ee7b7' : '#e2e8f0';
-                
+                // Simple Row with Gear Icon
                 html += `
-                <div style="background:${bg}; border:1px solid ${border}; border-radius:8px; padding:12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <div style="font-weight:bold; color:#1e293b; font-size:13px;">${u.email}</div>
-                        <div style="font-size:10px; color:#64748b;">UID: ${uid}</div>
-                        <div style="margin-top:4px;">
-                             ${isAdmin 
-                                ? '<span style="background:#166534; color:white; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold;">ADMIN</span>' 
-                                : '<span style="background:#f1f5f9; color:#64748b; font-size:10px; padding:2px 6px; border-radius:4px;">Student</span>'}
-                        </div>
+                <div style="background:white; border-bottom:1px solid #f1f5f9; padding:12px; display:flex; justify-content:space-between; align-items:center;">
+                    <div style="flex:1;">
+                        <div style="font-weight:600; color:#1e293b; font-size:13px;">${u.email}</div>
+                        <div style="font-size:10px; color:#94a3b8; margin-top:2px;">${badge} <span style="margin-left:5px;">${u.plan || 'Free'}</span></div>
                     </div>
-                    
-                    <div style="display:flex; gap:5px;">
-                         <button onclick="adminToggleRole('${uid}', '${isAdmin ? 'student' : 'admin'}')" 
-                            style="font-size:10px; padding:6px 10px; border:1px solid #cbd5e1; background:white; border-radius:4px; cursor:pointer;">
-                            ${isAdmin ? '⬇️ Demote' : '⬆️ Promote'}
-                        </button>
-                        <button onclick="adminDeleteUserDoc('${uid}')" 
-                            style="font-size:10px; padding:6px 10px; border:1px solid #fca5a5; background:#fee2e2; color:#ef4444; border-radius:4px; cursor:pointer;">
-                            🗑️
-                        </button>
-                    </div>
+                    <button onclick="openManageUserModal('${uid}')" style="background:#3b82f6; color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-size:14px;">
+                        ⚙️
+                    </button>
                 </div>`;
-                
                 visibleCount++;
             }
         }
 
         list.innerHTML = `
-        <div style="padding:10px; font-size:12px; background:#f1f5f9; margin-bottom:10px;">
+        <div style="padding:10px; font-size:12px; background:#f8fafc; border-bottom:1px solid #e2e8f0; position:sticky; top:0; z-index:10;">
             <b>${visibleCount}</b> Users Found (Hidden: ${guestCount} Guests)
         </div>
         ${html}`;
-        
-        console.log("✅ loadAllUsers finished.");
 
     } catch (e) {
-        console.error("❌ loadAllUsers Crashed:", e);
-        list.innerHTML = `<div style='color:red; padding:10px; border:1px solid red; background:#fff5f5;'>Error: ${e.message}</div>`;
+        console.error(e);
+        list.innerHTML = `<div style='color:red; padding:10px;'>Error: ${e.message}</div>`;
     }
 }
 
@@ -1002,136 +989,74 @@ function openManageUserModal(uid) {
     if (!doc) return alert("Please refresh the list.");
     const u = doc.data();
     
-    const isSuperAdmin = (uid === SUPER_ADMIN_ID); 
-    const isAdmin = (u.role === 'admin');
+    // Check Permissions
+    const isSuper = (currentUser && currentUser.uid === SUPER_ADMIN_ID); 
+    const isTargetAdmin = (u.role === 'admin');
 
-    // --- GENERATE SUBSCRIPTION LIST ---
-    let activeSubs = "";
-    const now = Date.now();
+    // --- BUTTONS LOGIC ---
+    let actions = "";
 
-    Object.keys(COURSE_CONFIG).forEach(key => {
-        const conf = COURSE_CONFIG[key];
-        const prefix = conf.prefix;
-        
-        // Check if subscription exists
-        if (u[prefix + 'isPremium']) {
-            const rawDate = u[prefix + 'expiryDate'];
-            let displayString = "";
-            let colorStyle = "";
-            
-            if (rawDate) {
-                // 1. Calculate Date & Days
-                const d = (rawDate.toDate ? rawDate.toDate() : new Date(rawDate));
-                const diffMs = d - now;
-                const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-                
-                // Format Date (DD/MM/YYYY)
-                const dateStr = d.toLocaleDateString('en-GB'); 
-
-                if (daysLeft > 0) {
-                    // ACTIVE
-                    const daysTxt = (daysLeft > 10000) ? "Lifetime" : `${daysLeft} days left`;
-                    displayString = `<b>${dateStr}</b> <span style="font-weight:normal;">(${daysTxt})</span>`;
-                    colorStyle = "color:#166534; background:#dcfce7; border:1px solid #bbf7d0;";
-                } else {
-                    // EXPIRED
-                    displayString = `<b>${dateStr}</b> (Expired)`;
-                    colorStyle = "color:#991b1b; background:#fee2e2; border:1px solid #fca5a5;";
-                }
-            } else {
-                displayString = "Unknown Date";
-                colorStyle = "color:#666; background:#f1f5f9;";
-            }
-
-            activeSubs += `
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:8px 0; border-bottom:1px dashed #eee;">
-                <span>✅ <b>${conf.name}</b></span>
-                <span style="${colorStyle} padding:3px 8px; border-radius:4px; font-size:11px;">
-                    ${displayString}
-                </span>
-            </div>`;
-        }
-    });
-
-    if(!activeSubs) activeSubs = "<div style='font-size:12px; color:#94a3b8; font-style:italic;'>No active subscriptions.</div>";
-
-    // Options HTML
-    let courseOpts = "";
-    Object.keys(COURSE_CONFIG).forEach(k => { courseOpts += `<option value="${k}">${COURSE_CONFIG[k].name}</option>`; });
-
-    // --- BUTTON LOGIC ---
-    let actionButtons = "";
-    
-    if (isSuperAdmin) {
-        actionButtons = `<div style="text-align:center; color:#7e22ce; font-weight:bold; padding:10px; background:#f3e8ff; border-radius:6px;">👑 This is the Main Admin.<br>Cannot be modified.</div>`;
+    // A. Promote / Demote
+    if (isTargetAdmin) {
+        actions += `<button onclick="adminToggleRole('${uid}', 'student'); closeAdminModal(true);" style="width:100%; margin-bottom:10px; background:#64748b; color:white; padding:12px; border-radius:8px; border:none; cursor:pointer; font-weight:bold;">⬇️ Remove Admin Access</button>`;
     } else {
-        actionButtons = `
-            <h4 style="margin:0 0 10px 0; color:#b91c1c; font-size:14px;">⚠️ Actions</h4>
-            <div style="display:flex; flex-direction:column; gap:8px;">
-                
-                ${isAdmin 
-                    ? `<button onclick="adminToggleRole('${uid}', 'student')" style="background:#64748b; color:white; padding:10px; border-radius:6px; cursor:pointer; border:none; font-weight:bold;">⬇️ Remove Admin Access</button>`
-                    : `<button onclick="adminToggleRole('${uid}', 'admin')" style="background:#7e22ce; color:white; padding:10px; border-radius:6px; cursor:pointer; border:none; font-weight:bold;">⬆️ Promote to Admin</button>`
-                }
-
-                <div style="display:flex; gap:10px;">
-                    <button onclick="adminRevokePremium('${uid}')" style="flex:1; background:#f59e0b; color:white; padding:10px; border-radius:6px; cursor:pointer; border:none;">🚫 Revoke</button>
-                    ${u.disabled 
-                        ? `<button onclick="adminToggleBan('${uid}', false)" style="flex:1; background:#10b981; color:white; padding:10px; border-radius:6px; cursor:pointer; border:none;">✅ Unban</button>`
-                        : `<button onclick="adminToggleBan('${uid}', true)" style="flex:1; background:#ef4444; color:white; padding:10px; border-radius:6px; cursor:pointer; border:none;">⛔ Ban</button>`
-                    }
-                </div>
-                <button onclick="adminDeleteUserDoc('${uid}')" style="background:#991b1b; color:white; padding:10px; border-radius:6px; cursor:pointer; font-weight:bold; border:none;">🗑️ Delete User</button>
-            </div>`;
+        actions += `<button onclick="adminToggleRole('${uid}', 'admin'); closeAdminModal(true);" style="width:100%; margin-bottom:10px; background:#7e22ce; color:white; padding:12px; border-radius:8px; border:none; cursor:pointer; font-weight:bold;">⬆️ Promote to Admin</button>`;
     }
 
+    // B. Ban / Unban
+    if (u.disabled) {
+        actions += `<button onclick="adminToggleBan('${uid}', false); closeAdminModal(true);" style="width:100%; margin-bottom:10px; background:#10b981; color:white; padding:12px; border-radius:8px; border:none; cursor:pointer; font-weight:bold;">✅ Unban User</button>`;
+    } else {
+        actions += `<button onclick="adminToggleBan('${uid}', true); closeAdminModal(true);" style="width:100%; margin-bottom:10px; background:#f59e0b; color:white; padding:12px; border-radius:8px; border:none; cursor:pointer; font-weight:bold;">⛔ Ban User</button>`;
+    }
+
+    // C. Delete (Only for Super Admin)
+    if (isSuper) {
+        actions += `<button onclick="adminDeleteUserDoc('${uid}');" style="width:100%; background:#fee2e2; color:#ef4444; padding:12px; border-radius:8px; border:1px solid #fca5a5; cursor:pointer; font-weight:bold;">🗑️ Delete User Data</button>`;
+    } else if (isTargetAdmin) {
+        actions += `<div style="text-align:center; color:#94a3b8; font-size:12px; margin-top:5px;">Only Super Admin can delete other Admins.</div>`;
+    }
+
+    // --- MODAL HTML ---
     const modalHtml = `
-    <div class="admin-modal-overlay" id="admin-modal" onclick="closeAdminModal(event)">
-        <div class="admin-modal-content">
-            <button class="close-modal-btn" onclick="closeAdminModal(true)">&times;</button>
-            <div style="text-align:center; margin-bottom:15px;">
-                <h3 style="margin:0;">${u.displayName || "User"}</h3>
-                <div style="font-size:12px; color:#666;">${u.email}</div>
-                <div style="font-size:10px; color:#aaa;">${uid}</div>
+    <div class="modal-overlay" id="admin-modal" style="display:flex; align-items:center; justify-content:center; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999;" onclick="if(event.target.id==='admin-modal') closeAdminModal(true)">
+        <div class="joinCard" style="width:90%; max-width:400px; padding:25px; background:white; border-radius:15px; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3 style="margin:0; font-size:18px;">Manage User</h3>
+                <button onclick="closeAdminModal(true)" style="background:none; border:none; font-size:24px; cursor:pointer; color:#64748b;">&times;</button>
             </div>
 
-            <div style="background:#f8fafc; padding:15px; border-radius:8px; margin-bottom:15px;">
-                <label style="font-size:10px; font-weight:700; color:#64748b; text-transform:uppercase; display:block; margin-bottom:8px;">Current Status</label>
-                ${activeSubs}
-            </div>
-
-            <div style="border:1px solid #dcfce7; background:#f0fdf4; padding:15px; border-radius:8px; margin-bottom:15px;">
-                <h4 style="margin:0 0 10px 0; color:#15803d; font-size:14px;">🎁 Grant Access</h4>
-                <div style="display:flex; gap:5px; margin-bottom:10px;">
-                    <select id="modal-course" style="flex:1; padding:8px; border-radius:4px; border:1px solid #ccc;">${courseOpts}</select>
-                    <select id="modal-duration" style="flex:1; padding:8px; border-radius:4px; border:1px solid #ccc;">
-                        <option value="1">1 Day</option>
-                        <option value="7">1 Week</option>
-                        <option value="15">15 Days</option>
-                        <option value="30">1 Month</option>
-                        <option value="90">3 Months</option>
-                        <option value="180">6 Months</option>
-                        <option value="365">1 Year</option>
-                        <option value="9999">Lifetime</option>
-                    </select>
+            <div style="background:#f8fafc; padding:15px; border-radius:10px; margin-bottom:20px; text-align:center; border:1px solid #e2e8f0;">
+                <div style="font-weight:bold; color:#1e293b; font-size:16px;">${u.email}</div>
+                <div style="font-size:11px; color:#64748b; font-family:monospace; margin-top:4px;">${uid}</div>
+                <div style="margin-top:8px; font-size:12px;">
+                    Current Role: <b>${u.role === 'admin' ? 'ADMIN' : 'Student'}</b>
                 </div>
-                <button onclick="runModalGrant('${uid}')" style="width:100%; background:#16a34a; color:white; padding:10px; border:none; border-radius:6px; cursor:pointer;">Grant Access</button>
             </div>
 
-            ${actionButtons}
+            ${actions}
+
+            <div style="margin-top:15px; text-align:center;">
+                <button onclick="closeAdminModal(true)" style="background:transparent; color:#64748b; border:none; cursor:pointer; font-size:13px;">Cancel</button>
+            </div>
         </div>
     </div>`;
 
+    // Remove old modal if exists
+    const old = document.getElementById('admin-modal');
+    if(old) old.remove();
+
+    // Inject new modal
     const div = document.createElement('div');
     div.innerHTML = modalHtml;
     document.body.appendChild(div.firstElementChild);
 }
-// 5. HELPER FUNCTIONS
+
+// 3. CLOSE MODAL HELPER
 function closeAdminModal(force) {
-    if (force === true || (event && event.target.id === 'admin-modal')) {
-        const modal = document.getElementById('admin-modal');
-        if (modal) modal.remove();
-    }
+    const modal = document.getElementById('admin-modal');
+    if (modal) modal.remove();
 }
 
 // ✅ SECURE ROLE TOGGLE (Direct vs Request)
@@ -3630,6 +3555,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
