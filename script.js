@@ -895,78 +895,76 @@ async function loadAllUsers() {
     const searchInput = document.getElementById('admin-user-input');
     const searchVal = searchInput ? searchInput.value.trim().toLowerCase() : "";
 
-    if (!list) return alert("❌ Error: 'admin-user-result' missing."); [cite: 186]
+    if (!list) return alert("❌ Error: 'admin-user-result' missing.");
 
-    list.style.maxHeight = "60vh"; [cite: 187]
-    list.style.overflowY = "auto"; [cite: 187]
+    list.style.maxHeight = "60vh";
+    list.style.overflowY = "auto";
 
     list.innerHTML = `
         <div style="text-align:center; padding:30px; color:#64748b;">
             <div style="font-size:24px; margin-bottom:10px;">⏳</div>
             <b>Fetching Database...</b>
         </div>
-    `; [cite: 187]
+    `;
 
     try {
-        const snap = await db.collection('users').get(); [cite: 188]
+        const snap = await db.collection('users').get();
         if (snap.empty) {
-            list.innerHTML = `<div style="padding:20px; text-align:center;">No users found.</div>`; [cite: 189]
+            list.innerHTML = `<div style="padding:20px; text-align:center;">No users found.</div>`;
             return;
         }
 
-        adminUsersCache = {}; [cite: 190]
-        const now = Date.now(); [cite: 190]
+        adminUsersCache = {};
+        const now = Date.now();
 
-        // --- RESTORED: SEPARATE ARRAYS FOR GROUPING ---
-        let admins = []; 
+        let admins = [];
         let users = [];
 
         let visibleCount = 0;
         let guestCount = 0;
         let ghostCount = 0;
 
-        for (const doc of snap.docs) { [cite: 192]
-            const u = doc.data(); [cite: 192]
-            const uid = doc.id; [cite: 193]
+        for (const doc of snap.docs) {
+            const u = doc.data();
+            const uid = doc.id;
 
-            if (u.role === 'guest') { guestCount++; continue; } [cite: 193]
-            if (!u.email) { ghostCount++; continue; } [cite: 194]
+            if (u.role === 'guest') { guestCount++; continue; }
+            if (!u.email) { ghostCount++; continue; }
 
-            const email = u.email.toLowerCase(); [cite: 195]
-            const name = (u.displayName || "").toLowerCase(); [cite: 196]
-            const idStr = uid.toLowerCase(); [cite: 196]
+            const email = u.email.toLowerCase();
+            const name = (u.displayName || "").toLowerCase();
+            const idStr = uid.toLowerCase();
 
             if (
                 searchVal === "" ||
                 email.includes(searchVal) ||
                 name.includes(searchVal) ||
                 idStr.includes(searchVal)
-            ) { [cite: 197]
-                visibleCount++; [cite: 197]
-                adminUsersCache[uid] = doc; [cite: 198]
+            ) {
+                visibleCount++;
+                adminUsersCache[uid] = doc;
 
-                // --------- NORMALIZE planExpiry ---------
+                // Normalize planExpiry
                 let planExpiryMs = null;
                 if (u.planExpiry) {
                     if (typeof u.planExpiry.toMillis === "function") {
-                        planExpiryMs = u.planExpiry.toMillis(); [cite: 199]
-                    }
-                    else if (typeof u.planExpiry === "number") {
-                        planExpiryMs = u.planExpiry; [cite: 200]
+                        planExpiryMs = u.planExpiry.toMillis();
+                    } else if (typeof u.planExpiry === "number") {
+                        planExpiryMs = u.planExpiry;
                     }
                 }
 
-                // --------- PLAN LOGIC (WITH DAYS REMAINING) ---------
+                // Plan logic
                 let displayPlan = `<span style="color:#64748b;">Free</span>`;
                 let durationText = "";
                 let isAnyPremium = false;
                 let activeCourseName = "";
-                let daysLeftText = ""; 
+                let daysLeftText = "";
 
                 Object.keys(COURSE_CONFIG).forEach(key => {
                     const config = COURSE_CONFIG[key];
-                    const prefix = config.prefix; 
-                    
+                    const prefix = config.prefix;
+
                     const isPrem = u[prefix + 'isPremium'];
                     const expiryRaw = u[prefix + 'expiryDate'];
 
@@ -977,7 +975,7 @@ async function loadAllUsers() {
                         const d = (expiryRaw.toDate ? expiryRaw.toDate() : new Date(expiryRaw));
                         const diffMs = d - now;
                         const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-                        
+
                         daysLeftText = (daysLeft > 999) ? "Lifetime" : `${daysLeft} days left`;
                     }
                 });
@@ -992,8 +990,7 @@ async function loadAllUsers() {
                     `;
                 }
 
-                // --------- ADMIN HIGHLIGHT (RESTORED FIX) ---------
-                const isAdmin = (u.role === 'Admin' || u.role === 'admin'); [cite: 205]
+                const isAdmin = (u.role === 'Admin' || u.role === 'admin');
 
                 const rowHTML = `
                 <div style="
@@ -1003,11 +1000,11 @@ async function loadAllUsers() {
                     display:flex;
                     justify-content:space-between;
                     align-items:center;
-                "> [cite: 206-207]
+                ">
                     <div style="flex:1; padding-right:10px;">
                         <div style="font-weight:700; color:#1e293b; font-size:14px; margin-bottom:4px;">
                             ${u.email}
-                        </div> [cite: 208]
+                        </div>
 
                         <div style="font-size:11px; display:flex; align-items:center; gap:6px;">
                             <span style="
@@ -1016,10 +1013,10 @@ async function loadAllUsers() {
                                 text-transform:capitalize;
                             ">
                                 ${u.role || 'Student'}
-                            </span> [cite: 209-211]
+                            </span>
                             <span style="color:#cbd5e1;">|</span>
                             ${displayPlan}
-                            ${durationText} [cite: 211-212]
+                            ${durationText}
                         </div>
                     </div>
 
@@ -1037,30 +1034,29 @@ async function loadAllUsers() {
                                 cursor:pointer;
                                 font-size:16px;
                                 padding:0;
-                            "> [cite: 213-217]
+                            ">
                             ⚙️
                         </button>
                     </div>
                 </div>`;
 
-                // --- RESTORED: PUSH TO CORRECT ARRAY ---
-                if (isAdmin) admins.push(rowHTML); [cite: 218]
-                else users.push(rowHTML); [cite: 218]
+                if (isAdmin) admins.push(rowHTML);
+                else users.push(rowHTML);
             }
         }
 
-        // --------- FINAL RENDER (RESTORED GROUPING) ---------
+        // Final render
         list.innerHTML = `
             <div style="padding:10px; font-size:12px; background:#f8fafc; border-bottom:1px solid #e2e8f0; position:sticky; top:0; z-index:10;">
                 <b>${visibleCount}</b> Users (Hidden: ${guestCount} | Ghosts: ${ghostCount})
             </div> 
             ${admins.join("")} 
             ${users.join("")}
-        `; [cite: 219]
+        `;
 
     } catch (e) {
         console.error(e);
-        list.innerHTML = `<div style="color:red; padding:10px;">Error: ${e.message}</div>`; [cite: 220]
+        list.innerHTML = `<div style="color:red; padding:10px;">Error: ${e.message}</div>`;
     }
 }
 // 2. SEARCH REDIRECT
@@ -3840,6 +3836,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
