@@ -854,21 +854,19 @@ async function loadAllUsers() {
     const searchInput = document.getElementById('admin-user-input');
     const searchVal = searchInput ? searchInput.value.trim().toLowerCase() : "";
 
-    // 1. Safety Check: Does the HTML element exist?
-    if (!list) {
-        console.error("❌ Error: Could not find HTML element 'admin-user-result'");
-        return alert("Error: The User List container is missing from the HTML.");
-    }
+    if (!list) return alert("❌ Error: 'admin-user-result' element missing.");
 
-    list.innerHTML = "<div style='text-align:center; padding:20px; color:#666;'>Refreshing database...</div>";
+    // Visual Loading Indicator
+    list.innerHTML = `
+        <div style='text-align:center; padding:30px; color:#64748b;'>
+            <div style="font-size:24px; margin-bottom:10px;">⏳</div>
+            <b>Fetching Database...</b>
+        </div>`;
 
     try {
-        // 2. Fetch from Firebase (Force Server Fetch)
         console.log("📡 Fetching users from Firestore...");
         const snap = await db.collection('users').get({ source: 'server' });
         
-        console.log(`✅ Fetched ${snap.size} documents.`);
-
         if (snap.empty) {
             list.innerHTML = "<div style='padding:20px; text-align:center;'>No users found.</div>";
             return;
@@ -877,48 +875,46 @@ async function loadAllUsers() {
         let html = "";
         let visibleCount = 0;
         let guestCount = 0;
-        let ghostCount = 0;
 
-        // Reset Cache
         if (typeof adminUsersCache === 'undefined') adminUsersCache = {};
         adminUsersCache = {}; 
 
-        // 3. Loop through users
         for (const doc of snap.docs) {
             const u = doc.data();
             const uid = doc.id;
             
             if (u.role === 'guest') { guestCount++; continue; }
-            if (!u.email) { ghostCount++; continue; } 
+            if (!u.email) continue; 
 
             const email = (u.email || "").toLowerCase();
-            const name = (u.displayName || "").toLowerCase();
-            const idStr = uid.toLowerCase();
-
-            // Search Filter
-            if (searchVal === "" || email.includes(searchVal) || name.includes(searchVal) || idStr.includes(searchVal)) {
+            
+            // Basic Filter
+            if (searchVal === "" || email.includes(searchVal)) {
                 adminUsersCache[uid] = doc; 
                 
-                // --- RENDER ROW DIRECTLY (Fixes "Nothing Shows" bug) ---
-                const roleColor = u.role === 'admin' ? '#dcfce7' : '#f1f5f9';
-                const roleText = u.role === 'admin' ? '<span style="color:#166534; font-weight:bold;">ADMIN</span>' : 'Student';
+                const isAdmin = (u.role === 'admin');
+                const bg = isAdmin ? '#ecfdf5' : 'white';
+                const border = isAdmin ? '#6ee7b7' : '#e2e8f0';
                 
                 html += `
-                <div style="background:white; border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                <div style="background:${bg}; border:1px solid ${border}; border-radius:8px; padding:12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
                     <div>
                         <div style="font-weight:bold; color:#1e293b; font-size:13px;">${u.email}</div>
-                        <div style="font-size:11px; color:#64748b;">UID: ${uid}</div>
-                        <div style="font-size:11px; margin-top:4px;">
-                            <span style="background:${roleColor}; padding:2px 6px; border-radius:4px;">${roleText}</span>
-                            <span style="color:#94a3b8; margin-left:8px;">Plan: ${u.plan || 'Free'}</span>
+                        <div style="font-size:10px; color:#64748b;">UID: ${uid}</div>
+                        <div style="margin-top:4px;">
+                             ${isAdmin 
+                                ? '<span style="background:#166534; color:white; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold;">ADMIN</span>' 
+                                : '<span style="background:#f1f5f9; color:#64748b; font-size:10px; padding:2px 6px; border-radius:4px;">Student</span>'}
                         </div>
                     </div>
                     
                     <div style="display:flex; gap:5px;">
-                        <button onclick="adminToggleRole('${uid}', '${u.role === 'admin' ? 'student' : 'admin'}')" style="font-size:10px; padding:5px 8px; border:1px solid #cbd5e1; background:white; border-radius:4px; cursor:pointer;">
-                            ${u.role === 'admin' ? '⬇️ Demote' : '⬆️ Promote'}
+                         <button onclick="adminToggleRole('${uid}', '${isAdmin ? 'student' : 'admin'}')" 
+                            style="font-size:10px; padding:6px 10px; border:1px solid #cbd5e1; background:white; border-radius:4px; cursor:pointer;">
+                            ${isAdmin ? '⬇️ Demote' : '⬆️ Promote'}
                         </button>
-                        <button onclick="adminDeleteUserDoc('${uid}')" style="font-size:10px; padding:5px 8px; border:1px solid #fca5a5; background:#fee2e2; color:#ef4444; border-radius:4px; cursor:pointer;">
+                        <button onclick="adminDeleteUserDoc('${uid}')" 
+                            style="font-size:10px; padding:6px 10px; border:1px solid #fca5a5; background:#fee2e2; color:#ef4444; border-radius:4px; cursor:pointer;">
                             🗑️
                         </button>
                     </div>
@@ -928,39 +924,17 @@ async function loadAllUsers() {
             }
         }
 
-        // 4. Header & Buttons
-        let extraButtons = "";
+        list.innerHTML = `
+        <div style="padding:10px; font-size:12px; background:#f1f5f9; margin-bottom:10px;">
+            <b>${visibleCount}</b> Users Found (Hidden: ${guestCount} Guests)
+        </div>
+        ${html}`;
         
-        // Ghost Cleanup Button
-        if (ghostCount > 0) {
-            extraButtons += ` <button onclick="adminDeleteGhosts()" style="margin-left:5px; font-size:10px; background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; border-radius:4px; cursor:pointer; padding:2px 6px;">🗑️ Clean ${ghostCount} Ghosts</button>`;
-        }
-
-        // Requests Button (Super Admin Only)
-        if (currentUser && currentUser.uid === SUPER_ADMIN_ID) {
-            try {
-                const reqSnap = await db.collection('admin_requests').where('status', '==', 'pending').get();
-                if (!reqSnap.empty) {
-                    extraButtons += ` <button onclick="openAdminRequests()" style="margin-left:10px; font-size:11px; background:#7e22ce; color:white; border:none; border-radius:4px; cursor:pointer; padding:4px 10px;">🔔 ${reqSnap.size} Requests</button>`;
-                }
-            } catch(e) { console.log("Request fetch skipped (rules or empty)"); }
-        }
-
-        const header = `
-        <div style="padding:10px 15px; font-size:12px; color:#64748b; background:#f8fafc; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <span><b>${visibleCount}</b> Students</span>
-            <span style="color:#94a3b8; font-size:11px;">
-                (Hidden: <b>${guestCount}</b> Guests)
-                ${extraButtons}
-            </span>
-        </div>`;
-
-        list.innerHTML = header + (html || "<div style='padding:20px; text-align:center;'>No matching users.</div>");
-        console.log("✅ loadAllUsers finished successfully.");
+        console.log("✅ loadAllUsers finished.");
 
     } catch (e) {
         console.error("❌ loadAllUsers Crashed:", e);
-        list.innerHTML = `<div style='color:red; padding:10px;'>Error: ${e.message}<br><small>Check Console (F12) for details.</small></div>`;
+        list.innerHTML = `<div style='color:red; padding:10px; border:1px solid red; background:#fff5f5;'>Error: ${e.message}</div>`;
     }
 }
 
@@ -2461,122 +2435,111 @@ async function submitPaymentProof() {
 
 // --- ADMIN PANEL (UPDATED) ---
 
-function openAdminPanel() {
-    console.log("🚀 Opening Admin Screen (Safe Mode)...");
+// ==========================================
+// 🛡️ ADMIN PANEL LOGIC (FIXED)
+// ==========================================
 
-    // 1. Security Check
+// 1. OPEN PANEL & FORCE DISPLAY
+// ==========================================
+// 🛡️ ADMIN PANEL LOGIC (ROBUST FIX)
+// ==========================================
+
+// 1. OPEN PANEL & FORCE DISPLAY
+function openAdminPanel() {
+    console.log("🚀 Force Opening Admin Panel...");
+
+    // Security Check
     if (!userProfile || userProfile.role !== 'admin') {
         return alert("⛔ Access Denied: Admins only.");
     }
 
-    // 2. SCREEN SWITCHING
-    // Hide all other screens first
-    document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
-    
-    // Show the Admin Screen
-    const adminScreen = document.getElementById('admin-screen');
-    if (!adminScreen) return alert("❌ Error: 'admin-screen' not found in HTML.");
-    adminScreen.classList.remove('hidden');
-
-    // 3. 🔥 HARD WIPE: Clear Previous Data
-    // We clear the HTML immediately so you don't see old data
-    const resultList = document.getElementById('admin-user-result');
-    if (resultList) {
-        resultList.innerHTML = "<div style='padding:40px; text-align:center; color:#94a3b8;'>Loading fresh database...</div>";
-    } else {
-        return alert("❌ Error: 'admin-user-result' list container is missing.");
-    }
-
-    // 4. Reset Memory Cache
-    if (typeof adminUsersCache !== 'undefined') {
-        adminUsersCache = {};
-    }
-
-    // 5. MANUALLY SET TABS (Bypass switchAdminTab to prevent errors)
-    // Hide other tabs
-    ['reports', 'payments', 'keys'].forEach(t => {
-        const el = document.getElementById('tab-' + t);
-        if(el) el.classList.add('hidden');
+    // A. HIDE ALL OTHER SCREENS
+    document.querySelectorAll('.screen').forEach(s => {
+        s.style.display = 'none'; // Force hide inline
+        s.classList.add('hidden');
     });
 
-    // Show Users Tab
+    // B. SHOW ADMIN SCREEN
+    const adminScreen = document.getElementById('admin-screen');
+    if (!adminScreen) return alert("❌ Error: 'admin-screen' ID missing in HTML.");
+    
+    adminScreen.classList.remove('hidden');
+    adminScreen.style.display = 'block'; // Force show inline
+
+    // C. FORCE SHOW 'USERS' TAB CONTAINER
+    // This is likely where your bug was. We manually unhide the container.
     const userTab = document.getElementById('tab-users');
     if (userTab) {
         userTab.classList.remove('hidden');
+        userTab.style.display = 'block'; // Force show inline
     }
 
-    // Update Button Styling (Optional)
-    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
-    // Try to highlight the 'Users' button if found
-    const userBtns = document.querySelectorAll('.admin-tab');
-    userBtns.forEach(btn => {
+    // Hide other tabs just in case
+    ['tab-reports', 'tab-payments', 'tab-keys'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.classList.add('hidden');
+            el.style.display = 'none';
+        }
+    });
+
+    // D. VISUAL TABS UPDATE
+    document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
+    // Highlight the Users button
+    const buttons = document.querySelectorAll('.admin-tab');
+    buttons.forEach(btn => {
         if(btn.innerText.includes('Users') || btn.getAttribute('onclick').includes('users')) {
             btn.classList.add('active');
         }
     });
 
-    // 6. Force Fetch Data
-    // We use a small timeout to let the screen update first
-    setTimeout(() => {
-        if (typeof loadAllUsers === 'function') {
-            loadAllUsers(); 
-        } else {
-            resultList.innerHTML = "<div style='color:red;'>Error: loadAllUsers() function is missing!</div>";
-        }
-    }, 100);
+    // E. LOAD DATA
+    // We call this directly.
+    loadAllUsers();
 }
 
-function switchAdminTab(tab) {
-    // 1. Hide all Tab Contents
+// 2. TAB SWITCHER (Standard Logic)
+function switchAdminTab(tabName) {
+    console.log("🔄 Switching to tab:", tabName);
+
+    // Hide all tab contents
     ['reports', 'payments', 'keys', 'users'].forEach(t => {
         const el = document.getElementById('tab-' + t);
-        if (el) el.classList.add('hidden');
+        if (el) {
+            el.classList.add('hidden');
+            el.style.display = 'none'; // Ensure hidden
+        }
     });
 
-    // 2. Remove 'active' class from all buttons
-    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+    // Show target tab
+    const target = document.getElementById('tab-' + tabName);
+    if (target) {
+        target.classList.remove('hidden');
+        target.style.display = 'block'; // Ensure visible
+    }
 
-    // 3. Show the Selected Tab Content
-    const targetContent = document.getElementById('tab-' + tab);
-    if (targetContent) targetContent.classList.remove('hidden');
-
-    // 4. Highlight the Correct Button (Fixed: Works with 'single' or "double" quotes)
+    // Update Buttons
+    document.querySelectorAll('.admin-tab').forEach(btn => btn.classList.remove('active'));
     const buttons = document.querySelectorAll('.admin-tab');
     buttons.forEach(btn => {
-        const onclickAttr = btn.getAttribute('onclick');
-        // We simply check if the attribute contains the tab name (e.g. "users")
-        if (onclickAttr && onclickAttr.includes(tab)) {
-            btn.classList.add('active');
-        }
+        const attr = btn.getAttribute('onclick');
+        if (attr && attr.includes(tabName)) btn.classList.add('active');
     });
 
-    // 5. Load Data for the Specific Tab
-    if (tab === 'reports') {
-        if (typeof loadAdminReports === 'function') loadAdminReports();
-    }
-
-    if (tab === 'payments') {
-        if (typeof loadAdminPayments === 'function') loadAdminPayments();
-    }
-
-    if (tab === 'keys') {
-        // --- KEY GENERATOR DROPDOWN LOGIC ---
+    // Load Data
+    if (tabName === 'users') loadAllUsers();
+    if (tabName === 'reports' && typeof loadAdminReports === 'function') loadAdminReports();
+    if (tabName === 'payments' && typeof loadAdminPayments === 'function') loadAdminPayments();
+    
+    if (tabName === 'keys') {
         const select = document.getElementById('key-course-select');
-        
-        // Only populate if it's empty (Prevents resetting user selection on tab switch)
         if (select && select.children.length === 0 && typeof getCourseOptionsHTML === 'function') {
-            // Default to 'FCPS' or currentCourse if available
-            select.innerHTML = getCourseOptionsHTML('FCPS'); 
+            select.innerHTML = getCourseOptionsHTML('FCPS');
         }
-        
         if (typeof loadAdminKeys === 'function') loadAdminKeys();
     }
-
-    if (tab === 'users') {
-        // Always force a reload to ensure fresh data
-        if (typeof loadAllUsers === 'function') loadAllUsers();
-    }
 }
+
 
 async function loadAdminReports() {
     const list = document.getElementById('admin-reports-list');
@@ -3667,6 +3630,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
