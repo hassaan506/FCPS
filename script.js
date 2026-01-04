@@ -958,24 +958,41 @@ async function loadAllUsers() {
                     }
                 }
 
-                // --------- PLAN LOGIC (NOW 100% CORRECT) ---------
+                // --------- PLAN LOGIC (FIXED FOR MULTI-COURSE) ---------
                 let displayPlan = `<span style="color:#64748b;">Free</span>`;
                 let durationText = "";
+                let isAnyPremium = false;
+                let activeCourseName = "";
 
-                if (
-                    u.plan &&
-                    u.plan.toLowerCase() !== 'free' &&
-                    planExpiryMs &&
-                    planExpiryMs > now
-                ) {
-                    const cleanPlan = u.plan
-                        .replace(/_/g, ' ')
-                        .replace(/\b\w/g, l => l.toUpperCase());
+                // 1. Check all courses in COURSE_CONFIG (FCPS, MBBS_1 to 5)
+                Object.keys(COURSE_CONFIG).forEach(key => {
+                    const config = COURSE_CONFIG[key];
+                    const prefix = config.prefix; // e.g., "MBBS1_" or "MBBS_" [cite: 48]
+                    
+                    const isPrem = u[prefix + 'isPremium'];
+                    const expiryRaw = u[prefix + 'expiryDate'];
 
+                    // Use your existing helper to check if the date is still active [cite: 175]
+                    if (isPrem && isDateActive(expiryRaw)) {
+                        isAnyPremium = true;
+                        activeCourseName = config.name; // e.g., "First Year" [cite: 6]
+                    }
+                });
+
+                // 2. Fallback: Check Legacy/Global plan fields
+                if (!isAnyPremium && u.plan && u.plan.toLowerCase() !== 'free') {
+                    if (planExpiryMs && planExpiryMs > now) {
+                        isAnyPremium = true;
+                        activeCourseName = u.plan.replace(/_/g, ' ');
+                    }
+                }
+
+                // 3. Update UI if any active subscription was found
+                if (isAnyPremium) {
                     displayPlan = `<span style="color:#059669; font-weight:600;">Premium</span>`;
                     durationText = `
                         <span style="color:#cbd5e1;">|</span>
-                        <span style="color:#64748b;">${cleanPlan}</span>
+                        <span style="color:#64748b;">${activeCourseName}</span>
                     `;
                 }
 
@@ -3833,6 +3850,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
