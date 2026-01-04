@@ -895,75 +895,73 @@ async function loadAllUsers() {
     const searchInput = document.getElementById('admin-user-input');
     const searchVal = searchInput ? searchInput.value.trim().toLowerCase() : "";
 
-    if (!list) return alert("❌ Error: 'admin-user-result' missing.");
+    if (!list) return alert("❌ Error: 'admin-user-result' missing."); [cite: 186]
 
-    list.style.maxHeight = "60vh";
-    list.style.overflowY = "auto";
+    list.style.maxHeight = "60vh"; [cite: 187]
+    list.style.overflowY = "auto"; [cite: 187]
 
     list.innerHTML = `
         <div style="text-align:center; padding:30px; color:#64748b;">
             <div style="font-size:24px; margin-bottom:10px;">⏳</div>
             <b>Fetching Database...</b>
         </div>
-    `;
+    `; [cite: 187]
 
     try {
-        const snap = await db.collection('users').get();
+        const snap = await db.collection('users').get(); [cite: 188]
         if (snap.empty) {
-            list.innerHTML = `<div style="padding:20px; text-align:center;">No users found.</div>`;
+            list.innerHTML = `<div style="padding:20px; text-align:center;">No users found.</div>`; [cite: 189]
             return;
         }
 
-        adminUsersCache = {};
-        const now = Date.now();
+        adminUsersCache = {}; [cite: 190]
+        const now = Date.now(); [cite: 190]
 
-        let admins = [];
+        // RESTORED: Two separate arrays for grouping [cite: 190-191]
+        let admins = []; 
         let users = [];
 
         let visibleCount = 0;
         let guestCount = 0;
         let ghostCount = 0;
 
-        for (const doc of snap.docs) {
-            const u = doc.data();
-            const uid = doc.id;
+        for (const doc of snap.docs) { [cite: 192]
+            const u = doc.data(); [cite: 192]
+            const uid = doc.id; [cite: 193]
 
-            if (u.role === 'guest') { guestCount++; continue; }
-            if (!u.email) { ghostCount++; continue; }
+            if (u.role === 'guest') { guestCount++; continue; } [cite: 193]
+            if (!u.email) { ghostCount++; continue; } [cite: 194]
 
-            const email = u.email.toLowerCase();
-            const name = (u.displayName || "").toLowerCase();
-            const idStr = uid.toLowerCase();
+            const email = u.email.toLowerCase(); [cite: 195]
+            const name = (u.displayName || "").toLowerCase(); [cite: 196]
+            const idStr = uid.toLowerCase(); [cite: 196]
 
             if (
                 searchVal === "" ||
                 email.includes(searchVal) ||
                 name.includes(searchVal) ||
                 idStr.includes(searchVal)
-            ) {
-                visibleCount++;
-                adminUsersCache[uid] = doc;
+            ) { [cite: 197]
+                visibleCount++; [cite: 197]
+                adminUsersCache[uid] = doc; [cite: 198]
 
-                // --------- NORMALIZE planExpiry (CRITICAL FIX) ---------
+                // --------- NORMALIZE planExpiry ---------
                 let planExpiryMs = null;
-
                 if (u.planExpiry) {
-                    // Firestore Timestamp
                     if (typeof u.planExpiry.toMillis === "function") {
-                        planExpiryMs = u.planExpiry.toMillis();
+                        planExpiryMs = u.planExpiry.toMillis(); [cite: 199]
                     }
-                    // Already milliseconds
                     else if (typeof u.planExpiry === "number") {
-                        planExpiryMs = u.planExpiry;
+                        planExpiryMs = u.planExpiry; [cite: 200]
                     }
                 }
 
-// --------- PLAN LOGIC (FIXED WITH DAYS REMAINING) ---------
+                // --------- PLAN LOGIC (WITH DAYS REMAINING) ---------
                 let displayPlan = `<span style="color:#64748b;">Free</span>`;
                 let durationText = "";
                 let isAnyPremium = false;
                 let activeCourseName = "";
-                let daysLeftText = ""; // New variable for expiry info
+                let daysLeftText = ""; 
 
                 Object.keys(COURSE_CONFIG).forEach(key => {
                     const config = COURSE_CONFIG[key];
@@ -976,13 +974,11 @@ async function loadAllUsers() {
                         isAnyPremium = true;
                         activeCourseName = config.name;
 
-                        // Calculate Days Remaining 
                         const d = (expiryRaw.toDate ? expiryRaw.toDate() : new Date(expiryRaw));
                         const diffMs = d - now;
                         const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
                         
-                        // Handle Lifetime vs regular days 
-                        daysLeftText = (daysLeft > 10000) ? "Lifetime" : `${daysLeft} days left`;
+                        daysLeftText = (daysLeft > 999) ? "Lifetime" : `${daysLeft} days left`;
                     }
                 });
 
@@ -996,22 +992,23 @@ async function loadAllUsers() {
                     `;
                 }
 
-                // --------- ADMIN HIGHLIGHT ---------
-                const isAdmin = u.role === 'Admin';
+                // --------- ADMIN HIGHLIGHT (RESTORED) ---------
+                // Normalizes role check for both 'Admin' and 'admin'
+                const isAdmin = (u.role === 'Admin' || u.role === 'admin'); [cite: 205]
 
                 const rowHTML = `
                 <div style="
-                    background:${isAdmin ? '#f5f3ff' : 'white'};
+                    background:${isAdmin ? '#f5f3ff' : 'white'}; 
                     border-bottom:1px solid #f1f5f9;
                     padding:12px;
                     display:flex;
                     justify-content:space-between;
                     align-items:center;
-                ">
+                "> [cite: 206-207]
                     <div style="flex:1; padding-right:10px;">
                         <div style="font-weight:700; color:#1e293b; font-size:14px; margin-bottom:4px;">
                             ${u.email}
-                        </div>
+                        </div> [cite: 208]
 
                         <div style="font-size:11px; display:flex; align-items:center; gap:6px;">
                             <span style="
@@ -1020,26 +1017,20 @@ async function loadAllUsers() {
                                 text-transform:capitalize;
                             ">
                                 ${u.role || 'Student'}
-                            </span>
+                            </span> [cite: 208-211]
                             <span style="color:#cbd5e1;">|</span>
                             ${displayPlan}
-                            ${durationText}
+                            ${durationText} [cite: 211-212]
                         </div>
                     </div>
 
                     <div style="flex:none; display:flex; align-items:center;">
                         <button onclick="openManageUserModal('${uid}')"
                             style="
-                                width:32px;
-                                height:32px;
-                                min-width:32px;
-                                min-height:32px;
-                                max-width:32px;
-                                max-height:32px;
+                                width:32px; height:32px;
                                 display:inline-flex;
                                 align-items:center;
                                 justify-content:center;
-                                line-height:1;
                                 background:#3b82f6;
                                 color:white;
                                 border:none;
@@ -1047,29 +1038,30 @@ async function loadAllUsers() {
                                 cursor:pointer;
                                 font-size:16px;
                                 padding:0;
-                            ">
+                            "> [cite: 213-217]
                             ⚙️
                         </button>
                     </div>
                 </div>`;
 
+                // RESTORED: Sorting logic [cite: 218]
                 if (isAdmin) admins.push(rowHTML);
                 else users.push(rowHTML);
             }
         }
 
-        // --------- FINAL RENDER ---------
+        // --------- FINAL RENDER (RESTORED GROUPING) ---------
         list.innerHTML = `
             <div style="padding:10px; font-size:12px; background:#f8fafc; border-bottom:1px solid #e2e8f0; position:sticky; top:0; z-index:10;">
                 <b>${visibleCount}</b> Users (Hidden: ${guestCount})
-            </div>
-            ${admins.join("")}
+            </div> 
+            ${admins.join("")} 
             ${users.join("")}
-        `;
+        `; [cite: 219]
 
     } catch (e) {
         console.error(e);
-        list.innerHTML = `<div style="color:red; padding:10px;">Error: ${e.message}</div>`;
+        list.innerHTML = `<div style="color:red; padding:10px;">Error: ${e.message}</div>`; [cite: 220]
     }
 }
 
@@ -3850,6 +3842,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
