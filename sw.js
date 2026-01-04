@@ -1,4 +1,4 @@
-const CACHE_NAME = "edeetos-v6"; // Changed name to force update
+const CACHE_NAME = "edeetos-v7"; // Changed name to force update
 const ASSETS_TO_CACHE = [
   "./",                // The root folder
   "./index.html",      // The main file
@@ -38,25 +38,30 @@ self.addEventListener("activate", (event) => {
   return self.clients.claim(); // Take control of the page immediately
 });
 
-// 3. FETCH: Intercept requests
+// 3. FETCH: Network-First Strategy (Recommended for active development)
 self.addEventListener("fetch", (event) => {
-  // Only handle GET requests
   if (event.request.method !== "GET") return;
 
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      // A. Return Cached Version if available
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-
-      // B. If not in cache, try Network
-      return fetch(event.request).catch(() => {
-        // C. If Network fails (Offline) & Request is for a Page (HTML), return index.html
-        if (event.request.mode === 'navigate') {
-          return caches.match('./index.html');
-        }
-      });
-    })
+    // 1. Try the network first
+    fetch(event.request)
+      .then((networkResponse) => {
+        // 2. If successful, update the cache with this new version
+        return caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, networkResponse.clone());
+          return networkResponse;
+        });
+      })
+      .catch(() => {
+        // 3. If network fails (Offline), check the cache
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) return cachedResponse;
+          
+          // 4. If offline and navigating to a page, show index.html
+          if (event.request.mode === 'navigate') {
+            return caches.match('./index.html');
+          }
+        });
+      })
   );
 });
