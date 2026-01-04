@@ -917,7 +917,7 @@ async function loadAllUsers() {
         adminUsersCache = {}; [cite: 190]
         const now = Date.now(); [cite: 190]
 
-        // RESTORED: Two separate arrays for grouping [cite: 190-191]
+        // --- RESTORED: SEPARATE ARRAYS FOR GROUPING ---
         let admins = []; 
         let users = [];
 
@@ -992,8 +992,7 @@ async function loadAllUsers() {
                     `;
                 }
 
-                // --------- ADMIN HIGHLIGHT (RESTORED) ---------
-                // Normalizes role check for both 'Admin' and 'admin'
+                // --------- ADMIN HIGHLIGHT (RESTORED FIX) ---------
                 const isAdmin = (u.role === 'Admin' || u.role === 'admin'); [cite: 205]
 
                 const rowHTML = `
@@ -1017,7 +1016,7 @@ async function loadAllUsers() {
                                 text-transform:capitalize;
                             ">
                                 ${u.role || 'Student'}
-                            </span> [cite: 208-211]
+                            </span> [cite: 209-211]
                             <span style="color:#cbd5e1;">|</span>
                             ${displayPlan}
                             ${durationText} [cite: 211-212]
@@ -1044,16 +1043,16 @@ async function loadAllUsers() {
                     </div>
                 </div>`;
 
-                // RESTORED: Sorting logic [cite: 218]
-                if (isAdmin) admins.push(rowHTML);
-                else users.push(rowHTML);
+                // --- RESTORED: PUSH TO CORRECT ARRAY ---
+                if (isAdmin) admins.push(rowHTML); [cite: 218]
+                else users.push(rowHTML); [cite: 218]
             }
         }
 
         // --------- FINAL RENDER (RESTORED GROUPING) ---------
         list.innerHTML = `
             <div style="padding:10px; font-size:12px; background:#f8fafc; border-bottom:1px solid #e2e8f0; position:sticky; top:0; z-index:10;">
-                <b>${visibleCount}</b> Users (Hidden: ${guestCount})
+                <b>${visibleCount}</b> Users (Hidden: ${guestCount} | Ghosts: ${ghostCount})
             </div> 
             ${admins.join("")} 
             ${users.join("")}
@@ -1064,7 +1063,6 @@ async function loadAllUsers() {
         list.innerHTML = `<div style="color:red; padding:10px;">Error: ${e.message}</div>`; [cite: 220]
     }
 }
-
 // 2. SEARCH REDIRECT
 function adminLookupUser() { loadAllUsers(); }
 
@@ -3842,6 +3840,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
