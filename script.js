@@ -634,47 +634,45 @@ async function updateUserStats(isCorrect, subject, questionUID) {
     if (isGuest || !currentUser) return;
     if (!userProfile) return;
 
-    // 2. Initialize the stats object
+    // 2. Initialize Stats
     const storeKey = getStoreKey('stats'); 
     if (!userProfile[storeKey]) userProfile[storeKey] = {};
     if (!userProfile[storeKey][subject]) userProfile[storeKey][subject] = { total: 0, correct: 0 };
 
-    // 3. Update the Numbers
+    // 3. Update Counts
     userProfile[storeKey][subject].total += 1;
     if (isCorrect) userProfile[storeKey][subject].correct += 1;
 
-    // 4. Update the Lists
+    // 4. Update Lists
     const solvedKey = getStoreKey('solved');     
     const mistakesKey = getStoreKey('mistakes'); 
     
     if (!userProfile[solvedKey]) userProfile[solvedKey] = [];
     if (!userProfile[mistakesKey]) userProfile[mistakesKey] = [];
 
-    // Add to 'Solved' if not already there
+    // Add to 'Solved'
     if (!userProfile[solvedKey].includes(questionUID)) {
         userProfile[solvedKey].push(questionUID);
     }
 
-    // --- LOGIC CHANGE IS HERE ---
+    // --- LOGIC CHANGE HERE ---
     if (!isCorrect) {
-        // If WRONG: Always add to mistakes
+        // WRONG ANSWER: Always add to mistakes
         if (!userProfile[mistakesKey].includes(questionUID)) {
             userProfile[mistakesKey].push(questionUID);
         }
     } else {
-        // If CORRECT:
-        // Only remove it if we are actually inside "Mistake Review" mode
+        // CORRECT ANSWER: Only remove if inside "Mistake Review" mode
         if (isMistakeReview === true) {
             userProfile[mistakesKey] = userProfile[mistakesKey].filter(id => id !== questionUID);
-        } else {
-            // In Normal Practice, we keep it (so you can review it later)
         }
+        // If Normal Practice mode, we DO NOTHING (so it stays in the list)
     }
 
     // 5. Save to Phone Memory
     localStorage.setItem('cached_user_profile', JSON.stringify(userProfile));
 
-    // 6. Send to Cloud
+    // 6. Sync to Cloud
     try {
         await db.collection('users').doc(currentUser.uid).update({
             [storeKey]: userProfile[storeKey],
@@ -3125,6 +3123,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
