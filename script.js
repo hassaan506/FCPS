@@ -814,6 +814,7 @@ const SUPER_ADMIN_ID = "2eDvczf0OVdUdFEYLa1IjvzKrb32";
 let adminUsersCache = {}; 
 
 // 1. MAIN LOAD FUNCTION
+// 1. MAIN LOAD FUNCTION (Updated with Approval System & Ghost Cleanup)
 async function loadAllUsers() {
     const list = document.getElementById('admin-user-result');
     const searchInput = document.getElementById('admin-user-input');
@@ -855,11 +856,32 @@ async function loadAllUsers() {
             }
         });
 
-        // Header
+        // --- BUTTONS LOGIC ---
+        let extraButtons = "";
+        
+        // A. Ghost Cleanup Button (Shows if ghosts exist)
+        if (ghostCount > 0) {
+            extraButtons += ` <button onclick="adminDeleteGhosts()" style="margin-left:5px; font-size:10px; background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; border-radius:4px; cursor:pointer; padding:2px 6px;">🗑️ Clean Up</button>`;
+        }
+
+        // B. 🔔 APPROVAL REQUESTS BUTTON (Super Admin Only)
+        // Only the Main Admin sees this button if there are pending requests
+        if (currentUser && currentUser.uid === SUPER_ADMIN_ID) {
+            const reqSnap = await db.collection('admin_requests').where('status', '==', 'pending').get();
+            const reqCount = reqSnap.size;
+            
+            if (reqCount > 0) {
+                extraButtons += ` <button onclick="openAdminRequests()" style="margin-left:10px; font-size:11px; background:#7e22ce; color:white; border:none; border-radius:4px; cursor:pointer; padding:4px 10px; box-shadow:0 2px 5px rgba(0,0,0,0.2);">🔔 ${reqCount} Pending Requests</button>`;
+            }
+        }
+
         const header = `
-        <div style="padding:10px 15px; font-size:12px; color:#64748b; background:#f8fafc; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between;">
+        <div style="padding:10px 15px; font-size:12px; color:#64748b; background:#f8fafc; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
             <span><b>${visibleCount}</b> Students</span>
-            <span style="color:#94a3b8; font-size:11px;">(Hidden: ${guestCount} Guests)</span>
+            <span style="color:#94a3b8; font-size:11px;">
+                (Hidden: <b>${guestCount}</b> Guests, <b>${ghostCount}</b> Ghosts)
+                ${extraButtons}
+            </span>
         </div>`;
 
         list.innerHTML = header + (html || "<div style='padding:20px; text-align:center;'>No matching users.</div>");
@@ -869,7 +891,6 @@ async function loadAllUsers() {
         list.innerHTML = `<div style='color:red; padding:10px;'>Error: ${e.message}</div>`;
     }
 }
-
 // 2. SEARCH REDIRECT
 function adminLookupUser() { loadAllUsers(); }
 
@@ -1066,32 +1087,207 @@ function closeAdminModal(force) {
     }
 }
 
+// ✅ SECURE ROLE TOGGLE (Direct vs Request)
 async function adminToggleRole(uid, newRole) {
+    // 1. Safety Checks (Self & Super Admin Protection)
     if(uid === SUPER_ADMIN_ID) return alert("❌ Action Blocked: You cannot modify the Main Admin.");
-    
-    // Logic: If newRole is 'student', we are removing admin. If 'admin', we are adding.
-    const msg = (newRole === 'student') 
-        ? "⬇️ Remove Admin rights from this user?" 
-        : "⬆️ Make this user an ADMIN?";
+    if(uid === currentUser.uid) return alert("❌ Action Blocked: You cannot modify your own admin status.");
 
-    if(!confirm(msg)) return;
+    // Retrieve user details from the cache we built in loadAllUsers
+    const targetDoc = adminUsersCache[uid];
+    if (!targetDoc) return alert("Error: User data missing. Please refresh the list.");
     
+    const targetUser = targetDoc.data();
+    const targetEmail = targetUser.email || "Unknown";
+
+    // ============================================================
+    // SCENARIO A: YOU ARE THE SUPER ADMIN (Direct Update)
+    // ============================================================
+    if (currentUser.uid === SUPER_ADMIN_ID) {
+        const msg = (newRole === 'student') 
+            ? `⬇️ Demote ${targetEmail} to Student?` 
+            : `⬆️ Promote ${targetEmail} to ADMIN?`;
+            
+        if(!confirm(msg)) return;
+        
+        try {
+            await db.collection('users').doc(uid).update({ role: newRole });
+            alert(`Success! User is now: ${newRole.toUpperCase()}`);
+            closeAdminModal(true);
+            loadAllUsers(); // Reload to see changes
+        } catch(e) { alert("Error: " + e.message); }
+        return;
+    }
+
+    // ============================================================
+    // SCENARIO B: YOU ARE A SUB-ADMIN (Send Request)
+    // ============================================================
+    
+    // Notify the Sub-Admin that they can't do this directly
+    if (targetUser.role === 'admin') {
+        // Trying to demote another admin
+        alert(`ℹ️ REQUEST REQUIRED\n\nYou cannot remove another Admin directly.\nA request to remove ${targetEmail} has been sent to the Super Admin.`);
+    } else {
+        // Trying to promote a student
+        alert(`ℹ️ REQUEST REQUIRED\n\nOnly the Super Admin can create new Admins.\nA request to promote ${targetEmail} has been sent for approval.`);
+    }
+
     try {
-        await db.collection('users').doc(uid).update({ role: newRole });
-        alert(`Success! User role is now: ${newRole.toUpperCase()}`);
+        // Create a request in the database
+        await db.collection('admin_requests').add({
+            targetUid: uid,
+            targetEmail: targetEmail,
+            newRole: newRole,      // The role you WANT them to have
+            currentRole: targetUser.role || 'student',
+            requestedBy: currentUser.uid,
+            requesterEmail: currentUser.email,
+            status: 'pending',
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
         closeAdminModal(true);
-        loadAllUsers();
-    } catch(e) { alert("Error: " + e.message); }
+        // We do NOT reload the list because the user's role hasn't changed yet
+    } catch(e) {
+        alert("Failed to send request: " + e.message);
+    }
 }
-
+// ✅ SECURE DELETE USER (Hard Blocks)
 async function adminDeleteUserDoc(uid) {
+    // 1. Protect Super Admin (Hardcoded ID Check)
     if(uid === SUPER_ADMIN_ID) return alert("❌ YOU CANNOT DELETE THE MAIN ADMIN!");
-    if(!confirm("⚠️ PERMANENTLY DELETE USER? This cannot be undone.")) return;
+
+    // 2. Get Target User Data
+    // We need to know if the person you are trying to delete is an Admin
+    const targetDoc = adminUsersCache[uid];
+    if (!targetDoc) return alert("Error: User data missing. Please refresh the list.");
+    
+    const targetUser = targetDoc.data();
+    const isSuper = (currentUser.uid === SUPER_ADMIN_ID);
+
+    // 3. LOGIC: PREVENT SUB-ADMINS FROM DELETING OTHER ADMINS
+    // If the target is an Admin... AND ... You are NOT the Super Admin
+    if (targetUser.role === 'admin' && !isSuper) {
+        return alert("⛔ Access Denied.\n\nYou do not have permission to delete another Admin.\nOnly the Super Admin can perform this action.");
+    }
+
+    // 4. Standard Delete Confirmation
+    const userType = targetUser.role === 'admin' ? "ADMIN" : "User";
+    if(!confirm(`⚠️ PERMANENTLY DELETE THIS ${userType}?\n\n${targetUser.email}\n\nThis cannot be undone.`)) return;
+    
+    // 5. Execute Delete
     try {
         await db.collection('users').doc(uid).delete();
+        
+        // If we just deleted an admin, maybe log it or alert
+        if (targetUser.role === 'admin') {
+            alert("✅ Admin account deleted successfully.");
+        }
+        
         closeAdminModal(true);
         loadAllUsers(); 
     } catch(e) { alert("Error: " + e.message); }
+}
+
+// ===========================================
+// NEW: ADMIN APPROVAL WORKFLOW
+// ===========================================
+
+async function openAdminRequests() {
+    // Security Check: Only Super Admin can open this
+    if (currentUser.uid !== SUPER_ADMIN_ID) return alert("Unauthorized.");
+
+    // Create Modal UI
+    const modalHtml = `
+    <div class="admin-modal-overlay" id="req-modal" onclick="closeReqModal(event)">
+        <div class="admin-modal-content" style="max-height:80vh; overflow-y:auto;">
+            <button class="close-modal-btn" onclick="closeReqModal(true)">&times;</button>
+            <h3 style="text-align:center; color:#7e22ce;">🔔 Pending Approvals</h3>
+            <div id="req-list" style="margin-top:15px;">Loading...</div>
+        </div>
+    </div>`;
+
+    const div = document.createElement('div');
+    div.innerHTML = modalHtml;
+    document.body.appendChild(div.firstElementChild);
+
+    // Fetch Requests
+    try {
+        const snap = await db.collection('admin_requests')
+            .where('status', '==', 'pending')
+            .orderBy('timestamp', 'desc')
+            .get();
+
+        const listDiv = document.getElementById('req-list');
+        
+        if (snap.empty) {
+            listDiv.innerHTML = "<div style='text-align:center; color:#999; padding:20px;'>No pending requests.</div>";
+            return;
+        }
+
+        let html = "";
+        snap.forEach(doc => {
+            const r = doc.data();
+            const typeColor = r.newRole === 'admin' ? '#dcfce7' : '#fee2e2';
+            const typeText = r.newRole === 'admin' ? '⬆️ PROMOTE TO ADMIN' : '⬇️ REVOKE ADMIN';
+            
+            html += `
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-bottom:10px;">
+                <div style="font-size:10px; font-weight:bold; background:${typeColor}; display:inline-block; padding:2px 6px; border-radius:4px; margin-bottom:5px;">${typeText}</div>
+                <div style="font-size:13px; margin-bottom:4px;"><b>Target:</b> ${r.targetEmail}</div>
+                <div style="font-size:12px; color:#64748b; margin-bottom:10px;"><b>Requested By:</b> ${r.requesterEmail}</div>
+                
+                <div style="display:flex; gap:10px;">
+                    <button onclick="processAdminReq('${doc.id}', '${r.targetUid}', '${r.newRole}', true)" style="flex:1; background:#16a34a; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">✅ Approve</button>
+                    <button onclick="processAdminReq('${doc.id}', null, null, false)" style="flex:1; background:#ef4444; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">❌ Reject</button>
+                </div>
+            </div>`;
+        });
+        
+        listDiv.innerHTML = html;
+
+    } catch (e) {
+        document.getElementById('req-list').innerText = "Error loading requests.";
+        console.error(e);
+    }
+}
+
+function closeReqModal(force) {
+    if (force === true || (event && event.target.id === 'req-modal')) {
+        const m = document.getElementById('req-modal');
+        if(m) m.remove();
+    }
+}
+
+async function processAdminReq(reqId, targetUid, newRole, isApproved) {
+    const listDiv = document.getElementById('req-list');
+    listDiv.innerHTML = "<div style='text-align:center; padding:20px;'>Processing...</div>";
+
+    try {
+        const batch = db.batch();
+        const reqRef = db.collection('admin_requests').doc(reqId);
+
+        if (isApproved) {
+            // 1. Update the User's Role (ACTUALLY make them admin/student)
+            const userRef = db.collection('users').doc(targetUid);
+            batch.update(userRef, { role: newRole });
+            
+            // 2. Mark Request as Approved
+            batch.update(reqRef, { status: 'approved', actionedBy: 'SuperAdmin' });
+        } else {
+            // Mark Request as Rejected (Do NOT update user)
+            batch.update(reqRef, { status: 'rejected', actionedBy: 'SuperAdmin' });
+        }
+
+        await batch.commit();
+        
+        alert(isApproved ? "✅ Request Approved & Applied!" : "❌ Request Rejected.");
+        closeReqModal(true);
+        loadAllUsers(); // Refresh main list to see the change
+
+    } catch(e) {
+        alert("Error: " + e.message);
+        closeReqModal(true);
+    }
 }
 
 async function runModalGrant(uid) {
@@ -2497,7 +2693,15 @@ function nextPageFromModal() { closeModal(); setTimeout(nextPage, 300); }
 function nextPage() { currentIndex++; renderPage(); }
 function prevPage() { currentIndex--; renderPage(); }
 
-function openPremiumModal() { document.getElementById('premium-modal').classList.remove('hidden'); }
+function openPremiumModal() { 
+    // ✅ Guest Check (Immediate Popup)
+    if (isGuest) {
+        return alert("Please login to view Premium Plans & Subscribe.");
+    }
+    
+    document.getElementById('premium-modal').classList.remove('hidden'); 
+}
+
 function switchPremTab(tab) {
     document.getElementById('prem-content-code').classList.toggle('hidden', tab !== 'code');
     document.getElementById('prem-content-manual').classList.toggle('hidden', tab !== 'manual');
@@ -2637,6 +2841,12 @@ function formatDateHelper(dateInput) {
 }
 
 function openBadges() {
+    // ✅ 1. Guest Check (Immediate Popup)
+    // Stops the modal from opening if the user is a Guest
+    if (isGuest) {
+        return alert("Please login to unlock Trophies & Achievements.");
+    }
+
     const modal = document.getElementById('achievement-modal'); 
     const container = modal.querySelector('.ach-grid'); 
 
@@ -2684,7 +2894,7 @@ function openBadges() {
 
 function updateBadgeButton() {
     // Basic implementation for now
-    if(userSolvedIDs.length > 100) document.getElementById('main-badge-btn').innerText = "🥉";
+    if(userSolvedIDs.length > 10) document.getElementById('main-badge-btn').innerText = "👶";
     else document.getElementById('main-badge-btn').innerText = "🏆";
 }
 
@@ -3296,6 +3506,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
