@@ -347,11 +347,27 @@ function selectCourse(courseName) {
 }
 
 function returnToCourseSelection() {
+    // 1. 🔥 FIX: Unhide the menu container if Admin Panel hid it
+    const menu = document.getElementById('main-menu-container');
+    if(menu) {
+        menu.style.display = ''; // Clear inline 'display: none'
+        menu.classList.remove('hidden');
+    }
+
+    // 2. Ensure MBBS sub-menu is reset (optional cleanup)
+    const mbbsContainer = document.getElementById('mbbs-years-container');
+    if(mbbsContainer) {
+        mbbsContainer.style.display = ''; 
+        mbbsContainer.classList.add('hidden');
+    }
+
+    // 3. Proceed as normal
     showScreen('course-selection-screen');
     updateCourseSelectionUI();
     allQuestions = [];
     filteredQuestions = [];
 }
+
 
 // --- HELPER: GET ISOLATED DB KEY ---
 function getStoreKey(baseKey) {
@@ -1039,15 +1055,17 @@ function renderCompactUserRow(doc) {
 
 
 // 4. POPUP MODAL (Shows Date + Days Left)
+// 4. POPUP MODAL (Shows Date + Days Left)
 function openManageUserModal(uid) {
     const doc = adminUsersCache[uid];
     if (!doc) return alert("Please refresh the list.");
     const u = doc.data();
     
     // CURRENT VIEWER info
-    const isSuperAdmin = (currentUser.uid === SUPER_ADMIN_ID);
+    const isViewerSuperAdmin = (currentUser.uid === SUPER_ADMIN_ID);
     
     // TARGET USER info
+    const isTargetSuperAdmin = (uid === SUPER_ADMIN_ID);
     const isAdmin = (u.role === 'admin');
 
     // --- GENERATE SUBSCRIPTION LIST ---
@@ -1092,29 +1110,50 @@ function openManageUserModal(uid) {
     let courseOpts = "";
     Object.keys(COURSE_CONFIG).forEach(k => { courseOpts += `<option value="${k}">${COURSE_CONFIG[k].name}</option>`; });
     
-    // --- ACTION BUTTONS (FIXED LOGIC) ---
+    // --- ACTION BUTTONS LOGIC ---
     let actionButtons = "";
 
-    // 🔥 FIX: If the TARGET is the Super Admin, NO ONE can edit them (not even themselves via this UI)
-    if (uid === SUPER_ADMIN_ID) {
-        actionButtons = `<div style="text-align:center; color:#7e22ce; font-weight:bold; padding:10px; background:#f3e8ff; border-radius:6px; border:1px solid #d8b4fe;">👑 This is the Main Admin (Protected).</div>`;
-    } else {
-        // Standard Action Buttons for everyone else
+    // CASE 1: Target IS Super Admin
+    if (isTargetSuperAdmin) {
+        if (!isViewerSuperAdmin) {
+             // Sub-Admin viewing Super Admin -> PROTECTED
+             actionButtons = `<div style="text-align:center; color:#7e22ce; font-weight:bold; padding:10px; background:#f3e8ff; border-radius:6px; border:1px solid #d8b4fe;">👑 This is the Main Admin (Protected).</div>`;
+        } else {
+             // Super Admin viewing Self -> ALLOW SUBSCRIPTION EDITS ONLY
+             actionButtons = `
+            <h4 style="margin:0 0 10px 0; color:#b91c1c; font-size:14px;">⚠️ Actions</h4>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+                <div style="text-align:center; font-size:11px; color:#94a3b8; padding:5px; font-style:italic;">(Role & Ban protected for Main Admin)</div>
+                <div style="display:flex; gap:10px;">
+                    <button onclick="adminRevokePremium('${uid}')" style="flex:1; background:#f59e0b; color:white; padding:10px; border-radius:6px; cursor:pointer; border:none;">🚫 Revoke Subscription</button>
+                </div>
+            </div>`;
+        }
+    } 
+    // CASE 2: Normal User / Sub-Admin
+    else {
+        // Standard Action Buttons
+        const roleBtn = isAdmin 
+            ? `<button onclick="adminToggleRole('${uid}', 'student'); closeAdminModal(true);" style="background:#64748b; color:white; padding:10px; border-radius:6px; cursor:pointer; border:none; font-weight:bold;">⬇️ Remove Admin Access</button>`
+            : `<button onclick="adminToggleRole('${uid}', 'admin'); closeAdminModal(true);" style="background:#7e22ce; color:white; padding:10px; border-radius:6px; cursor:pointer; border:none; font-weight:bold;">⬆️ Promote to Admin</button>`;
+        
+        const banBtn = u.disabled 
+            ? `<button onclick="adminToggleBan('${uid}', false); closeAdminModal(true);" style="flex:1; background:#10b981; color:white; padding:10px; border-radius:6px; cursor:pointer; border:none;">✅ Unban</button>`
+            : `<button onclick="adminToggleBan('${uid}', true); closeAdminModal(true);" style="flex:1; background:#ef4444; color:white; padding:10px; border-radius:6px; cursor:pointer; border:none;">⛔ Ban</button>`;
+        
+        const deleteBtn = isViewerSuperAdmin 
+            ? `<button onclick="adminDeleteUserDoc('${uid}');" style="background:#991b1b; color:white; padding:10px; border-radius:6px; cursor:pointer; font-weight:bold; border:none;">🗑️ Delete User</button>` 
+            : '';
+
         actionButtons = `
             <h4 style="margin:0 0 10px 0; color:#b91c1c; font-size:14px;">⚠️ Actions</h4>
             <div style="display:flex; flex-direction:column; gap:8px;">
-                ${isAdmin 
-                    ? `<button onclick="adminToggleRole('${uid}', 'student'); closeAdminModal(true);" style="background:#64748b; color:white; padding:10px; border-radius:6px; cursor:pointer; border:none; font-weight:bold;">⬇️ Remove Admin Access</button>`
-                    : `<button onclick="adminToggleRole('${uid}', 'admin'); closeAdminModal(true);" style="background:#7e22ce; color:white; padding:10px; border-radius:6px; cursor:pointer; border:none; font-weight:bold;">⬆️ Promote to Admin</button>`
-                }
+                ${roleBtn}
                 <div style="display:flex; gap:10px;">
                     <button onclick="adminRevokePremium('${uid}')" style="flex:1; background:#f59e0b; color:white; padding:10px; border-radius:6px; cursor:pointer; border:none;">🚫 Revoke</button>
-                    ${u.disabled 
-                        ? `<button onclick="adminToggleBan('${uid}', false); closeAdminModal(true);" style="flex:1; background:#10b981; color:white; padding:10px; border-radius:6px; cursor:pointer; border:none;">✅ Unban</button>`
-                        : `<button onclick="adminToggleBan('${uid}', true); closeAdminModal(true);" style="flex:1; background:#ef4444; color:white; padding:10px; border-radius:6px; cursor:pointer; border:none;">⛔ Ban</button>`
-                    }
+                    ${banBtn}
                 </div>
-                ${isSuperAdmin ? `<button onclick="adminDeleteUserDoc('${uid}');" style="background:#991b1b; color:white; padding:10px; border-radius:6px; cursor:pointer; font-weight:bold; border:none;">🗑️ Delete User</button>` : ''}
+                ${deleteBtn}
             </div>`;
     }
 
@@ -2793,16 +2832,28 @@ function showScreen(screenId) {
         'auth-screen', 'course-selection-screen', 'dashboard-screen', 'quiz-screen', 'result-screen', 'admin-screen',
         'explanation-modal', 'premium-modal', 'profile-modal', 'analytics-modal', 'badges-modal'
     ];
+
+    // 1. Hide Everything
     ids.forEach(id => {
         const el = document.getElementById(id);
-        if(el) { el.classList.add('hidden'); el.classList.remove('active'); }
+        if(el) { 
+            el.classList.add('hidden'); 
+            el.classList.remove('active'); 
+        }
     });
+    
     document.querySelectorAll('.modal-overlay').forEach(el => el.classList.add('hidden'));
     
+    // 2. Show Target (AND CLEAR INLINE STYLES)
     const target = document.getElementById(screenId);
-    if(target) { target.classList.remove('hidden'); target.classList.add('active'); }
+    if(target) { 
+        // 🔥 CRITICAL FIX: This wipes the "display: none" left by the Admin Panel
+        target.style.display = ''; 
+        
+        target.classList.remove('hidden'); 
+        target.classList.add('active'); 
+    }
 }
-
 function getCorrectLetter(q) {
     let dbAns = String(q.CorrectAnswer || "?").trim();
     if (/^[a-eA-E]$/.test(dbAns)) return dbAns.toUpperCase();
@@ -3654,6 +3705,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
