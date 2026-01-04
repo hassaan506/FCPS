@@ -1352,8 +1352,9 @@ function setMode(mode) {
 }
 
 function startPractice(subject, topic) {
-    // 1. Get ALL questions for this Subject
+    // 1. Get ALL questions for this Subject (Ignore Topic for now)
     let subjectPool = allQuestions.filter(q => q.Subject === subject);
+    console.log(`[StartPractice] Raw Subject Pool: ${subjectPool.length}`);
 
     // 2. Check Premium Status
     const premKey = getStoreKey('isPremium');
@@ -1368,16 +1369,17 @@ function startPractice(subject, topic) {
     if (isAdmin) {
         limit = Infinity;
     } else if (isGuest) {
-        limit = 20;
+        limit = 20; // Guest Limit
         userType = "Guest";
     } else if (!isPrem) {
-        limit = 50; 
+        limit = 50; // Free User Limit
         userType = "Free";
     }
 
-    // 4. 🔥 CREATE THE "FREE SAMPLE" (Round-Robin Logic)
-    // If the subject is too big, we create a 50-question sample with a mix of ALL topics.
+    // 4. 🔥 GLOBAL LIMIT LOGIC (Round-Robin)
+    // We create a "Free Sample" of the entire subject BEFORE filtering by topic.
     if (subjectPool.length > limit) {
+        console.log(`[StartPractice] Creating Balanced Sample of ${limit} for ${userType}`);
         
         // A. Group by Topic
         const topicMap = {};
@@ -1419,15 +1421,14 @@ function startPractice(subject, topic) {
         }
     }
 
-    // 5. 🔥 FIX: STRICT FILTERING
+    // 5. NOW Filter by the requested Topic
     // We filter INSIDE the "Free Sample" we just created.
     let pool = [];
 
     // Check if 'topic' exists and is a valid string
     if (topic && typeof topic === 'string' && topic.trim() !== "") {
-        // Filter the 50-question sample to show ONLY the requested topic
         pool = subjectPool.filter(q => q.Topic === topic);
-        console.log(`Filtered: Showing ${pool.length} questions for topic '${topic}'`);
+        console.log(`[StartPractice] Filtered by Topic '${topic}': Found ${pool.length} in sample.`);
     } else {
         // If no topic selected (Practice All), show the whole mixed sample
         pool = subjectPool;
@@ -1438,6 +1439,7 @@ function startPractice(subject, topic) {
         const topicExists = allQuestions.some(q => q.Subject === subject && q.Topic === topic);
         
         if (topicExists && limit !== Infinity) {
+             // Smart Alert: Tell them the topic exists but is blocked
              return alert(`🔒 Premium Content\n\n${userType} users get a sample of ${limit} questions from the entire ${subject} course.\n\nQuestions for '${topic}' happen to fall outside this free sample.\n\nUpgrade to Premium to unlock everything!`);
         } else {
              return alert("No questions available.");
@@ -3275,6 +3277,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
