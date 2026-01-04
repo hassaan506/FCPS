@@ -944,22 +944,10 @@ async function loadAllUsers() {
                 visibleCount++;
                 adminUsersCache[uid] = doc;
 
-                // Normalize planExpiry
-                let planExpiryMs = null;
-                if (u.planExpiry) {
-                    if (typeof u.planExpiry.toMillis === "function") {
-                        planExpiryMs = u.planExpiry.toMillis();
-                    } else if (typeof u.planExpiry === "number") {
-                        planExpiryMs = u.planExpiry;
-                    }
-                }
-
-                // Plan logic
+                // --------- PLAN LOGIC FOR MULTIPLE PREMIUM COURSES ---------
                 let displayPlan = `<span style="color:#64748b;">Free</span>`;
                 let durationText = "";
-                let isAnyPremium = false;
-                let activeCourseName = "";
-                let daysLeftText = "";
+                let premiumCourses = [];
 
                 Object.keys(COURSE_CONFIG).forEach(key => {
                     const config = COURSE_CONFIG[key];
@@ -969,27 +957,31 @@ async function loadAllUsers() {
                     const expiryRaw = u[prefix + 'expiryDate'];
 
                     if (isPrem && isDateActive(expiryRaw)) {
-                        isAnyPremium = true;
-                        activeCourseName = config.name;
-
                         const d = (expiryRaw.toDate ? expiryRaw.toDate() : new Date(expiryRaw));
                         const diffMs = d - now;
                         const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                        const daysText = (daysLeft > 999) ? "Lifetime" : `${daysLeft} days left`;
 
-                        daysLeftText = (daysLeft > 999) ? "Lifetime" : `${daysLeft} days left`;
+                        premiumCourses.push({
+                            name: config.name,
+                            daysLeft: daysText
+                        });
                     }
                 });
 
-                if (isAnyPremium) {
+                if (premiumCourses.length > 0) {
                     displayPlan = `<span style="color:#059669; font-weight:600;">Premium</span>`;
-                    durationText = `
+
+                    // Build the durationText for all active premium courses
+                    durationText = premiumCourses.map(pc => `
                         <span style="color:#cbd5e1;">|</span>
-                        <span style="color:#64748b;">${activeCourseName}</span>
+                        <span style="color:#64748b;">${pc.name}</span>
                         <span style="color:#cbd5e1;">|</span>
-                        <span style="color:#f59e0b; font-weight:bold;">${daysLeftText}</span>
-                    `;
+                        <span style="color:#f59e0b; font-weight:bold;">${pc.daysLeft}</span>
+                    `).join(" ");
                 }
 
+                // --------- ADMIN HIGHLIGHT ---------
                 const isAdmin = (u.role === 'Admin' || u.role === 'admin');
 
                 const rowHTML = `
@@ -1045,7 +1037,7 @@ async function loadAllUsers() {
             }
         }
 
-        // Final render
+        // --------- FINAL RENDER ---------
         list.innerHTML = `
             <div style="padding:10px; font-size:12px; background:#f8fafc; border-bottom:1px solid #e2e8f0; position:sticky; top:0; z-index:10;">
                 <b>${visibleCount}</b> Users (Hidden: ${guestCount} | Ghosts: ${ghostCount})
@@ -1059,6 +1051,7 @@ async function loadAllUsers() {
         list.innerHTML = `<div style="color:red; padding:10px;">Error: ${e.message}</div>`;
     }
 }
+
 // 2. SEARCH REDIRECT
 function adminLookupUser() { loadAllUsers(); }
 
@@ -3836,6 +3829,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
