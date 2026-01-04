@@ -145,70 +145,73 @@
         </div>
     </div> 
 
-    <div class="gameContainer">
-        <div style="display:flex; flex-direction:column; gap:25px;">
-            <div class="panel" id="stats-box">
-                <h3 id="stats-title">📊 Your Progress</h3>
-                <div id="quick-stats">
-                    <p>Loading stats...</p>
-                </div>
-                <button onclick="openAnalytics()" class="secondary" style="margin-top:15px; font-size:13px;">View Detailed Analytics 📈</button>
+    <div class="gameContainer dashboard-layout">
+
+    <div class="sidebar-column">
+        
+        <div class="panel" id="stats-box">
+            <h3 id="stats-title">📊 Your Progress</h3>
+            <div id="quick-stats">
+                <p>Loading stats...</p>
             </div>
+            <button onclick="openAnalytics()" class="secondary" style="margin-top:15px; font-size:13px;">View Detailed Analytics 📈</button>
+        </div>
     
-            <div class="panel">
-                <h3>⚙️ Settings</h3>
-                <button onclick="returnToCourseSelection()" class="secondary" style="margin-bottom:10px; border-color: #0072ff; color: #0072ff;">🔄 Switch Course</button>
-                
-                <button id="install-btn" class="secondary" style="margin-bottom:10px;">📱 Install App</button>
-                <button onclick="startMistakePractice()" class="secondary" style="margin-bottom:10px;">⚠️ Practice Mistakes</button>
-                <button onclick="startSavedQuestions()" class="secondary" style="margin-bottom:10px;">⭐ Review Bookmarks</button>
-                <button onclick="resetAccountData()" class="secondary">⚠️ Reset Progress</button>
-            </div>
+        <div class="panel">
+            <h3>⚙️ Settings</h3>
+            <button onclick="returnToCourseSelection()" class="secondary" style="margin-bottom:10px; border-color: #0072ff; color: #0072ff;">🔄 Switch Course</button>
+            
+            <button id="install-btn" class="secondary" style="margin-bottom:10px;">📱 Install App</button>
+            <button onclick="startMistakePractice()" class="secondary" style="margin-bottom:10px;">⚠️ Practice Mistakes</button>
+            <button onclick="startSavedQuestions()" class="secondary" style="margin-bottom:10px;">⭐ Review Bookmarks</button>
+            <button onclick="resetAccountData()" class="secondary">⚠️ Reset Progress</button>
         </div>
 
-        <div class="panel" id="study-panel">
-            <h3>📚 Study Session</h3>
-            
-            <div class="search-container" style="margin-bottom: 15px; position: relative;">
-                <input type="text" id="global-search" placeholder="🔍 Search specific topics..." style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box;">
-                <div id="search-results" class="search-results-list"></div>
-            </div>
+    </div>
 
-            <div class="tabs">
-                <button class="tab-btn active" onclick="setMode('practice')">Practice</button>
-                <button class="tab-btn" onclick="setMode('test')">Exam Mode</button>
-            </div>
+    <div class="panel" id="study-panel">
+        <h3>📚 Study Session</h3>
+        
+        <div class="search-container" style="margin-bottom: 15px; position: relative;">
+            <input type="text" id="global-search" placeholder="🔍 Search specific topics..." style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box;">
+            <div id="search-results" class="search-results-list"></div>
+        </div>
 
-            <div id="test-settings" class="hidden">
-                <div style="display:flex; gap:15px; margin-bottom:15px;">
-                    <div style="flex:1;">
-                        <label style="color:#64748b; font-size:11px; font-weight:700; display:block; margin-bottom:5px; text-transform:uppercase;">Questions</label>
-                        <input type="number" id="q-count" value="20">
-                    </div>
-                    <div style="flex:1;">
-                        <label style="color:#64748b; font-size:11px; font-weight:700; display:block; margin-bottom:5px; text-transform:uppercase;">Minutes</label>
-                        <input type="number" id="t-limit" value="30">
-                    </div>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="setMode('practice')">Practice</button>
+            <button class="tab-btn" onclick="setMode('test')">Exam Mode</button>
+        </div>
+
+        <div id="test-settings" class="hidden">
+            <div style="display:flex; gap:15px; margin-bottom:15px;">
+                <div style="flex:1;">
+                    <label style="color:#64748b; font-size:11px; font-weight:700; display:block; margin-bottom:5px; text-transform:uppercase;">Questions</label>
+                    <input type="number" id="q-count" value="20">
                 </div>
-                <label style="color:#64748b; font-size:11px; font-weight:700; display:block; margin-bottom:5px; text-transform:uppercase;">Select Syllabus</label>
-                <div id="filter-container" class="filter-container">
-                    <p style="color:#999; font-size:12px;">Loading subjects...</p>
+                <div style="flex:1;">
+                    <label style="color:#64748b; font-size:11px; font-weight:700; display:block; margin-bottom:5px; text-transform:uppercase;">Minutes</label>
+                    <input type="number" id="t-limit" value="30">
                 </div>
-                <button class="primary" onclick="startTest()">Start Exam</button>
             </div>
+            <label style="color:#64748b; font-size:11px; font-weight:700; display:block; margin-bottom:5px; text-transform:uppercase;">Select Syllabus</label>
+            <div id="filter-container" class="filter-container">
+                <p style="color:#999; font-size:12px;">Loading subjects...</p>
+            </div>
+            <button class="primary" onclick="startTest()">Start Exam</button>
+        </div>
 
-            <div id="practice-filter-controls" style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px; padding: 0 5px;">
-                <input type="checkbox" id="unattempted-only" style="width: 20px; height: 20px; margin: 0; cursor: pointer;">
-                <label for="unattempted-only" style="font-size: 14px; font-weight: 600; color: var(--text-dark); cursor: pointer;">
-                    Show Unattempted Only
-                </label>
-            </div>
+        <div id="practice-filter-controls" style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px; padding: 0 5px;">
+            <input type="checkbox" id="unattempted-only" style="width: 20px; height: 20px; margin: 0; cursor: pointer;">
+            <label for="unattempted-only" style="font-size: 14px; font-weight: 600; color: var(--text-dark); cursor: pointer;">
+                Show Unattempted Only
+            </label>
+        </div>
 
-            <div id="dynamic-menus">
-                <p style="color:#718096;">Loading Question Bank...</p>
-            </div>
+        <div id="dynamic-menus">
+            <p style="color:#718096;">Loading Question Bank...</p>
         </div>
     </div>
+</div>
 </div>
 
 <div id="quiz-screen" class="screen hidden">
@@ -616,4 +619,5 @@
 <script src="script.js?v=300"></script>
 </body>
 </html>
+
 
