@@ -375,22 +375,39 @@ button {
     margin: 0 !important;
 }
 
-/* --- MOBILE FIX --- */
+/* --- MOBILE FIX (UPDATED) --- */
 @media screen and (max-width: 950px) {
+    
+    /* 1. Switch from Grid to Flexbox (easiest way to stack) */
     #dashboard-screen .gameContainer {
-        grid-template-columns: 1fr; /* Single column on mobile */
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 20px !important;
     }
-    .panel, #study-panel {
-        grid-column: 1; 
-        max-width: 450px !important;
-        margin-left: auto !important;
-        margin-right: auto !important;
+
+    /* 2. Reset the Panels (Progress & Settings) */
+    .panel {
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        order: 1; /* Force them to top */
     }
+
+    /* 3. Fix the Study Panel (Questions) */
     #study-panel {
         width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        height: auto !important; 
+        
+        /* 🔥 KILL THE GRID ROW RULE */
+        grid-row: auto !important; 
+        grid-column: auto !important;
+        
+        /* Force it to bottom */
+        order: 10; 
     }
 }
-
 /* =========================================
    7. STUDY MENU & INTERACTION
    ========================================= */
@@ -2440,77 +2457,3 @@ button.secondary {
     background: #f1f5f9; border: none; font-size: 24px; line-height: 1;
     color: #64748b; cursor: pointer; padding: 0; width: 30px; height: 30px; border-radius: 50%;
 }
-
-DELETE IF POSSIBLE
-/* --- DASHBOARD LAYOUT LOGIC --- */
-
-/* 1. Base Layout (Desktop) */
-.dashboard-layout {
-    display: flex;
-    flex-direction: row;       /* Places columns side-by-side */
-    gap: 25px;
-    align-items: flex-start;
-}
-
-/* 2. The Sidebar Column (Progress + Settings) */
-.sidebar-column {
-    display: flex;
-    flex-direction: column;    /* Stack Progress on top of Settings */
-    gap: 25px;
-    width: 350px;              /* Fixed width for sidebar on Desktop */
-    flex-shrink: 0;            /* Don't let it shrink too small */
-}
-
-/* 3. The Study Panel */
-#study-panel {
-    flex: 1;                   /* Takes up remaining space */
-}
-
-/* 4. MOBILE VIEW (Max Width 900px) */
-@media (max-width: 900px) {
-    .dashboard-layout {
-        flex-direction: column; /* Switches to vertical stack */
-    }
-    
-    .sidebar-column {
-        width: 100%;            /* Sidebar takes full width */
-    }
-}
-
-/* =========================================
-   MOBILE LAYOUT FIX (Force Order)
-   Paste this at the VERY BOTTOM of style.css
-   ========================================= */
-
-@media screen and (max-width: 950px) {
-    
-    /* 1. Disable Grid, Enable Flexbox Stack */
-    #dashboard-screen .gameContainer {
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 20px !important;
-    }
-
-    /* 2. Reset the Study Panel (Questions) */
-    /* This removes the "grid-row: 1" that was forcing it to the top */
-    #study-panel {
-        grid-row: auto !important; 
-        grid-column: auto !important;
-        
-        order: 3 !important; /* Explicitly force it to be 3rd */
-        width: 100% !important;
-        height: auto !important; /* Allow it to grow */
-        max-height: 600px !important; /* Prevent it from being infinite height */
-    }
-
-    /* 3. Ensure the Progress/Settings wrapper comes first */
-    /* If you used my previous HTML, the wrapper is the first child.
-       This ensures any .panel behaves correctly. */
-    .panel {
-        width: 100% !important;
-        grid-column: auto !important;
-        margin-bottom: 0 !important;
-    }
-}
-
-
