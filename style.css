@@ -826,8 +826,14 @@ button {
     
     /* Header Fixes */
     .topBar {
-        flex-direction: column !important; align-items: center !important; height: auto !important; padding: 15px !important;
+        flex-direction: column !important; 
+        align-items: center !important; 
+        height: auto !important; 
+        padding: 15px !important;
+        /* 🔥 FIX: Adds space between the header and the dashboard below it */
+        margin-bottom: 25px !important; 
     }
+    
     .user-badge { width: 100% !important; align-items: center !important; margin-bottom: 10px !important; }
     .user-badge div { justify-content: center !important; }
     
@@ -855,7 +861,6 @@ button {
     }
     .test-sidebar.active { display: block; }
 }
-
 
 /* =========================================
    12. ANALYTICS STYLES
@@ -2664,4 +2669,5 @@ button.secondary {
     flex-shrink: 0; padding: 15px; border-top: 1px solid #f1f5f9; background: #fff; text-align: center;
 }
 .btn-cancel { background: transparent; border: none; color: #64748b; font-size: 13px; font-weight: 500; cursor: pointer; }
+
 
