@@ -1177,21 +1177,18 @@ function renderCompactUserRow(doc) {
         </div>
     </div>`;
 }
-
-// 4. POPUP MODAL (Shows Date + Days Left)
 function openManageUserModal(uid) {
+    // 1. Get User Data from Cache
     const doc = adminUsersCache[uid];
     if (!doc) return alert("Please refresh the list.");
     const u = doc.data();
     
-    // CURRENT VIEWER info
+    // 2. Permission Checks
     const isViewerSuperAdmin = (currentUser.uid === SUPER_ADMIN_ID);
-    
-    // TARGET USER info
     const isTargetSuperAdmin = (uid === SUPER_ADMIN_ID);
     const isAdmin = (u.role === 'admin' || u.role === 'Admin');
 
-    // --- GENERATE SUBSCRIPTION LIST (FIXED: With Specific Revoke) ---
+    // 3. GENERATE SUBSCRIPTION LIST (With Revoke X Buttons)
     let activeSubs = "";
     const now = Date.now();
 
@@ -1199,6 +1196,7 @@ function openManageUserModal(uid) {
         const conf = COURSE_CONFIG[key];
         const prefix = conf.prefix;
         
+        // Check if user has this specific course
         if (u[prefix + 'isPremium']) {
             const rawDate = u[prefix + 'expiryDate'];
             let displayString = "Unknown Date";
@@ -1220,7 +1218,7 @@ function openManageUserModal(uid) {
                 }
             }
 
-            [cite_start]// ADDED: Individual Revoke Button for each specific course [cite: 247]
+            // ADDED: The X Button to revoke this specific course
             activeSubs += `
             <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:8px 0; border-bottom:1px dashed #eee;">
                 <span>✅ <b>${conf.name}</b></span>
@@ -1236,29 +1234,24 @@ function openManageUserModal(uid) {
 
     if(!activeSubs) activeSubs = "<div style='font-size:12px; color:#94a3b8; font-style:italic;'>No active subscriptions.</div>";
     
+    // 4. Populate Course Options for Granting
     let courseOpts = "";
     Object.keys(COURSE_CONFIG).forEach(k => { courseOpts += `<option value="${k}">${COURSE_CONFIG[k].name}</option>`; });
     
-    // --- ACTION BUTTONS LOGIC ---
+    // 5. Action Buttons Logic
     let actionButtons = "";
 
-    // CASE 1: Target IS Super Admin
     if (isTargetSuperAdmin) {
         if (!isViewerSuperAdmin) {
-             // Sub-Admin viewing Super Admin -> PROTECTED
              actionButtons = `<div style="text-align:center; color:#7e22ce; font-weight:bold; padding:10px; background:#f3e8ff; border-radius:6px; border:1px solid #d8b4fe;">👑 This is the Main Admin (Protected).</div>`;
         } else {
-             // Super Admin viewing Self -> ALLOW SUBSCRIPTION EDITS ONLY
              actionButtons = `
             <h4 style="margin:0 0 10px 0; color:#b91c1c; font-size:14px;">⚠️ Actions</h4>
             <div style="display:flex; flex-direction:column; gap:8px;">
-                <div style="text-align:center; font-size:11px; color:#94a3b8; padding:5px; font-style:italic;">(Role & Ban protected for Main Admin)</div>
+                <div style="text-align:center; font-size:11px; color:#94a3b8; padding:5px; font-style:italic;">(Use X buttons above to revoke subscriptions)</div>
             </div>`;
         }
-    } 
-    // CASE 2: Normal User / Sub-Admin
-    else {
-        // Standard Action Buttons
+    } else {
         const roleBtn = isAdmin 
             ? `<button onclick="adminToggleRole('${uid}', 'student'); closeAdminModal(true);" style="background:#64748b; color:white; padding:10px; border-radius:6px; cursor:pointer; border:none; font-weight:bold;">⬇️ Remove Admin Access</button>`
             : `<button onclick="adminToggleRole('${uid}', 'admin'); closeAdminModal(true);" style="background:#7e22ce; color:white; padding:10px; border-radius:6px; cursor:pointer; border:none; font-weight:bold;">⬆️ Promote to Admin</button>`;
@@ -1339,7 +1332,7 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         
         alert(`✅ ${config.name} Revoked.`);
         closeAdminModal(true); 
-        loadAllUsers(); 
+        loadAllUsers(); // Reloads the list to show the change
     } catch (e) {
         alert("Error: " + e.message);
     }
@@ -3871,6 +3864,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
