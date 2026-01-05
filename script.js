@@ -1189,9 +1189,9 @@ function openManageUserModal(uid) {
     
     // TARGET USER info
     const isTargetSuperAdmin = (uid === SUPER_ADMIN_ID);
-    const isAdmin = (u.role === 'admin');
+    const isAdmin = (u.role === 'admin' || u.role === 'Admin');
 
-    // --- GENERATE SUBSCRIPTION LIST ---
+    // --- GENERATE SUBSCRIPTION LIST (FIXED: With Specific Revoke) ---
     let activeSubs = "";
     const now = Date.now();
 
@@ -1220,10 +1220,16 @@ function openManageUserModal(uid) {
                 }
             }
 
+            [cite_start]// ADDED: Individual Revoke Button for each specific course [cite: 247]
             activeSubs += `
             <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:8px 0; border-bottom:1px dashed #eee;">
                 <span>✅ <b>${conf.name}</b></span>
-                <span style="${colorStyle} padding:3px 8px; border-radius:4px; font-size:11px;">${displayString}</span>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <span style="${colorStyle} padding:3px 8px; border-radius:4px; font-size:11px;">${displayString}</span>
+                    <button onclick="adminRevokeSpecificCourse('${uid}', '${key}')" 
+                            style="background:none; border:none; cursor:pointer; font-size:14px; padding:0; line-height:1;" 
+                            title="Revoke ${conf.name}">❌</button>
+                </div>
             </div>`;
         }
     });
@@ -1247,9 +1253,6 @@ function openManageUserModal(uid) {
             <h4 style="margin:0 0 10px 0; color:#b91c1c; font-size:14px;">⚠️ Actions</h4>
             <div style="display:flex; flex-direction:column; gap:8px;">
                 <div style="text-align:center; font-size:11px; color:#94a3b8; padding:5px; font-style:italic;">(Role & Ban protected for Main Admin)</div>
-                <div style="display:flex; gap:10px;">
-                    <button onclick="adminRevokePremium('${uid}')" style="flex:1; background:#f59e0b; color:white; padding:10px; border-radius:6px; cursor:pointer; border:none;">🚫 Revoke Subscription</button>
-                </div>
             </div>`;
         }
     } 
@@ -1273,7 +1276,6 @@ function openManageUserModal(uid) {
             <div style="display:flex; flex-direction:column; gap:8px;">
                 ${roleBtn}
                 <div style="display:flex; gap:10px;">
-                    <button onclick="adminRevokePremium('${uid}')" style="flex:1; background:#f59e0b; color:white; padding:10px; border-radius:6px; cursor:pointer; border:none;">🚫 Revoke</button>
                     ${banBtn}
                 </div>
                 ${deleteBtn}
@@ -1321,6 +1323,27 @@ function openManageUserModal(uid) {
     document.body.appendChild(div.firstElementChild);
 }
 
+async function adminRevokeSpecificCourse(uid, courseKey) {
+    const config = COURSE_CONFIG[courseKey];
+    if(!config) return;
+
+    if (!confirm(`⚠️ REVOKE ${config.name.toUpperCase()}?\n\nAre you sure you want to remove access for this specific course?`)) return;
+
+    const prefix = config.prefix;
+    try {
+        await db.collection('users').doc(uid).update({
+            [`${prefix}isPremium`]: false,
+            [`${prefix}expiryDate`]: null,
+            [`${prefix}plan`]: null
+        });
+        
+        alert(`✅ ${config.name} Revoked.`);
+        closeAdminModal(true); 
+        loadAllUsers(); 
+    } catch (e) {
+        alert("Error: " + e.message);
+    }
+}
 // 3. CLOSE MODAL HELPER
 function closeAdminModal(force) {
     if (force === true || (event && event.target.id === 'admin-modal')) {
@@ -2957,27 +2980,29 @@ function showScreen(screenId) {
         'explanation-modal', 'premium-modal', 'profile-modal', 'analytics-modal', 'badges-modal'
     ];
 
-    // 1. Hide Everything
+    // 1. Hide Everything & Clean Up "Ghosts"
     ids.forEach(id => {
         const el = document.getElementById(id);
         if(el) { 
             el.classList.add('hidden'); 
             el.classList.remove('active'); 
+            
+            // 🔥 NEW FIX: Clear inline styles for EVERYTHING. 
+            // This fixes the "Buy Subscription" modal getting stuck with 'display: none'
+            el.style.display = ''; 
         }
     });
     
     document.querySelectorAll('.modal-overlay').forEach(el => el.classList.add('hidden'));
     
-    // 2. Show Target (AND CLEAR INLINE STYLES)
+    // 2. Show Target
     const target = document.getElementById(screenId);
     if(target) { 
-        // 🔥 CRITICAL FIX: This wipes the "display: none" left by the Admin Panel
-        target.style.display = ''; 
-        
         target.classList.remove('hidden'); 
         target.classList.add('active'); 
     }
 }
+
 function getCorrectLetter(q) {
     let dbAns = String(q.CorrectAnswer || "?").trim();
     if (/^[a-eA-E]$/.test(dbAns)) return dbAns.toUpperCase();
@@ -3010,14 +3035,20 @@ function nextPage() { currentIndex++; renderPage(); }
 function prevPage() { currentIndex--; renderPage(); }
 
 function openPremiumModal() { 
-    // ✅ Guest Check (Immediate Popup)
+    // ✅ Guest Check
     if (isGuest) {
         return alert("Please login to view Premium Plans & Subscribe.");
     }
     
-    document.getElementById('premium-modal').classList.remove('hidden'); 
+    const modal = document.getElementById('premium-modal');
+    if (modal) {
+        // 🔥 CRITICAL FIX: 
+        // We set display to 'flex' to override any 'display: none' 
+        // that selectCourse() or the Admin Panel might have left behind.
+        modal.style.display = 'flex'; 
+        modal.classList.remove('hidden'); 
+    }
 }
-
 function switchPremTab(tab) {
     document.getElementById('prem-content-code').classList.toggle('hidden', tab !== 'code');
     document.getElementById('prem-content-manual').classList.toggle('hidden', tab !== 'manual');
@@ -3840,6 +3871,7 @@ async function adminDeleteGhosts() {
         loadAllUsers(); // Restore list if error
     }
 }
+
 
 
 
