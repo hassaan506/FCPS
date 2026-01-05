@@ -667,14 +667,14 @@ button {
 .modal-overlay .joinCard {
     max-height: 85vh; 
     width: 95%; 
-    max-width: 1000px; 
+    max-width: 600px; 
     
     display: flex; 
     flex-direction: column; 
     overflow: hidden; /* Prevents whole card from scrolling */
     
     margin: 0; 
-    text-align: left;
+    text-align: justify;
     padding: 0; /* We move padding to children for better scroll control */
 }
 
@@ -2669,6 +2669,7 @@ button.secondary {
     flex-shrink: 0; padding: 15px; border-top: 1px solid #f1f5f9; background: #fff; text-align: center;
 }
 .btn-cancel { background: transparent; border: none; color: #64748b; font-size: 13px; font-weight: 500; cursor: pointer; }
+
 
 
 
