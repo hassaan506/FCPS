@@ -1177,18 +1177,23 @@ function renderCompactUserRow(doc) {
         </div>
     </div>`;
 }
+
 function openManageUserModal(uid) {
-    // 1. Get User Data from Cache
+    // 1. SAFETY: Remove any stuck/old modals first
+    const existing = document.getElementById('admin-modal');
+    if (existing) existing.remove();
+
+    // 2. Get User Data
     const doc = adminUsersCache[uid];
     if (!doc) return alert("Please refresh the list.");
     const u = doc.data();
     
-    // 2. Permission Checks
+    // 3. Setup Permissions
     const isViewerSuperAdmin = (currentUser.uid === SUPER_ADMIN_ID);
     const isTargetSuperAdmin = (uid === SUPER_ADMIN_ID);
     const isAdmin = (u.role === 'admin' || u.role === 'Admin');
 
-    // 3. GENERATE SUBSCRIPTION LIST (With Revoke X Buttons)
+    // 4. Generate Subscription List with Revoke Buttons
     let activeSubs = "";
     const now = Date.now();
 
@@ -1196,7 +1201,6 @@ function openManageUserModal(uid) {
         const conf = COURSE_CONFIG[key];
         const prefix = conf.prefix;
         
-        // Check if user has this specific course
         if (u[prefix + 'isPremium']) {
             const rawDate = u[prefix + 'expiryDate'];
             let displayString = "Unknown Date";
@@ -1218,7 +1222,7 @@ function openManageUserModal(uid) {
                 }
             }
 
-            // ADDED: The X Button to revoke this specific course
+            // The 'X' Button for this specific course
             activeSubs += `
             <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:8px 0; border-bottom:1px dashed #eee;">
                 <span>✅ <b>${conf.name}</b></span>
@@ -1234,11 +1238,11 @@ function openManageUserModal(uid) {
 
     if(!activeSubs) activeSubs = "<div style='font-size:12px; color:#94a3b8; font-style:italic;'>No active subscriptions.</div>";
     
-    // 4. Populate Course Options for Granting
+    // 5. Populate Course Options
     let courseOpts = "";
     Object.keys(COURSE_CONFIG).forEach(k => { courseOpts += `<option value="${k}">${COURSE_CONFIG[k].name}</option>`; });
     
-    // 5. Action Buttons Logic
+    // 6. Action Buttons
     let actionButtons = "";
 
     if (isTargetSuperAdmin) {
@@ -1275,6 +1279,7 @@ function openManageUserModal(uid) {
             </div>`;
     }
 
+    // 7. Create and Append Modal
     const modalHtml = `
     <div class="admin-modal-overlay" id="admin-modal" onclick="closeAdminModal(event)">
         <div class="admin-modal-content">
@@ -1316,27 +1321,6 @@ function openManageUserModal(uid) {
     document.body.appendChild(div.firstElementChild);
 }
 
-async function adminRevokeSpecificCourse(uid, courseKey) {
-    const config = COURSE_CONFIG[courseKey];
-    if(!config) return;
-
-    if (!confirm(`⚠️ REVOKE ${config.name.toUpperCase()}?\n\nAre you sure you want to remove access for this specific course?`)) return;
-
-    const prefix = config.prefix;
-    try {
-        await db.collection('users').doc(uid).update({
-            [`${prefix}isPremium`]: false,
-            [`${prefix}expiryDate`]: null,
-            [`${prefix}plan`]: null
-        });
-        
-        alert(`✅ ${config.name} Revoked.`);
-        closeAdminModal(true); 
-        loadAllUsers(); // Reloads the list to show the change
-    } catch (e) {
-        alert("Error: " + e.message);
-    }
-}
 // 3. CLOSE MODAL HELPER
 function closeAdminModal(force) {
     if (force === true || (event && event.target.id === 'admin-modal')) {
@@ -3865,46 +3849,24 @@ async function adminDeleteGhosts() {
     }
 }
 
+async function adminRevokeSpecificCourse(uid, courseKey) {
+    const config = COURSE_CONFIG[courseKey];
+    if(!config) return;
 
+    if (!confirm(`⚠️ REVOKE ${config.name.toUpperCase()}?\n\nAre you sure you want to remove access for this specific course?`)) return;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    const prefix = config.prefix;
+    try {
+        await db.collection('users').doc(uid).update({
+            [`${prefix}isPremium`]: false,
+            [`${prefix}expiryDate`]: null,
+            [`${prefix}plan`]: null
+        });
+        
+        alert(`✅ ${config.name} Revoked.`);
+        closeAdminModal(true); 
+        loadAllUsers(); // Reloads the list to show the change
+    } catch (e) {
+        alert("Error: " + e.message);
+    }
+}
