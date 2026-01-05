@@ -1193,7 +1193,7 @@ function openManageUserModal(uid) {
     const isTargetSuperAdmin = (uid === SUPER_ADMIN_ID);
     const isAdmin = (u.role === 'admin' || u.role === 'Admin');
 
-    // 4. Generate Subscription List with Revoke Buttons
+    // 4. GENERATE SUBSCRIPTION LIST (New Card Design)
     let activeSubs = "";
     const now = Date.now();
 
@@ -1204,7 +1204,7 @@ function openManageUserModal(uid) {
         if (u[prefix + 'isPremium']) {
             const rawDate = u[prefix + 'expiryDate'];
             let displayString = "Unknown Date";
-            let colorStyle = "color:#666; background:#f1f5f9;";
+            let colorStyle = "color:#64748b; background:#f1f5f9; border:1px solid #e2e8f0;"; // Default Gray
              
             if (rawDate) {
                 const d = (rawDate.toDate ? rawDate.toDate() : new Date(rawDate));
@@ -1214,29 +1214,88 @@ function openManageUserModal(uid) {
 
                 if (daysLeft > 0) {
                     const daysTxt = (daysLeft > 10000) ? "Lifetime" : `${daysLeft} days left`;
-                    displayString = `<b>${dateStr}</b> <span style="font-weight:normal;">(${daysTxt})</span>`;
-                    colorStyle = "color:#166534; background:#dcfce7; border:1px solid #bbf7d0;";
+                    // Stack date and days vertically for cleaner look
+                    displayString = `<div style="font-weight:700; font-size:12px;">${dateStr}</div><div style="font-weight:400; font-size:10px; opacity:0.9;">${daysTxt}</div>`;
+                    colorStyle = "color:#15803d; background:#dcfce7; border:1px solid #bbf7d0;"; // Green
                 } else {
-                    displayString = `<b>${dateStr}</b> (Expired)`;
-                    colorStyle = "color:#991b1b; background:#fee2e2; border:1px solid #fca5a5;";
+                    displayString = `<div style="font-weight:700;">${dateStr}</div><div>Expired</div>`;
+                    colorStyle = "color:#b91c1c; background:#fee2e2; border:1px solid #fca5a5;"; // Red
                 }
             }
 
-            // The 'X' Button for this specific course
+            // 🔥 IMPROVED CARD UI
             activeSubs += `
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:8px 0; border-bottom:1px dashed #eee;">
-                <span>✅ <b>${conf.name}</b></span>
-                <div style="display:flex; align-items:center; gap:6px;">
-                    <span style="${colorStyle} padding:3px 8px; border-radius:4px; font-size:11px;">${displayString}</span>
+            <div style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 10px;
+                padding: 12px;
+                margin-bottom: 8px;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+                transition: transform 0.1s ease;
+            ">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="
+                        width: 36px; height: 36px;
+                        background: #ecfdf5;
+                        color: #059669;
+                        border-radius: 50%;
+                        display: flex; align-items: center; justify-content: center;
+                        font-size: 18px;
+                        border: 1px solid #d1fae5;
+                    ">✓</div>
+                    
+                    <div>
+                        <div style="font-weight: 700; color: #0f172a; font-size: 14px;">${conf.name}</div>
+                        <div style="font-size: 11px; color: #64748b;">Premium Access</div>
+                    </div>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="
+                        ${colorStyle} 
+                        padding: 6px 12px; 
+                        border-radius: 8px; 
+                        font-size: 11px; 
+                        text-align: right;
+                        min-width: 90px;
+                        line-height: 1.3;
+                    ">
+                        ${displayString}
+                    </div>
+
                     <button onclick="adminRevokeSpecificCourse('${uid}', '${key}')" 
-                            style="background:none; border:none; cursor:pointer; font-size:14px; padding:0; line-height:1;" 
-                            title="Revoke ${conf.name}">❌</button>
+                        title="Revoke Subscription"
+                        style="
+                            width: 34px; height: 34px;
+                            background: #fff1f2;
+                            color: #be123c;
+                            border: 1px solid #fda4af;
+                            border-radius: 8px;
+                            cursor: pointer;
+                            display: flex; align-items: center; justify-content: center;
+                            font-size: 14px;
+                            transition: all 0.2s;
+                        "
+                        onmouseover="this.style.background='#ffe4e6'; this.style.borderColor='#fecaca';"
+                        onmouseout="this.style.background='#fff1f2'; this.style.borderColor='#fda4af';"
+                    >
+                        ✕
+                    </button>
                 </div>
             </div>`;
         }
     });
 
-    if(!activeSubs) activeSubs = "<div style='font-size:12px; color:#94a3b8; font-style:italic;'>No active subscriptions.</div>";
+    if(!activeSubs) activeSubs = `
+        <div style="text-align:center; padding:20px; border:1px dashed #cbd5e1; border-radius:8px; background:#f8fafc;">
+            <div style="font-size:20px; margin-bottom:5px;">📂</div>
+            <div style="font-size:12px; color:#64748b;">No active subscriptions found.</div>
+        </div>
+    `;
     
     // 5. Populate Course Options
     let courseOpts = "";
@@ -1244,16 +1303,11 @@ function openManageUserModal(uid) {
     
     // 6. Action Buttons
     let actionButtons = "";
-
     if (isTargetSuperAdmin) {
         if (!isViewerSuperAdmin) {
              actionButtons = `<div style="text-align:center; color:#7e22ce; font-weight:bold; padding:10px; background:#f3e8ff; border-radius:6px; border:1px solid #d8b4fe;">👑 This is the Main Admin (Protected).</div>`;
         } else {
-             actionButtons = `
-            <h4 style="margin:0 0 10px 0; color:#b91c1c; font-size:14px;">⚠️ Actions</h4>
-            <div style="display:flex; flex-direction:column; gap:8px;">
-                <div style="text-align:center; font-size:11px; color:#94a3b8; padding:5px; font-style:italic;">(Use X buttons above to revoke subscriptions)</div>
-            </div>`;
+             actionButtons = `<div style="text-align:center; font-size:11px; color:#94a3b8; padding:5px; font-style:italic;">(Use X buttons above to revoke subscriptions)</div>`;
         }
     } else {
         const roleBtn = isAdmin 
@@ -1269,7 +1323,7 @@ function openManageUserModal(uid) {
             : '';
 
         actionButtons = `
-            <h4 style="margin:0 0 10px 0; color:#b91c1c; font-size:14px;">⚠️ Actions</h4>
+            <h4 style="margin:0 0 10px 0; color:#b91c1c; font-size:14px;">⚠️ Account Actions</h4>
             <div style="display:flex; flex-direction:column; gap:8px;">
                 ${roleBtn}
                 <div style="display:flex; gap:10px;">
@@ -1284,32 +1338,33 @@ function openManageUserModal(uid) {
     <div class="admin-modal-overlay" id="admin-modal" onclick="closeAdminModal(event)">
         <div class="admin-modal-content">
             <button class="close-modal-btn" onclick="closeAdminModal(true)">&times;</button>
-            <div style="text-align:center; margin-bottom:15px;">
-                <h3 style="margin:0;">${u.displayName || "User"}</h3>
-                <div style="font-size:12px; color:#666;">${u.email}</div>
-                <div style="font-size:10px; color:#aaa;">${uid}</div>
+            <div style="text-align:center; margin-bottom:20px; border-bottom:1px solid #f1f5f9; padding-bottom:15px;">
+                <div style="width:48px; height:48px; background:#eff6ff; color:#3b82f6; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:24px; margin:0 auto 10px auto;">👤</div>
+                <h3 style="margin:0; font-size:18px; color:#1e293b;">${u.displayName || "User"}</h3>
+                <div style="font-size:13px; color:#64748b;">${u.email}</div>
+                <div style="font-size:10px; color:#cbd5e1; margin-top:4px; font-family:monospace;">ID: ${uid}</div>
             </div>
 
-            <div style="background:#f8fafc; padding:15px; border-radius:8px; margin-bottom:15px;">
-                <label style="font-size:10px; font-weight:700; color:#64748b; text-transform:uppercase; display:block; margin-bottom:8px;">Current Status</label>
+            <div style="margin-bottom:20px;">
+                <label style="font-size:11px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:10px;">Active Subscriptions</label>
                 ${activeSubs}
             </div>
 
-            <div style="border:1px solid #dcfce7; background:#f0fdf4; padding:15px; border-radius:8px; margin-bottom:15px;">
-                <h4 style="margin:0 0 10px 0; color:#15803d; font-size:14px;">🎁 Grant Access</h4>
-                <div style="display:flex; gap:5px; margin-bottom:10px;">
-                    <select id="modal-course" style="flex:1; padding:8px; border-radius:4px; border:1px solid #ccc;">${courseOpts}</select>
-                    <select id="modal-duration" style="flex:1; padding:8px; border-radius:4px; border:1px solid #ccc;">
+            <div style="border:1px solid #dcfce7; background:#f0fdf4; padding:15px; border-radius:10px; margin-bottom:20px;">
+                <h4 style="margin:0 0 10px 0; color:#15803d; font-size:14px; display:flex; align-items:center; gap:6px;">🎁 Grant New Access</h4>
+                <div style="display:flex; gap:8px; margin-bottom:10px;">
+                    <select id="modal-course" style="flex:2; padding:10px; border-radius:6px; border:1px solid #cbd5e1; font-size:13px; background:white;">${courseOpts}</select>
+                    <select id="modal-duration" style="flex:1; padding:10px; border-radius:6px; border:1px solid #cbd5e1; font-size:13px; background:white;">
                         <option value="1">1 Day</option>
                         <option value="7">1 Week</option>
                         <option value="15">15 Days</option>
                         <option value="30">1 Month</option>
                         <option value="90">3 Months</option>
-                        <option value="365">1 Year</option>
+                        <option value="180">6 Months</option> <option value="365">1 Year</option>
                         <option value="9999">Lifetime</option>
                     </select>
                 </div>
-                <button onclick="runModalGrant('${uid}')" style="width:100%; background:#16a34a; color:white; padding:10px; border:none; border-radius:6px; cursor:pointer;">Grant Access</button>
+                <button onclick="runModalGrant('${uid}')" style="width:100%; background:#16a34a; color:white; padding:12px; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:14px; box-shadow:0 2px 4px rgba(22,163,74,0.2);">Grant Access</button>
             </div>
 
             ${actionButtons}
@@ -3019,9 +3074,6 @@ function openPremiumModal() {
     
     const modal = document.getElementById('premium-modal');
     if (modal) {
-        // 🔥 CRITICAL FIX: 
-        // We set display to 'flex' to override any 'display: none' 
-        // that selectCourse() or the Admin Panel might have left behind.
         modal.style.display = 'flex'; 
         modal.classList.remove('hidden'); 
     }
@@ -3762,55 +3814,97 @@ async function rejectPayment(id) {
 // ======================================================
 // 7. PWA INSTALL LOGIC
 // ======================================================
-let deferredPrompt; // Variable to store the install event
+// --- SMART INSTALL LOGIC (HYBRID) ---
+let deferredPrompt; // Stores the native prompt if available
 
-// 1. Listen for the browser saying "This app can be installed!"
+// 1. Listen for the browser's native install event (Android/PC)
 window.addEventListener('beforeinstallprompt', (e) => {
-    // Prevent the mini-infobar from appearing on mobile
     e.preventDefault();
-    // Stash the event so it can be triggered later.
     deferredPrompt = e;
-    
-    // Show the install button (if it was hidden)
+    console.log("✅ Native install prompt captured");
+});
+
+// 2. Inject the "How to Install" Modal HTML automatically
+const installGuideHTML = `
+<div id="install-guide-modal" style="
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(5px); z-index: 9999;
+    display: none; justify-content: center; align-items: center; font-family: sans-serif;
+">
+    <div style="
+        background: white; width: 90%; max-width: 450px; max-height: 90vh;
+        border-radius: 20px; overflow: hidden; display: flex; flex-direction: column;
+        box-shadow: 0 20px 25px rgba(0,0,0,0.1); animation: popIn 0.3s ease;
+    ">
+        <div style="padding: 20px; border-bottom: 1px solid #f1f5f9; text-align: center; background: white;">
+            <div style="font-size: 32px; margin-bottom: 8px;">📲</div>
+            <h2 style="margin: 0; color: #1e293b; font-size: 20px; font-weight: 800;">Install App</h2>
+            <p style="margin: 5px 0 0; color: #64748b; font-size: 13px;">Add to home screen for the best experience.</p>
+        </div>
+
+        <div style="padding: 20px; overflow-y: auto; background: #fff;">
+            <div style="background:#f8fafc; padding:12px; border-radius:10px; margin-bottom:10px; border:1px solid #e2e8f0;">
+                <strong style="display:block; margin-bottom:6px; color:#0f172a; font-size:14px;">🍎 iOS (Safari)</strong>
+                <ol style="margin:0; padding-left:20px; font-size:13px; color:#475569; line-height:1.5;">
+                    <li>Tap the <b>Share</b> icon <span style="font-size:15px">↥</span></li>
+                    <li>Scroll down & tap <b>Add to Home Screen</b></li>
+                    <li>Tap <b>Add</b> (top right)</li>
+                </ol>
+            </div>
+
+            <div style="background:#f8fafc; padding:12px; border-radius:10px; margin-bottom:10px; border:1px solid #e2e8f0;">
+                <strong style="display:block; margin-bottom:6px; color:#0f172a; font-size:14px;">🤖 Android (Chrome)</strong>
+                <ol style="margin:0; padding-left:20px; font-size:13px; color:#475569; line-height:1.5;">
+                    <li>Tap <b>Three Dots</b> (⋮) at top right</li>
+                    <li>Tap <b>Install App</b> or <b>Add to Home Screen</b></li>
+                    <li>Tap <b>Install</b> to confirm</li>
+                </ol>
+            </div>
+        </div>
+
+        <button onclick="document.getElementById('install-guide-modal').style.display='none'" 
+            style="padding: 15px; background: white; border: none; border-top: 1px solid #f1f5f9; color: #64748b; cursor: pointer; font-weight: 600; font-size: 14px; width: 100%;">
+            Close
+        </button>
+    </div>
+</div>
+`;
+document.body.insertAdjacentHTML('beforeend', installGuideHTML);
+
+// 3. Configure the Install Button
+function setupInstallButton() {
     const installBtn = document.getElementById('install-btn');
     if (installBtn) {
+        // Force button visible
         installBtn.style.display = 'block';
-        installBtn.innerHTML = "📱 Install App";
+        installBtn.innerHTML = "📲 Install App";
+        
+        // Remove old listeners by cloning
+        const newBtn = installBtn.cloneNode(true);
+        installBtn.parentNode.replaceChild(newBtn, installBtn);
+        
+        // Add Smart Click Event
+        newBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                // A. Try Native Android/PC Prompt first
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log("User response:", outcome);
+                deferredPrompt = null;
+            } else {
+                // B. If Native fails (or on iOS), show the Manual Guide
+                document.getElementById('install-guide-modal').style.display = 'flex';
+            }
+        });
     }
-    console.log("✅ App is ready to install!");
-});
-
-// 2. Handle the Button Click
-const installBtn = document.getElementById('install-btn');
-if(installBtn) {
-    installBtn.addEventListener('click', async () => {
-        if (!deferredPrompt) {
-            alert("App is already installed or not supported in this browser. \n\n(Try using Chrome or Safari's 'Add to Home Screen' option).");
-            return;
-        }
-        
-        // Show the install prompt
-        deferredPrompt.prompt();
-        
-        // Wait for the user to respond to the prompt
-        const { outcome } = await deferredPrompt.userChoice;
-        console.log(`User response to the install prompt: ${outcome}`);
-        
-        // We've used the prompt, so clear it
-        deferredPrompt = null;
-    });
 }
 
-// 3. Detect if App is already installed
-window.addEventListener('appinstalled', () => {
-    // Hide the install button
-    const installBtn = document.getElementById('install-btn');
-    if (installBtn) installBtn.style.display = 'none';
-    
-    // Clear the prompt
-    deferredPrompt = null;
-    console.log('✅ PWA was installed');
-});
+// Run setup immediately or when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupInstallButton);
+} else {
+    setupInstallButton();
+}
 
 async function adminDeleteGhosts() {
     if(!confirm("⚠️ Delete all 'Ghost' users?\n\n(These are broken records with no email address).\nThis cannot be undone.")) return;
@@ -3870,3 +3964,4 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
