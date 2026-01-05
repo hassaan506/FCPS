@@ -1234,7 +1234,7 @@ details[open] .subject-summary::after {
     position: fixed;
     top: 0; 
     left: 0;
-    width: 100%;
+    width: 150%;
     height: 100%;
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(5px);
@@ -2669,5 +2669,6 @@ button.secondary {
     flex-shrink: 0; padding: 15px; border-top: 1px solid #f1f5f9; background: #fff; text-align: center;
 }
 .btn-cancel { background: transparent; border: none; color: #64748b; font-size: 13px; font-weight: 500; cursor: pointer; }
+
 
 
