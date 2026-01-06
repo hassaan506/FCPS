@@ -2093,18 +2093,28 @@ function renderPage() {
     }
 }
 
+// ==========================================
+// 🛠️ FIXED: CREATE QUESTION CARD (Safe Mode)
+// ==========================================
+
 function createQuestionCard(q, index, showNumber = true) {
     const block = document.createElement('div');
     block.className = "test-question-block";
     block.id = `q-card-${index}`;
 
-    if (testFlags[q._uid]) {
+    // 1. Safety Checks for Globals (Prevents White Screen Crash)
+    const safeFlags = (typeof testFlags !== 'undefined' && testFlags) ? testFlags : {};
+    const safeBookmarks = (typeof userBookmarks !== 'undefined' && userBookmarks) ? userBookmarks : [];
+    
+    // 2. Determine States
+    if (safeFlags[q._uid]) {
         block.classList.add('is-flagged-card');
     }
 
-    const isBookmarked = (currentMode === 'test') ? false : userBookmarks.includes(q._uid);
-    const isFlagged = testFlags[q._uid] || false;
+    const isBookmarked = (currentMode === 'test') ? false : safeBookmarks.includes(q._uid);
+    const isFlagged = safeFlags[q._uid] || false;
 
+    // 3. Create Header
     const header = document.createElement('div');
     header.className = "question-card-header";
     header.innerHTML = `
@@ -2120,23 +2130,26 @@ function createQuestionCard(q, index, showNumber = true) {
     `;
     block.appendChild(header);
 
+    // 4. Question Text
     const qText = document.createElement('div');
     qText.className = "test-q-text";
     qText.innerHTML = q.Question || "Missing Text";
     block.appendChild(qText);
 
+    // 5. Options Area
     const optionsDiv = document.createElement('div');
     optionsDiv.className = "options-group";
     optionsDiv.id = `opts-${index}`;
 
-    let rawOpts = [q.OptionA, q.OptionB, q.OptionC, q.OptionD, q.OptionE].filter(o => o && o.trim() !== "");
+    // Filter valid options only
+    let rawOpts = [q.OptionA, q.OptionB, q.OptionC, q.OptionD, q.OptionE].filter(o => o && String(o).trim() !== "");
 
     let normalOpts = [];
     let bottomOpts = [];
 
+    // Handle "All of the above" logic
     rawOpts.forEach(opt => {
-        const lower = opt.toLowerCase();
-
+        const lower = String(opt).toLowerCase();
         if (lower.includes("all of") || lower.includes("none of") || lower.includes("of the above") || lower.includes("all the")) {
             bottomOpts.push(opt);
         } else {
@@ -2144,30 +2157,44 @@ function createQuestionCard(q, index, showNumber = true) {
         }
     });
 
-    let finalOpts = [...shuffleArray(normalOpts), ...bottomOpts];
+    // Shuffle normal options (Safety check for shuffle function)
+    const shuffledNormals = (typeof shuffleArray === 'function') ? shuffleArray(normalOpts) : normalOpts;
+    let finalOpts = [...shuffledNormals, ...bottomOpts];
 
+    // Create Buttons
     finalOpts.forEach(opt => {
         const btn = document.createElement('button');
         btn.className = "option-btn";
-        // The span ensures the text and the eye icon are separated correctly
+        // Span ensures layout works with flexbox
         btn.innerHTML = `<span class="opt-text">${opt}</span><span class="elim-eye">👁️</span>`;
 
-        btn.querySelector('.elim-eye').onclick = (e) => { 
+        // Eye Click (Elimination)
+        const eye = btn.querySelector('.elim-eye');
+        eye.onclick = (e) => { 
             e.stopPropagation(); 
             btn.classList.toggle('eliminated'); 
         };
 
+        // Main Click (Select Answer)
         btn.onclick = (e) => {
             if (e.target.classList.contains('elim-eye')) return;
             if (btn.classList.contains('eliminated')) btn.classList.remove('eliminated');
-            checkAnswer(opt, btn, q);
+            
+            // Ensure checkAnswer exists before calling
+            if(typeof checkAnswer === 'function') {
+                checkAnswer(opt, btn, q);
+            } else {
+                console.error("checkAnswer function is missing!");
+            }
         };
 
+        // Right Click (Alternative Elimination)
         btn.addEventListener('contextmenu', (e) => { 
             e.preventDefault(); 
             btn.classList.toggle('eliminated'); 
         });
 
+        // Restore State (if re-rendering)
         if (typeof testAnswers !== 'undefined' && testAnswers[q._uid] === opt) {
             btn.classList.add('selected');
         }
@@ -3976,32 +4003,41 @@ function renderSubjectGrid(filterText = '') {
         // Search Filter Logic
         const matchSubject = sub.toLowerCase().includes(searchText);
         const matchTopic = subQuestions.some(q => (q.Topic || "").toLowerCase().includes(searchText));
-        
-        if (searchText && !matchSubject && !matchTopic) return;
+        const matchQ = subQuestions.some(q => (q.Question || "").toLowerCase().includes(searchText));
+
+        if (searchText && !matchSubject && !matchTopic && !matchQ) return;
 
         const count = subQuestions.length;
 
-        // Create Card (No Arrow)
+        // Create Card (CLEAN HTML - No inline styles)
         const card = document.createElement('div');
         card.className = 'subject-card';
+        
+        // This HTML structure matches the new CSS perfectly
         card.innerHTML = `
-            <div style="width:100%; display:flex; justify-content:space-between; align-items:center;">
-                <div class="subject-name">${sub}</div>
-                <div style="font-size:12px; color:#64748b; font-weight:600; background:#f1f5f9; padding:2px 8px; border-radius:6px;">
-                    ${count} Qs
-                </div>
-            </div>
+            <div class="subject-name">${sub}</div>
+            <div class="subject-count-badge">${count} Qs</div>
         `;
-        card.onclick = () => openSubjectModal(sub);
+        
+        // Click Logic
+        card.onclick = () => {
+            if (currentMode === 'test') {
+                // In Exam Mode, open the Multi-Select Modal logic directly
+                // Ensure openMultiSubjectModal is defined in your script
+                if(typeof openMultiSubjectModal === 'function') {
+                     openMultiSubjectModal(sub); 
+                } else {
+                     console.error("openMultiSubjectModal is missing!");
+                }
+            } else {
+                // In Practice Mode, open the Topic List
+                openSubjectModal(sub);
+            }
+        };
+        
         grid.appendChild(card);
     });
 }
-
-function filterSubjects() {
-    const text = document.getElementById('subject-search').value;
-    renderSubjectGrid(text);
-}
-
 // 2. Open the Modal
 function openSubjectModal(subject) {
     selectedSubjectForModal = subject;
@@ -4332,4 +4368,5 @@ function startMultiSubjectExam() {
     testTimer = setInterval(updateTimer, 1000);
     renderPage();
 }
+
 
