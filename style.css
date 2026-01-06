@@ -480,69 +480,6 @@ button {
     box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
-/* 4. Search Box */
-.search-box {
-    position: relative;
-    margin-bottom: 15px;
-}
-
-.search-box input {
-    width: 100%;
-    padding: 12px 12px 12px 40px;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    background: var(--input-bg);
-    margin: 0;
-    outline: none;
-}
-
-.search-box input:focus {
-    border-color: var(--primary);
-    background: white;
-}
-
-.search-box .search-icon {
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    opacity: 0.5;
-    font-size: 18px;
-}
-
-/* 5. Subject Grid */
-.subject-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding-bottom: 20px;
-}
-
-.subject-card {
-    background: white;
-    border: 1px solid var(--border-color);
-    border-bottom: 3px solid var(--primary);
-    padding: 20px;
-    border-radius: 12px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.subject-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-    background: #f8fafc;
-}
-
-.subject-name {
-    font-weight: 700;
-    color: var(--text-dark);
-    font-size: 16px;
-}
-
 /* 6. The Topic Modal (WIDER & CLEANER) */
 .modal-box {
     width: 95%;
@@ -1009,15 +946,54 @@ button {
     display: block;
     margin-bottom: 5px;
 }
-/* SEARCH */
+
+/* SEARCH DROPDOWN (Updated) */
 .search-results-list {
-    position: absolute; top: 110%; left: 0; right: 0;
-    background: white; border: 1px solid #ccc; max-height: 250px;
-    overflow-y: auto; z-index: 1000; display: none;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-radius: 12px;
+    position: absolute;
+    top: 100%;       /* Attach directly to the bottom of input */
+    left: 0; 
+    right: 0;
+    background: white;
+    border: 1px solid #e2e8f0; /* Matches your new theme borders */
+    border-radius: 12px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 2000;   /* High Z-Index to float over everything */
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    margin-top: 8px; /* Adds a clean gap */
+    display: none;   /* Hidden by default */
 }
-.search-item { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s; }
-.search-item:hover { background-color: #f0f9ff; color: var(--primary); }
+
+/* Individual Search Result Items */
+.search-item {
+    padding: 12px 15px;
+    border-bottom: 1px solid #f1f5f9;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s ease;
+}
+
+.search-item:last-child {
+    border-bottom: none;
+}
+
+.search-item:hover {
+    background-color: #f0f9ff; /* Light Blue hover */
+    color: #0072ff;            /* Highlight Text Blue */
+}
+
+/* Dark Mode Support for Search */
+[data-theme="dark"] .search-results-list {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+}
+[data-theme="dark"] .search-item {
+    border-color: var(--border-color);
+    color: var(--text-dark);
+}
+[data-theme="dark"] .search-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
 
 
 /* =========================================
@@ -2873,6 +2849,7 @@ button.secondary {
     flex-shrink: 0; padding: 15px; border-top: 1px solid #f1f5f9; background: #fff; text-align: center;
 }
 .btn-cancel { background: transparent; border: none; color: #64748b; font-size: 13px; font-weight: 500; cursor: pointer; }
+
 
 
 
