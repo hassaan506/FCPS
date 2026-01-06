@@ -4016,6 +4016,8 @@ function renderSubjectGrid(filterText = '') {
     if (!grid) return;
     grid.innerHTML = '';
 
+    const searchText = filterText.toLowerCase().trim();
+
     // Get unique subjects
     const subjects = [...new Set(allQuestions.map(q => q.Subject))].sort();
 
@@ -4024,13 +4026,26 @@ function renderSubjectGrid(filterText = '') {
         return;
     }
 
+    let foundAny = false;
+
     subjects.forEach(sub => {
-        if (filterText && !sub.toLowerCase().includes(filterText.toLowerCase())) return;
+        const subQuestions = allQuestions.filter(q => q.Subject === sub);
+        
+        // CHECK 1: Does Subject Name match?
+        const matchSubject = sub.toLowerCase().includes(searchText);
+        
+        // CHECK 2: Does ANY Topic inside match?
+        const matchTopic = subQuestions.some(q => (q.Topic || "").toLowerCase().includes(searchText));
 
-        // Count Qs
-        const count = allQuestions.filter(q => q.Subject === sub).length;
+        // CHECK 3: Does ANY Question Text inside match? (The fix you wanted)
+        const matchQuestionText = subQuestions.some(q => (q.Question || "").toLowerCase().includes(searchText));
 
-        // Create Card
+        // Show card if ANY of the above are true
+        if (searchText && !matchSubject && !matchTopic && !matchQuestionText) return;
+
+        foundAny = true;
+        const count = subQuestions.length;
+
         const card = document.createElement('div');
         card.className = 'subject-card';
         card.innerHTML = `
@@ -4038,13 +4053,16 @@ function renderSubjectGrid(filterText = '') {
                 <div class="subject-name">${sub}</div>
                 <div style="font-size:12px; color:#64748b; margin-top:2px;">${count} Questions</div>
             </div>
-            <div style="color:#10b981; font-weight:bold;">➜</div>
+            <div style="color:#10b981; font-weight:bold; font-size:20px;">➜</div>
         `;
         card.onclick = () => openSubjectModal(sub);
         grid.appendChild(card);
     });
-}
 
+    if (!foundAny) {
+        grid.innerHTML = "<div style='text-align:center; padding:20px; color:#aaa;'>No matching content found.</div>";
+    }
+}
 function filterSubjects() {
     const text = document.getElementById('subject-search').value;
     renderSubjectGrid(text);
@@ -4212,3 +4230,66 @@ function startExamFromModal() {
     testTimer = setInterval(updateTimer, 1000);
     renderPage();
 }
+
+// ======================================================
+// 🔍 SEARCH BAR FIX (Grid Filter + Dropdown List)
+// ======================================================
+
+function handleSearchInput() {
+    const input = document.getElementById('subject-search');
+    const term = input.value.toLowerCase().trim();
+    
+    // 1. Filter the Subject Grid (Visual Cards)
+    // We pass the term to the grid renderer
+    renderSubjectGrid(term);
+
+    // 2. Manage the Dropdown List (Specific Questions)
+    const resultsBox = document.getElementById('search-results');
+    
+    if (term.length < 3) {
+        resultsBox.style.display = 'none';
+        return;
+    }
+
+    // Find questions that match the term (checking Text OR Topic)
+    const matches = allQuestions.filter(q => 
+        (q.Question && q.Question.toLowerCase().includes(term)) || 
+        (q.Topic && q.Topic.toLowerCase().includes(term))
+    ).slice(0, 10); // Limit to 10 results
+
+    if (matches.length === 0) {
+        resultsBox.style.display = 'none';
+        return;
+    }
+
+    // Render the list
+    resultsBox.innerHTML = '';
+    resultsBox.style.display = 'block';
+
+    matches.forEach(q => {
+        const div = document.createElement('div');
+        div.className = 'search-item';
+        // Highlight the Topic and show a snippet of the question
+        div.innerHTML = `
+            <div style="font-weight:bold; color:#1e293b; font-size:13px;">${q.Topic || "General"}</div>
+            <div style="color:#64748b; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                ${q.Question.substring(0, 60)}...
+            </div>
+        `;
+        div.onclick = () => {
+            resultsBox.style.display = 'none';
+            input.value = ""; // Clear search
+            startSingleQuestionPractice(q); // Start this specific question
+        };
+        resultsBox.appendChild(div);
+    });
+}
+
+// Close search results if clicking outside
+document.addEventListener('click', function(e) {
+    const box = document.getElementById('search-results');
+    const input = document.getElementById('subject-search');
+    if (box && e.target !== input && e.target !== box) {
+        box.style.display = 'none';
+    }
+});
