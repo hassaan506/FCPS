@@ -1610,12 +1610,14 @@ function processData(data, reRenderOnly = false) {
         const seen = new Set();
         allQuestions = [];
         data.forEach((row, index) => {
+            // Clean up row data
             delete row.Book; delete row.Exam; delete row.Number;
             const qText = row.Question || row.Questions;
             const correctVal = row.CorrectAnswer;
 
             if (!qText || !correctVal) return;
 
+            // Generate Unique ID based on question text
             const qSignature = String(qText).trim().toLowerCase();
             if (seen.has(qSignature)) return; 
             seen.add(qSignature);
@@ -1624,6 +1626,7 @@ function processData(data, reRenderOnly = false) {
             row.Question = qText; 
             row.SheetRow = index + 2; 
 
+            // Normalize Subject/Topic
             const subj = row.Subject ? row.Subject.trim() : "General";
             const topic = row.Topic ? row.Topic.trim() : "Mixed";
             row.Subject = subj; 
@@ -1633,17 +1636,10 @@ function processData(data, reRenderOnly = false) {
         });
     }
 
-    const subjects = new Set();
-    const map = {}; 
-    allQuestions.forEach(q => {
-        subjects.add(q.Subject);
-        if (!map[q.Subject]) map[q.Subject] = new Set();
-        map[q.Subject].add(q.Topic);
-    });
-
-    renderMenus(subjects, map); 
-    renderTestFilters(subjects, map);
+    // 🔥 NEW: Render the Grid Dashboard instead of the old lists
+    renderSubjectGrid();
     
+    // Update Admin counter if present
     if(document.getElementById('admin-total-q')) {
         document.getElementById('admin-total-q').innerText = allQuestions.length;
     }
@@ -1807,8 +1803,14 @@ function setMode(mode) {
     if(filterControls) filterControls.style.display = (mode === 'test') ? 'none' : 'flex';
 }
 
+// ======================================================
+// 🚀 UPDATED PRACTICE LOGIC (Round-Robin + Unattempted Check)
+// ======================================================
+
 function startPractice(subject, topic) {
-    // 1. Get ALL questions for this Subject (Ignore Topic for now)
+    console.log(`[StartPractice] Subject: ${subject}, Topic: ${topic || "ALL"}`);
+
+    // 1. Get ALL questions for this Subject
     let subjectPool = allQuestions.filter(q => q.Subject === subject);
     console.log(`[StartPractice] Raw Subject Pool: ${subjectPool.length}`);
 
@@ -1832,12 +1834,11 @@ function startPractice(subject, topic) {
         userType = "Free";
     }
 
-    // 4. 🔥 GLOBAL LIMIT LOGIC (Round-Robin)
-    // We create a "Free Sample" of the entire subject BEFORE filtering by topic.
+    // 4. 🔥 ROUND-ROBIN LIMIT LOGIC
+    // Create a "Free Sample" if the user is not premium
     if (subjectPool.length > limit) {
         console.log(`[StartPractice] Creating Balanced Sample of ${limit} for ${userType}`);
         
-        // A. Group by Topic
         const topicMap = {};
         const topicNames = [];
         
@@ -1850,7 +1851,6 @@ function startPractice(subject, topic) {
             topicMap[tName].push(q);
         });
 
-        // B. Pick evenly from each topic until we hit the limit
         let balancedList = [];
         let i = 0; 
         let addedSomething = true;
@@ -1867,50 +1867,52 @@ function startPractice(subject, topic) {
             }
             i++;
         }
-
-        // C. REPLACE the full subject with this small sample
         subjectPool = balancedList;
-
-        // Reset alert flag (optional)
-        if (currentIndex === 0 && !window.hasShownLimitAlert) {
+        
+        // Notify limit enforcement
+        if (!window.hasShownLimitAlert) {
              window.hasShownLimitAlert = true; 
+             console.log("Limit enforced.");
         }
     }
 
-    // 5. NOW Filter by the requested Topic
-    // We filter INSIDE the "Free Sample" we just created.
+    // 5. Filter by Topic (Inside the "Free Sample")
     let pool = [];
-
-    // Check if 'topic' exists and is a valid string
     if (topic && typeof topic === 'string' && topic.trim() !== "") {
         pool = subjectPool.filter(q => q.Topic === topic);
-        console.log(`[StartPractice] Filtered by Topic '${topic}': Found ${pool.length} in sample.`);
     } else {
-        // If no topic selected (Practice All), show the whole mixed sample
         pool = subjectPool;
     }
 
-    // 6. Handle Empty Pool (e.g. Topic exists in DB but not in the Sample)
+    // 6. Handle "Empty Pool" due to Limits
     if (pool.length === 0) {
-        const topicExists = allQuestions.some(q => q.Subject === subject && q.Topic === topic);
+        // Check if the topic exists in the FULL database (before limiting)
+        const topicExistsInDB = allQuestions.some(q => q.Subject === subject && q.Topic === topic);
         
-        if (topicExists && limit !== Infinity) {
-             // Smart Alert: Tell them the topic exists but is blocked
-             return alert(`🔒 Premium Content\n\n${userType} users get a sample of ${limit} questions from the entire ${subject} course.\n\nQuestions for '${topic}' happen to fall outside this free sample.\n\nUpgrade to Premium to unlock everything!`);
+        if (topicExistsInDB && limit !== Infinity) {
+             return alert(`🔒 Premium Content\n\n${userType} users get a sample of ${limit} questions.\n\nQuestions for '${topic}' are not in your free sample.\n\nUpgrade to Premium to unlock everything!`);
         } else {
-             return alert("No questions available.");
+             return alert("No questions available for this selection.");
         }
     }
 
-    // 7. Handle "Unattempted Only"
+    // 7. 🔥 CHECK UNATTEMPTED ONLY
     const onlyUnattempted = document.getElementById('unattempted-only').checked;
+    
     if (onlyUnattempted) {
+        // Use userHistory if available, otherwise userSolvedIDs
+        // Assuming userSolvedIDs is an array of IDs the user has finished
         pool = pool.filter(q => !userSolvedIDs.includes(q._uid));
-        if (pool.length === 0) return alert("You have solved all available free questions in this section!");
+        
+        if (pool.length === 0) {
+            return alert("🎉 Great job! You have solved all available free questions for this selection.");
+        }
     }
 
     // 8. Launch Quiz
     filteredQuestions = pool;
+    
+    // Find first unattempted question to start at (if checking history)
     let startIndex = 0;
     if (!onlyUnattempted) {
         startIndex = filteredQuestions.findIndex(q => !userSolvedIDs.includes(q._uid));
@@ -1920,8 +1922,12 @@ function startPractice(subject, topic) {
     currentMode = 'practice';
     isMistakeReview = false;
     currentIndex = startIndex;
-
+    
+    // UI Cleanup
     showScreen('quiz-screen');
+    document.getElementById('timer').classList.add('hidden'); // Hide timer for practice
+    document.getElementById('test-sidebar').classList.remove('active');
+    
     renderPage();
     renderPracticeNavigator();
 }
@@ -3997,7 +4003,212 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
     }
 }
 
+// ======================================================
+// 🚀 NEW DASHBOARD LOGIC (Grid + Modal)
+// ======================================================
 
+let selectedSubjectForModal = '';
+let selectedExamTopics = [];
 
+// 1. Render the Grid
+function renderSubjectGrid(filterText = '') {
+    const grid = document.getElementById('subject-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
 
+    // Get unique subjects
+    const subjects = [...new Set(allQuestions.map(q => q.Subject))].sort();
 
+    if(subjects.length === 0) {
+        grid.innerHTML = "<div style='text-align:center; padding:20px; color:#aaa;'>No subjects found.</div>";
+        return;
+    }
+
+    subjects.forEach(sub => {
+        if (filterText && !sub.toLowerCase().includes(filterText.toLowerCase())) return;
+
+        // Count Qs
+        const count = allQuestions.filter(q => q.Subject === sub).length;
+
+        // Create Card
+        const card = document.createElement('div');
+        card.className = 'subject-card';
+        card.innerHTML = `
+            <div>
+                <div class="subject-name">${sub}</div>
+                <div style="font-size:12px; color:#64748b; margin-top:2px;">${count} Questions</div>
+            </div>
+            <div style="color:#10b981; font-weight:bold;">➜</div>
+        `;
+        card.onclick = () => openSubjectModal(sub);
+        grid.appendChild(card);
+    });
+}
+
+function filterSubjects() {
+    const text = document.getElementById('subject-search').value;
+    renderSubjectGrid(text);
+}
+
+// 2. Open the Modal
+function openSubjectModal(subject) {
+    selectedSubjectForModal = subject;
+    selectedExamTopics = [];
+
+    const modal = document.getElementById('study-modal');
+    document.getElementById('modal-subject-title').innerText = subject;
+
+    // Get Topics
+    const topics = [...new Set(
+        allQuestions.filter(q => q.Subject === subject).map(q => q.Topic)
+    )].sort();
+
+    const list = document.getElementById('modal-topic-list');
+    const actions = document.getElementById('modal-actions-area');
+    const settings = document.getElementById('exam-settings-area');
+    const footer = document.getElementById('modal-footer');
+    const subtitle = document.getElementById('modal-mode-subtitle');
+
+    list.innerHTML = '';
+    actions.innerHTML = '';
+
+    if (currentMode === 'practice') {
+        // --- PRACTICE UI ---
+        subtitle.innerText = "Select a topic to start immediately.";
+        settings.classList.add('hidden');
+        footer.style.display = 'none';
+
+        // Practice All Button
+        const btnAll = document.createElement('button');
+        btnAll.className = 'practice-all-btn';
+        btnAll.innerHTML = `Practice All ${subject} ⭐`;
+        btnAll.onclick = () => {
+            closeStudyModal();
+            startPractice(subject, null); // null = All Topics
+        };
+        actions.appendChild(btnAll);
+
+        // List Topics
+        topics.forEach(topic => {
+            const row = document.createElement('div');
+            row.className = 'topic-row';
+            row.innerHTML = `<span>${topic}</span> <span>➜</span>`;
+            row.onclick = () => {
+                closeStudyModal();
+                startPractice(subject, topic);
+            };
+            list.appendChild(row);
+        });
+
+    } else {
+        // --- EXAM UI ---
+        subtitle.innerText = "Select specific topics & limits.";
+        settings.classList.remove('hidden');
+        footer.style.display = 'block';
+
+        // Select All Checkbox
+        const selectAllDiv = document.createElement('div');
+        selectAllDiv.innerHTML = `
+            <div style="padding:10px; display:flex; align-items:center; gap:10px;">
+                <input type="checkbox" id="chk-select-all" onchange="toggleSelectAllTopics(this)" style="width:18px; height:18px;"> 
+                <label for="chk-select-all" style="font-weight:bold; color:#1e293b; font-size:14px;">Select Entire Subject</label>
+            </div>
+            <div style="height:1px; background:#f1f5f9; margin:5px 0 10px 0;"></div>
+        `;
+        actions.appendChild(selectAllDiv);
+
+        // List Topics
+        topics.forEach(topic => {
+            const row = document.createElement('div');
+            row.className = 'topic-row';
+            row.innerText = topic;
+            row.onclick = () => {
+                row.classList.toggle('selected');
+                if (selectedExamTopics.includes(topic)) {
+                    selectedExamTopics = selectedExamTopics.filter(t => t !== topic);
+                } else {
+                    selectedExamTopics.push(topic);
+                }
+                document.getElementById('chk-select-all').checked = false;
+            };
+            list.appendChild(row);
+        });
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function toggleSelectAllTopics(checkbox) {
+    const rows = document.querySelectorAll('.topic-row');
+    const allTopics = [...new Set(
+        allQuestions.filter(q => q.Subject === selectedSubjectForModal).map(q => q.Topic)
+    )];
+
+    if (checkbox.checked) {
+        rows.forEach(r => r.classList.add('selected'));
+        selectedExamTopics = allTopics;
+    } else {
+        rows.forEach(r => r.classList.remove('selected'));
+        selectedExamTopics = [];
+    }
+}
+
+function closeStudyModal() {
+    document.getElementById('study-modal').classList.add('hidden');
+}
+
+// 3. Start Exam Logic
+function startExamFromModal() {
+    const countInput = document.getElementById('new-exam-q-count').value;
+    const minsInput = document.getElementById('new-exam-timer').value;
+
+    if (selectedExamTopics.length === 0) return alert("Please select at least one topic.");
+
+    // Filter Logic
+    let pool = allQuestions.filter(q => 
+        q.Subject === selectedSubjectForModal && selectedExamTopics.includes(q.Topic)
+    );
+
+    // Check Unattempted
+    const unattemptedOnly = document.getElementById('unattempted-only').checked;
+    if (unattemptedOnly && typeof userHistory !== 'undefined') {
+        pool = pool.filter(q => !userHistory[q._uid]);
+    }
+
+    if (pool.length === 0) return alert("No questions available for these settings.");
+
+    // Limit Logic
+    const isAdmin = userProfile && userProfile.role === 'admin';
+    const premKey = getStoreKey('isPremium');
+    const expKey = getStoreKey('expiryDate');
+    const isPrem = userProfile && userProfile[premKey] && isDateActive(userProfile[expKey]);
+
+    let maxQuestions = Infinity;
+    if (isAdmin) maxQuestions = Infinity;
+    else if (isGuest) maxQuestions = 20;
+    else if (!isPrem) maxQuestions = 50;
+
+    let finalCount = parseInt(countInput);
+    if (finalCount > maxQuestions) {
+        alert(`🔒 Limit Exceeded: Reducing to ${maxQuestions} questions.`);
+        finalCount = maxQuestions;
+    }
+
+    // Shuffle & Launch
+    filteredQuestions = pool.sort(() => Math.random() - 0.5).slice(0, finalCount);
+    
+    closeStudyModal();
+    currentMode = 'test';
+    currentIndex = 0;
+    testAnswers = {};
+    testFlags = {}; 
+    testTimeRemaining = parseInt(minsInput) * 60;
+    
+    showScreen('quiz-screen');
+    document.getElementById('timer').classList.remove('hidden');
+    document.getElementById('test-sidebar').classList.add('active');
+    renderNavigator();
+    clearInterval(testTimer);
+    testTimer = setInterval(updateTimer, 1000);
+    renderPage();
+}
