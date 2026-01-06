@@ -365,20 +365,21 @@ button {
 }
 
 /* --- RIGHT COLUMN (Study Session) - UPDATED --- */
+/* --- RIGHT COLUMN (Study Session) --- */
 #study-panel {
     grid-column: 2; 
     grid-row: 1 / span 10; 
     width: 100% !important;
     max-width: none !important;
     
-    /* 🔥 FIXED HEIGHT + SCROLL (This keeps the layout stable) */
-    height: 550px !important; 
-    overflow: hidden !important; /* Hides the outer scrollbar */
+    /* ✅ FIX: Change 22cm to 600px so it fits the screen perfectly */
+    height: 600px !important; 
     
     margin: 0 !important;
     padding: 0 !important;
     display: flex;
     flex-direction: column;
+    overflow: hidden !important; /* Hides the double scrollbar */
 }
 
 /* --- MOBILE FIX (UPDATED) --- */
@@ -411,17 +412,18 @@ button {
 }
 
 /* =========================================
-   🚀 NEW STUDY SESSION STYLES (Grid + Modal)
+   🚀 NEW STUDY SESSION STYLES (Fixed & Polished)
    ========================================= */
 
-/* 1. Card Container (Fills the fixed panel) */
+/* 1. Card Container (Fills the panel) */
 #study-panel .premium-card {
     height: 100%;       
     display: flex;
     flex-direction: column;
-    border-radius: 16px;
+    border-radius: 20px; /* Matches your other cards */
     box-shadow: none;   
     border: none;
+    background: white;
 }
 
 /* 2. Scrollable Area (The part that actually scrolls) */
@@ -430,10 +432,25 @@ button {
     overflow-y: auto;   
     padding: 15px 20px;
     background: #f8fafc;
-    border-radius: 0 0 16px 16px;
+    border-radius: 0 0 20px 20px;
 }
 
-/* 3. Mode Switcher (Practice vs Exam) */
+/* --- CUSTOM SCROLLBARS (Makes it look like an App) --- */
+#study-panel .premium-scroll-area::-webkit-scrollbar,
+.modal-body-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+#study-panel .premium-scroll-area::-webkit-scrollbar-track,
+.modal-body-scroll::-webkit-scrollbar-track {
+    background: transparent; 
+}
+#study-panel .premium-scroll-area::-webkit-scrollbar-thumb,
+.modal-body-scroll::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 10px;
+}
+
+/* 3. Mode Switcher */
 .mode-toggle-container {
     display: flex;
     background: #f1f5f9;
@@ -490,9 +507,10 @@ button {
     top: 50%;
     transform: translateY(-50%);
     opacity: 0.5;
+    font-size: 18px;
 }
 
-/* 5. Subject Grid (Cards) */
+/* 5. Subject Grid */
 .subject-grid {
     display: flex;
     flex-direction: column;
@@ -503,7 +521,7 @@ button {
 .subject-card {
     background: white;
     border: 1px solid var(--border-color);
-    border-bottom: 3px solid var(--primary); /* Green Line */
+    border-bottom: 3px solid var(--primary);
     padding: 20px;
     border-radius: 12px;
     display: flex;
@@ -525,36 +543,41 @@ button {
     font-size: 16px;
 }
 
-/* 6. The Topic Modal (Popup) */
+/* 6. The Topic Modal (WIDER & CLEANER) */
 .modal-box {
     width: 95%;
-    max-width: 500px;
+    max-width: 600px; /* ✅ FIX: Increased width */
     max-height: 85vh;
     display: flex;
     flex-direction: column;
     background: white;
     border-radius: 20px;
     overflow: hidden;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 }
 
 .modal-header-custom {
-    padding: 20px;
+    padding: 20px 25px;
     border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: white;
+    background: white !important; /* ✅ FIX: Force white background */
+    flex-shrink: 0;
 }
 
 .close-icon-btn {
-    background: transparent;
+    background: #f1f5f9;
     border: none;
-    font-size: 24px;
+    font-size: 16px;
     cursor: pointer;
-    color: #94a3b8;
-    padding: 0; margin: 0;
+    color: #64748b;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
 }
+.close-icon-btn:hover { background: #e2e8f0; color: #ef4444; }
 
 .modal-body-scroll {
     padding: 20px;
@@ -563,7 +586,7 @@ button {
     background: #f8fafc;
 }
 
-/* Topic List Inside Modal */
+/* Topic List */
 .topic-list-wrapper { display: flex; flex-direction: column; gap: 10px; }
 
 .topic-row {
@@ -589,7 +612,7 @@ button {
     font-weight: 700;
 }
 
-/* Exam Inputs & Buttons */
+/* Exam Inputs */
 .exam-inputs-row { display: flex; gap: 15px; margin-bottom: 5px; }
 .input-group { flex: 1; }
 .input-group label { 
@@ -2850,6 +2873,7 @@ button.secondary {
     flex-shrink: 0; padding: 15px; border-top: 1px solid #f1f5f9; background: #fff; text-align: center;
 }
 .btn-cancel { background: transparent; border: none; color: #64748b; font-size: 13px; font-weight: 500; cursor: pointer; }
+
 
 
 
