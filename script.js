@@ -2767,16 +2767,17 @@ function switchAdminTab(tabName) {
 
 async function loadAdminReports() {
     const list = document.getElementById('admin-reports-list');
-    list.innerHTML = '<div style="padding:20px; text-align:center;">Loading reports...</div>';
+    list.innerHTML = '<div style="padding:20px; text-align:center; color:#64748b;">Loading reports...</div>';
 
     try {
+        // Fetch pending reports
         const snap = await db.collection('reports')
                              .where('status', '==', 'pending')
-                             .orderBy('timestamp', 'desc') // Added ordering for better UX
+                             .orderBy('timestamp', 'desc')
                              .get();
         
         if(snap.empty) {
-            list.innerHTML = "<div style='padding:20px; text-align:center; color:#888;'>✅ No pending reports.</div>";
+            list.innerHTML = "<div style='padding:20px; text-align:center; color:#10b981;'>✅ No pending reports.</div>";
             return;
         }
 
@@ -2784,46 +2785,43 @@ async function loadAdminReports() {
         snap.forEach(doc => {
             const r = doc.data();
             
-            // 🔥 FIX 1: GET CORRECT USER INFO
-            // Your save function uses 'reportedBy', not 'userEmail'
-            const reporter = r.reportedBy || r.userEmail || "Guest"; 
+            // 1. MATCH THE KEYS from your submitReportFinal function
+            // Saved as 'questionId', so we must read 'questionId'
+            const qId = r.questionId; 
 
-            // 🔥 FIX 2: HANDLE ID MISMATCHES
-            // Your save function uses 'questionId', but you were reading 'questionID'
-            const qId = r.questionId || r.questionID;
+            // Saved as 'reportedBy', so we read 'reportedBy'
+            const reporter = r.reportedBy || "Guest"; 
 
-            // 🔥 FIX 3: CONTEXT AWARENESS
-            // Only show the question text if we are currently inside that course.
-            // Otherwise, tell the admin to switch courses.
+            // Saved as 'issue', so we read 'issue'
+            const issueText = r.issue || "No details provided.";
+
+            // 2. FIND THE QUESTION TEXT
             let questionPreview = "";
             
+            // Check if we are in the same course as the report
             if (r.courseId === currentCourse) {
-                // We are in the right course, so we can find the question in 'allQuestions'
+                // Find question by ID (checking both string and number formats)
                 const qData = allQuestions.find(q => q._uid == qId || q.id == qId);
                 
                 if (qData) {
-                    // Truncate text if it's too long
-                    const shortText = qData.Question.length > 80 ? qData.Question.substring(0, 80) + "..." : qData.Question;
-                    questionPreview = `<div style="font-weight:bold; color:#1e293b; margin-bottom:6px; font-size:13px; border-left:3px solid #3b82f6; padding-left:8px;">Q: ${shortText}</div>`;
+                    const shortText = qData.Question.length > 90 ? qData.Question.substring(0, 90) + "..." : qData.Question;
+                    questionPreview = `<div style="font-weight:700; color:#1e293b; margin-bottom:6px; font-size:13px; border-left:3px solid #3b82f6; padding-left:8px;">Q: ${shortText}</div>`;
                 } else {
-                    questionPreview = `<div style="color:#ef4444; font-size:11px; font-style:italic;">(Question ID not found in this list)</div>`;
+                    questionPreview = `<div style="color:#ef4444; font-size:11px;">(Question ID not found in this course file)</div>`;
                 }
             } else {
-                // We are in a different course, so we can't show the text
-                questionPreview = `<div style="color:#64748b; font-size:11px; background:#f1f5f9; padding:5px; border-radius:4px;">
-                    ⚠️ Switch to course <b>"${r.courseName}"</b> to view this question.
+                // If admin is in 'FCPS' but report is for 'Third Year'
+                questionPreview = `<div style="color:#64748b; font-size:11px; background:#f1f5f9; padding:6px; border-radius:4px;">
+                    ⚠️ Switch to <b>"${r.courseName}"</b> to view this question text.
                 </div>`;
             }
-
-            // Display the Issue text
-            const issueText = r.issue || r.details || "No text provided.";
 
             html += `
             <div class="admin-card" style="border-left:4px solid #f59e0b; background:white; margin-bottom:12px; padding:15px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
                 
                 <div style="font-size:11px; color:#64748b; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9; padding-bottom:8px;">
                     <span>
-                        <b>${r.courseName || "Unknown Course"}</b> 
+                        <b style="color:#0f172a;">${r.courseName || "Unknown Course"}</b> 
                         <span style="background:#e2e8f0; padding:2px 6px; border-radius:4px; margin-left:5px;">Row ${r.excelRow || "?"}</span>
                     </span>
                     <span style="color:#0f172a; font-weight:600;">👤 ${reporter}</span>
@@ -2847,6 +2845,7 @@ async function loadAdminReports() {
         list.innerHTML = `<div style="color:red; padding:20px;">Error: ${e.message}</div>`;
     }
 }
+
 function deleteReport(id) {
     if(!confirm("Mark this report as resolved and delete it?")) return;
     db.collection('reports').doc(id).delete()
@@ -3992,6 +3991,7 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
 
 
 
