@@ -141,6 +141,8 @@ let testAnswers = {};
 let testFlags = {}; 
 let testTimeRemaining = 0;
 
+let selectedSubjectForModal = ""; 
+let selectedExamTopics = [];
 // --- FEATURE: DEVICE LOCK ---
 let currentDeviceId = localStorage.getItem('fcps_device_id');
 if (!currentDeviceId) {
