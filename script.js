@@ -3426,67 +3426,6 @@ function toggleTheme() {
     localStorage.setItem('fcps-theme', isDark ? 'light' : 'dark');
 }
 
-// Ensure Search works
-const searchInput = document.getElementById('global-search');
-if (searchInput) {
-    searchInput.addEventListener('input', function(e) {
-        const term = e.target.value.toLowerCase().trim();
-        const resultsBox = document.getElementById('search-results');
-        
-        if (term.length < 3) {
-            resultsBox.style.display = 'none';
-            return;
-        }
-
-        const matches = allQuestions.filter(q => 
-            (q.Question && q.Question.toLowerCase().includes(term)) || 
-            (q.Topic && q.Topic.toLowerCase().includes(term))
-        ).slice(0, 10); 
-
-        if (matches.length === 0) {
-            resultsBox.style.display = 'none';
-            return;
-        }
-
-        resultsBox.innerHTML = '';
-        resultsBox.style.display = 'block';
-
-        matches.forEach(q => {
-            const div = document.createElement('div');
-            div.className = 'search-item';
-            div.innerHTML = `
-                <div style="font-weight:bold; color:#1e293b; font-size:13px;">${q.Topic || "General"}</div>
-                <div style="color:#64748b; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                    ${q.Question.substring(0, 60)}...
-                </div>
-            `;
-            div.onclick = () => {
-                resultsBox.style.display = 'none';
-                document.getElementById('global-search').value = ""; 
-                startSingleQuestionPractice(q);
-            };
-            resultsBox.appendChild(div);
-        });
-    });
-}
-
-function startSingleQuestionPractice(question) {
-    filteredQuestions = [question]; 
-    currentMode = 'practice';
-    currentIndex = 0;
-    
-    showScreen('quiz-screen'); 
-    renderPage();
-    renderPracticeNavigator();
-}
-
-document.addEventListener('click', function(e) {
-    if (e.target.id !== 'global-search') {
-        const box = document.getElementById('search-results');
-        if(box) box.style.display = 'none';
-    }
-});
-
 // INITIAL LOAD THEME
 window.onload = () => {
     if(localStorage.getItem('fcps-theme')==='dark') toggleTheme();
@@ -4227,29 +4166,32 @@ function startExamFromModal() {
 }
 
 // ======================================================
-// 🔍 SEARCH BAR FIX (Grid Filter + Dropdown List)
+// 🔍 NEW SEARCH LOGIC (Replaces the old block)
 // ======================================================
 
-// 🔍 SEARCH LOGIC
 function handleSearchInput() {
     const input = document.getElementById('subject-search');
     const term = input.value.toLowerCase().trim();
     const resultsBox = document.getElementById('search-results');
     
-    // 1. Filter the Subject Grid
-    renderSubjectGrid(term);
+    // 1. Filter the Subject Grid (Visual Cards)
+    // This hides/shows the big cards based on the search
+    if(typeof renderSubjectGrid === "function") {
+        renderSubjectGrid(term);
+    }
 
-    // 2. Hide dropdown if term is short
+    // 2. Hide dropdown if term is too short
     if (term.length < 3) {
         resultsBox.style.display = 'none';
         return;
     }
 
     // 3. Search Questions & Topics
+    // We limit to 15 results so the list doesn't get huge
     const matches = allQuestions.filter(q => 
         (q.Question && q.Question.toLowerCase().includes(term)) || 
         (q.Topic && q.Topic.toLowerCase().includes(term))
-    ).slice(0, 15); // Show max 15 results
+    ).slice(0, 15); 
 
     if (matches.length === 0) {
         resultsBox.style.display = 'none';
@@ -4271,18 +4213,39 @@ function handleSearchInput() {
         `;
         div.onclick = () => {
             resultsBox.style.display = 'none';
-            input.value = ""; // Clear search
-            startSingleQuestionPractice(q); // Start this specific question
+            input.value = ""; // Clear search input
+            
+            // If we are in the grid view, reset it
+            if(typeof renderSubjectGrid === "function") renderSubjectGrid("");
+            
+            // Start the specific question
+            startSingleQuestionPractice(q); 
         };
         resultsBox.appendChild(div);
     });
 }
 
-// Close search when clicking outside
+function startSingleQuestionPractice(question) {
+    filteredQuestions = [question]; 
+    currentMode = 'practice';
+    currentIndex = 0;
+    
+    // Reset any exam specific UI
+    const timer = document.getElementById('timer');
+    if(timer) timer.classList.add('hidden');
+    
+    showScreen('quiz-screen'); 
+    renderPage();
+    if(typeof renderPracticeNavigator === "function") renderPracticeNavigator();
+}
+
+// Close search dropdown when clicking outside
 document.addEventListener('click', function(e) {
     const box = document.getElementById('search-results');
     const input = document.getElementById('subject-search');
-    if (box && e.target !== input && e.target !== box) {
+    
+    // If click is NOT on input AND NOT on the box, hide the box
+    if (box && input && e.target !== input && !box.contains(e.target)) {
         box.style.display = 'none';
     }
 });
@@ -4369,3 +4332,4 @@ function startMultiSubjectExam() {
     testTimer = setInterval(updateTimer, 1000);
     renderPage();
 }
+
