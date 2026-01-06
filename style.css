@@ -364,7 +364,7 @@ button {
    margin-bottom: 20px;
 }
 
-/* --- RIGHT COLUMN (Study Session) - UPDATED --- */
+
 /* --- RIGHT COLUMN (Study Session) --- */
 #study-panel {
     grid-column: 2; 
@@ -373,7 +373,7 @@ button {
     max-width: none !important;
     
     /* ✅ FIX: Change 22cm to 600px so it fits the screen perfectly */
-    height: 600px !important; 
+    height: 22cm !important; 
     
     margin: 0 !important;
     padding: 0 !important;
@@ -2973,6 +2973,7 @@ button.secondary {
     background: #f0f9ff;
     transform: translateY(-1px);
 }
+
 
 
 
