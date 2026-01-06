@@ -3128,20 +3128,20 @@ function deleteKey(id) {
 
 function showScreen(screenId) {
     const ids = [
-        'auth-screen', 'course-selection-screen', 'dashboard-screen', 'quiz-screen', 'result-screen', 'admin-screen',
-        'explanation-modal', 'premium-modal', 'profile-modal', 'analytics-modal', 'badges-modal'
+        'auth-screen', 'course-selection-screen', 'dashboard-screen', 
+        'quiz-screen', 'result-screen', 'admin-screen',
+        'explanation-modal', 'premium-modal', 'profile-modal', 
+        'analytics-modal', 'badges-modal', 
+        'study-modal' // <--- ADDED THIS (Fixes the stuck modal)
     ];
 
-    // 1. Hide Everything & Clean Up "Ghosts"
+    // 1. Hide Everything
     ids.forEach(id => {
         const el = document.getElementById(id);
         if(el) { 
             el.classList.add('hidden'); 
             el.classList.remove('active'); 
-            
-            // 🔥 NEW FIX: Clear inline styles for EVERYTHING. 
-            // This fixes the "Buy Subscription" modal getting stuck with 'display: none'
-            el.style.display = ''; 
+            el.style.display = ''; // Clear inline styles
         }
     });
     
@@ -4056,37 +4056,36 @@ function renderSubjectGrid(filterText = '') {
         if (searchText && !matchSubject && !matchTopic && !matchQ) return;
 
         const count = subQuestions.length;
+        
+        // --- NEW: Calculate Subject Progress ---
+        // Ensure userSolvedIDs exists to prevent errors
+        const safeSolvedIDs = (typeof userSolvedIDs !== 'undefined') ? userSolvedIDs : [];
+        const solvedCount = subQuestions.filter(q => safeSolvedIDs.includes(q._uid)).length;
+        const percent = count === 0 ? 0 : Math.round((solvedCount / count) * 100);
 
-        // Create Card (CLEAN HTML - No inline styles)
         const card = document.createElement('div');
         card.className = 'subject-card';
         
-        // This HTML structure matches the new CSS perfectly
+        // --- NEW: Render Card with Bar and Counter ---
         card.innerHTML = `
-            <div class="subject-name">${sub}</div>
-            <div class="subject-count-badge">${count} Qs</div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div class="subject-name" style="margin:0;">${sub}</div>
+                <div style="font-size:11px; font-weight:bold; color:#64748b;">${solvedCount}/${count}</div>
+            </div>
+            
+            <div style="background:#e2e8f0; height:6px; border-radius:3px; overflow:hidden; margin-top:10px;">
+                <div style="width:${percent}%; background:#10b981; height:100%; transition:width 0.3s ease;"></div>
+            </div>
         `;
         
-        // Click Logic
         card.onclick = () => {
-            if (currentMode === 'test') {
-                // In Exam Mode, open the Multi-Select Modal logic directly
-                // Ensure openMultiSubjectModal is defined in your script
-                if(typeof openMultiSubjectModal === 'function') {
-                     openMultiSubjectModal(sub); 
-                } else {
-                     console.error("openMultiSubjectModal is missing!");
-                }
-            } else {
-                // In Practice Mode, open the Topic List
-                openSubjectModal(sub);
-            }
+            openSubjectModal(sub);
         };
         
         grid.appendChild(card);
     });
 }
-// 2. Open the Modal
+
 function openSubjectModal(subject) {
     selectedSubjectForModal = subject;
     selectedExamTopics = [];
@@ -4095,9 +4094,14 @@ function openSubjectModal(subject) {
     document.getElementById('modal-subject-title').innerText = subject;
 
     // Get Topics
-    const topics = [...new Set(
-        allQuestions.filter(q => q.Subject === subject).map(q => q.Topic)
-    )].sort();
+    const subjectQs = allQuestions.filter(q => q.Subject === subject);
+    const topics = [...new Set(subjectQs.map(q => q.Topic))].sort();
+
+    // --- NEW: Calculate Subject Stats for "Practice All" ---
+    const safeSolvedIDs = (typeof userSolvedIDs !== 'undefined') ? userSolvedIDs : [];
+    const subjSolved = subjectQs.filter(q => safeSolvedIDs.includes(q._uid)).length;
+    const subjTotal = subjectQs.length;
+    const subjPct = subjTotal === 0 ? 0 : Math.round((subjSolved / subjTotal) * 100);
 
     const list = document.getElementById('modal-topic-list');
     const actions = document.getElementById('modal-actions-area');
@@ -4105,30 +4109,65 @@ function openSubjectModal(subject) {
     const footer = document.getElementById('modal-footer');
     const subtitle = document.getElementById('modal-mode-subtitle');
 
+    // Reset Footer Button
+    const startBtn = footer.querySelector('button');
+    if(startBtn) {
+        startBtn.onclick = startExamFromModal;
+        startBtn.innerText = "Start Exam";
+    }
+
     list.innerHTML = '';
     actions.innerHTML = '';
 
     if (currentMode === 'practice') {
-        // --- PRACTICE UI ---
+        // ============================================
+        // 🟢 PRACTICE MODE UI (Arrows Removed, Bars Added)
+        // ============================================
         subtitle.innerText = "Select a topic to start immediately.";
         settings.classList.add('hidden');
-        footer.style.display = 'none';
+        footer.style.display = 'none'; 
 
-        // Practice All Button
+        // 1. "Practice All" Button with Bar
         const btnAll = document.createElement('button');
         btnAll.className = 'practice-all-btn';
-        btnAll.innerHTML = `Practice All ${subject} ⭐`;
+        // HTML with Counter & Bar
+        btnAll.innerHTML = `
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                <span>Practice All ${subject}</span>
+                <span style="font-size:12px; opacity:0.9;">${subjSolved}/${subjTotal}</span>
+            </div>
+            <div style="background:rgba(0,0,0,0.1); height:6px; border-radius:3px; overflow:hidden;">
+                <div style="width:${subjPct}%; background:#10b981; height:100%;"></div>
+            </div>
+        `;
         btnAll.onclick = () => {
             closeStudyModal();
-            startPractice(subject, null); // null = All Topics
+            startPractice(subject, null); 
         };
         actions.appendChild(btnAll);
 
-        // List Topics
+        // 2. Topic List with Bars
         topics.forEach(topic => {
+            // Calculate Topic Stats
+            const topQs = subjectQs.filter(q => q.Topic === topic);
+            const topTotal = topQs.length;
+            const topSolved = topQs.filter(q => safeSolvedIDs.includes(q._uid)).length;
+            const topPct = topTotal === 0 ? 0 : Math.round((topSolved / topTotal) * 100);
+
             const row = document.createElement('div');
             row.className = 'topic-row';
-            row.innerHTML = `<span>${topic}</span> <span>➜</span>`;
+            
+            // 🔥 REMOVED ARROW, ADDED PROGRESS BAR
+            row.innerHTML = `
+                <div style="margin-bottom:6px; display:flex; justify-content:space-between;">
+                    <span style="font-weight:500;">${topic}</span>
+                    <span style="font-size:11px; color:#64748b; font-weight:bold;">${topSolved} / ${topTotal}</span>
+                </div>
+                <div style="background:#f1f5f9; height:5px; border-radius:3px; overflow:hidden; width:100%;">
+                     <div style="width:${topPct}%; background:#22c55e; height:100%;"></div>
+                </div>
+            `;
+            
             row.onclick = () => {
                 closeStudyModal();
                 startPractice(subject, topic);
@@ -4137,12 +4176,13 @@ function openSubjectModal(subject) {
         });
 
     } else {
-        // --- EXAM UI ---
+        // ============================================
+        // 🔵 EXAM MODE UI (Selection Logic)
+        // ============================================
         subtitle.innerText = "Select specific topics & limits.";
         settings.classList.remove('hidden');
         footer.style.display = 'block';
 
-        // Select All Checkbox
         const selectAllDiv = document.createElement('div');
         selectAllDiv.innerHTML = `
             <div style="padding:10px; display:flex; align-items:center; gap:10px;">
@@ -4153,10 +4193,10 @@ function openSubjectModal(subject) {
         `;
         actions.appendChild(selectAllDiv);
 
-        // List Topics
         topics.forEach(topic => {
             const row = document.createElement('div');
             row.className = 'topic-row';
+            // Keep simple text for Exam selection mode (no need for progress here usually, but we can add it if you want)
             row.innerText = topic;
             row.onclick = () => {
                 row.classList.toggle('selected');
@@ -4173,7 +4213,6 @@ function openSubjectModal(subject) {
 
     modal.classList.remove('hidden');
 }
-
 function toggleSelectAllTopics(checkbox) {
     const rows = document.querySelectorAll('.topic-row');
     const allTopics = [...new Set(
@@ -4258,61 +4297,61 @@ function handleSearchInput() {
     const term = input.value.toLowerCase().trim();
     const resultsBox = document.getElementById('search-results');
     
-    // 1. Filter the Subject Grid (Visual Cards)
-    // This hides/shows the big cards based on the search
-    if(typeof renderSubjectGrid === "function") {
-        renderSubjectGrid(term);
-    }
+   // 1. Render the Grid
+function renderSubjectGrid(filterText = '') {
+    const grid = document.getElementById('subject-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
 
-    // 2. Hide dropdown if term is too short
-    if (term.length < 3) {
-        resultsBox.style.display = 'none';
+    const searchText = filterText.toLowerCase().trim();
+    const subjects = [...new Set(allQuestions.map(q => q.Subject))].sort();
+
+    if(subjects.length === 0) {
+        grid.innerHTML = "<div style='text-align:center; padding:20px; color:#aaa;'>No subjects found.</div>";
         return;
     }
 
-    // 3. Search Questions & Topics
-    // We limit to 15 results so the list doesn't get huge
-    const matches = allQuestions.filter(q => 
-        (q.Question && q.Question.toLowerCase().includes(term)) || 
-        (q.Topic && q.Topic.toLowerCase().includes(term))
-    ).slice(0, 15); 
+    subjects.forEach(sub => {
+        const subQuestions = allQuestions.filter(q => q.Subject === sub);
+        
+        // Search Filter Logic
+        const matchSubject = sub.toLowerCase().includes(searchText);
+        const matchTopic = subQuestions.some(q => (q.Topic || "").toLowerCase().includes(searchText));
+        const matchQ = subQuestions.some(q => (q.Question || "").toLowerCase().includes(searchText));
 
-    if (matches.length === 0) {
-        resultsBox.style.display = 'none';
-        return;
-    }
+        if (searchText && !matchSubject && !matchTopic && !matchQ) return;
 
-    // 4. Render Dropdown
-    resultsBox.innerHTML = '';
-    resultsBox.style.display = 'block';
+        const count = subQuestions.length;
 
-    matches.forEach(q => {
-        const div = document.createElement('div');
-        div.className = 'search-item';
-        div.innerHTML = `
-            <div style="font-weight:bold; color:#1e293b; font-size:12px;">${q.Subject} <span style="color:#cbd5e1;">|</span> ${q.Topic || "General"}</div>
-            <div style="color:#64748b; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;">
-                ${q.Question.substring(0, 70)}...
-            </div>
+        // Create Card
+        const card = document.createElement('div');
+        card.className = 'subject-card';
+        
+        card.innerHTML = `
+            <div class="subject-name">${sub}</div>
+            <div class="subject-count-badge">${count} Qs</div>
         `;
-        div.onclick = () => {
-            resultsBox.style.display = 'none';
-            input.value = ""; // Clear search input
-            
-            // If we are in the grid view, reset it
-            if(typeof renderSubjectGrid === "function") renderSubjectGrid("");
-            
-            // Start the specific question
-            startSingleQuestionPractice(q); 
+        
+        // 🔥 THE FIX: Always open the Single Subject Modal
+        // We removed the "if (currentMode === 'test')" block that was forcing the wrong modal.
+        // Now, openSubjectModal will handle showing the checkboxes for topics.
+        card.onclick = () => {
+            openSubjectModal(sub);
         };
-        resultsBox.appendChild(div);
+        
+        grid.appendChild(card);
     });
 }
+    
 
 function startSingleQuestionPractice(question) {
     filteredQuestions = [question]; 
     currentMode = 'practice';
     currentIndex = 0;
+    
+    // 🔥 FIX: Initialize these to prevent crashes
+    testFlags = {};
+    testAnswers = {};
     
     // Reset any exam specific UI
     const timer = document.getElementById('timer');
@@ -4416,6 +4455,7 @@ function startMultiSubjectExam() {
     testTimer = setInterval(updateTimer, 1000);
     renderPage();
 }
+
 
 
 
