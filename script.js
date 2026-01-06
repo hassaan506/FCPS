@@ -4069,17 +4069,8 @@ function renderPracticeNavigator() {
         nav.appendChild(btn);
     });
 }
-// Helper Functions needed for quiz
-function updateTimer() {
-    testTimeRemaining--;
-    const m = Math.floor(testTimeRemaining/60);
-    const s = testTimeRemaining%60;
-    const el = document.getElementById('timer');
-    if(el) el.innerText = `${m}:${s<10?'0':''}${s}`;
-    if(testTimeRemaining <= 0) submitTest();
-}
 
 function toggleFlag(uid, btn, idx) {
     if(testFlags[uid]) delete testFlags[uid]; else testFlags[uid] = true;
-    renderPage(); // Re-render to update icon state
+    renderPage(); 
 }
