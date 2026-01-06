@@ -2770,8 +2770,10 @@ async function loadAdminReports() {
     list.innerHTML = '<div style="padding:20px; text-align:center;">Loading reports...</div>';
 
     try {
-        // Load PENDING reports
-        const snap = await db.collection('reports').where('status', '==', 'pending').get();
+        const snap = await db.collection('reports')
+                             .where('status', '==', 'pending')
+                             .orderBy('timestamp', 'desc') // Added ordering for better UX
+                             .get();
         
         if(snap.empty) {
             list.innerHTML = "<div style='padding:20px; text-align:center; color:#888;'>✅ No pending reports.</div>";
@@ -2782,43 +2784,69 @@ async function loadAdminReports() {
         snap.forEach(doc => {
             const r = doc.data();
             
-            // --- 1. GET QUESTION CONTEXT ---
-            // We try to find the question in the currently loaded course
-            const qData = allQuestions.find(q => q._uid === r.questionID || q.id === r.questionID);
-            
-            const questionText = qData 
-                ? `<div style="font-weight:bold; color:#333; margin-bottom:4px; font-size:13px;">Q: ${qData.Question.substring(0, 80)}...</div>` 
-                : `<div style="color:#94a3b8; font-size:11px;">(Question data from another course or not loaded)</div>`;
+            // 🔥 FIX 1: GET CORRECT USER INFO
+            // Your save function uses 'reportedBy', not 'userEmail'
+            const reporter = r.reportedBy || r.userEmail || "Guest"; 
 
-            // --- 2. DISPLAY THE ISSUE (Fixed Mismatch) ---
-            // We check 'issue' (new code) AND 'details' (old code) so nothing is missed
+            // 🔥 FIX 2: HANDLE ID MISMATCHES
+            // Your save function uses 'questionId', but you were reading 'questionID'
+            const qId = r.questionId || r.questionID;
+
+            // 🔥 FIX 3: CONTEXT AWARENESS
+            // Only show the question text if we are currently inside that course.
+            // Otherwise, tell the admin to switch courses.
+            let questionPreview = "";
+            
+            if (r.courseId === currentCourse) {
+                // We are in the right course, so we can find the question in 'allQuestions'
+                const qData = allQuestions.find(q => q._uid == qId || q.id == qId);
+                
+                if (qData) {
+                    // Truncate text if it's too long
+                    const shortText = qData.Question.length > 80 ? qData.Question.substring(0, 80) + "..." : qData.Question;
+                    questionPreview = `<div style="font-weight:bold; color:#1e293b; margin-bottom:6px; font-size:13px; border-left:3px solid #3b82f6; padding-left:8px;">Q: ${shortText}</div>`;
+                } else {
+                    questionPreview = `<div style="color:#ef4444; font-size:11px; font-style:italic;">(Question ID not found in this list)</div>`;
+                }
+            } else {
+                // We are in a different course, so we can't show the text
+                questionPreview = `<div style="color:#64748b; font-size:11px; background:#f1f5f9; padding:5px; border-radius:4px;">
+                    ⚠️ Switch to course <b>"${r.courseName}"</b> to view this question.
+                </div>`;
+            }
+
+            // Display the Issue text
             const issueText = r.issue || r.details || "No text provided.";
 
             html += `
-            <div class="admin-card" style="border-left:4px solid var(--danger); background:white; margin-bottom:10px; padding:15px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-                <div style="font-size:11px; color:#666; margin-bottom:8px; display:flex; justify-content:space-between;">
-                    <span><b>${r.courseName || r.courseId || "Unknown Course"}</b> (Row ${r.excelRow || "?"})</span>
-                    <span>${r.userEmail || "Guest"}</span>
+            <div class="admin-card" style="border-left:4px solid #f59e0b; background:white; margin-bottom:12px; padding:15px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+                
+                <div style="font-size:11px; color:#64748b; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9; padding-bottom:8px;">
+                    <span>
+                        <b>${r.courseName || "Unknown Course"}</b> 
+                        <span style="background:#e2e8f0; padding:2px 6px; border-radius:4px; margin-left:5px;">Row ${r.excelRow || "?"}</span>
+                    </span>
+                    <span style="color:#0f172a; font-weight:600;">👤 ${reporter}</span>
                 </div>
                 
-                ${questionText}
+                ${questionPreview}
                 
                 <div style="background:#fff1f2; padding:10px; border-radius:6px; margin:10px 0; font-size:13px; color:#be123c; border:1px solid #fda4af;">
                     <b>Report:</b> "${issueText}"
                 </div>
 
-                <div style="text-align:right; display:flex; gap:10px; justify-content:flex-end;">
-                     <button class="btn-sm" style="background:#ef4444; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;" onclick="deleteReport('${doc.id}')">🗑️ Delete</button>
-                     <button class="btn-sm" style="background:#10b981; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;" onclick="resolveReport('${doc.id}')">✅ Resolve</button>
+                <div style="text-align:right; display:flex; gap:8px; justify-content:flex-end;">
+                     <button class="btn-sm" style="background:white; border:1px solid #ef4444; color:#ef4444; padding:6px 12px; border-radius:4px; cursor:pointer; font-size:12px;" onclick="deleteReport('${doc.id}')">🗑️ Ignore</button>
+                     <button class="btn-sm" style="background:#10b981; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-size:12px;" onclick="resolveReport('${doc.id}')">✅ Mark Resolved</button>
                 </div>
             </div>`;
         });
         list.innerHTML = html;
     } catch(e) {
-        list.innerHTML = "Error: " + e.message;
+        console.error(e);
+        list.innerHTML = `<div style="color:red; padding:20px;">Error: ${e.message}</div>`;
     }
 }
-
 function deleteReport(id) {
     if(!confirm("Mark this report as resolved and delete it?")) return;
     db.collection('reports').doc(id).delete()
@@ -3964,5 +3992,6 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
 
 
