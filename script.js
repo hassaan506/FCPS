@@ -3539,7 +3539,7 @@ async function submitReportFinal() {
         setTimeout(() => document.getElementById('report-modal').classList.add('hidden'), 300);
         document.getElementById('report-text').value = "";
         
-        alert(`✅ Report Sent!\n\n(Row ${excelRow} in ${courseName})`);
+        alert("✅ Report Sent! Thank you for your feedback.");
         
     } catch (e) {
         alert("Error sending report: " + e.message);
@@ -3964,4 +3964,5 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
 
