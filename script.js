@@ -2043,7 +2043,7 @@ function startTest() {
 }
 
 // ======================================================
-// 8. QUIZ ENGINE
+// 8. QUIZ ENGINE (FIXED & ROBUST)
 // ======================================================
 
 // ==========================================
@@ -2053,12 +2053,15 @@ function startTest() {
 function renderPage() {
     // 1. Target the correct container
     const container = document.getElementById('quiz-content-area');
-    if (!container) return console.error("Missing #quiz-content-area");
+    if (!container) return console.error("❌ Error: #quiz-content-area missing in HTML");
     
     container.innerHTML = "";
-    window.scrollTo(0, 0);
+    // Scroll to top to ensure question is visible
+    window.scrollTo(0, 0); 
+    const scrollBox = document.querySelector('.main-content');
+    if(scrollBox) scrollBox.scrollTop = 0;
 
-    // 2. Get Buttons (Safe Check)
+    // 2. Get Buttons
     const prevBtn = document.getElementById('prev-btn');
     const nextBtn = document.getElementById('next-btn');
     const submitBtn = document.getElementById('submit-btn');
@@ -2072,6 +2075,12 @@ function renderPage() {
     }
 
     // 4. Logic: Next & Submit Buttons
+    // Safety check: ensure filteredQuestions exists
+    if (!filteredQuestions || filteredQuestions.length === 0) {
+        container.innerHTML = "<div style='padding:20px; text-align:center;'>No questions loaded. Please go back and try again.</div>";
+        return;
+    }
+
     const isLastQuestion = currentIndex === filteredQuestions.length - 1;
 
     if (nextBtn) {
@@ -2089,10 +2098,14 @@ function renderPage() {
     }
 
     // 5. Render the Question Card
-    // We use your NEW createQuestionCard function here
     if (filteredQuestions[currentIndex]) {
-        const card = createQuestionCard(filteredQuestions[currentIndex], currentIndex, true);
-        container.appendChild(card);
+        try {
+            const card = createQuestionCard(filteredQuestions[currentIndex], currentIndex, true);
+            container.appendChild(card);
+        } catch (err) {
+            console.error("Error creating card:", err);
+            container.innerHTML = `<div style='color:red; padding:20px;'>Error loading question: ${err.message}</div>`;
+        }
     }
 
     // 6. Mode Specific UI Updates
@@ -2119,19 +2132,20 @@ function renderPage() {
 }
 
 // ==========================================
-// 🛠️ FIXED: CREATE QUESTION CARD (Safe Mode)
+// 🛠️ CREATE QUESTION CARD (Safe Mode)
 // ==========================================
 
 function createQuestionCard(q, index, showNumber = true) {
     const block = document.createElement('div');
     block.className = "test-question-block";
     block.id = `q-card-${index}`;
+    // Ensure visibility with inline styles just in case CSS is missing
+    block.style.cssText = "background:white; border-radius:12px; padding:20px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.05);";
 
-    // 1. Safety Checks for Globals (Prevents White Screen Crash)
+    // 1. Safety Checks
     const safeFlags = (typeof testFlags !== 'undefined' && testFlags) ? testFlags : {};
     const safeBookmarks = (typeof userBookmarks !== 'undefined' && userBookmarks) ? userBookmarks : [];
     
-    // 2. Determine States
     if (safeFlags[q._uid]) {
         block.classList.add('is-flagged-card');
     }
@@ -2139,35 +2153,43 @@ function createQuestionCard(q, index, showNumber = true) {
     const isBookmarked = (currentMode === 'test') ? false : safeBookmarks.includes(q._uid);
     const isFlagged = safeFlags[q._uid] || false;
 
-    // 3. Create Header
+    // 2. Create Header (Question Number + Icons)
     const header = document.createElement('div');
     header.className = "question-card-header";
+    header.style.cssText = "display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding-bottom:10px; border-bottom:1px solid #f1f5f9;";
+    
     header.innerHTML = `
-        <span class="q-number-tag">Question ${index + 1}</span>
-        <div class="q-actions">
-            <button class="action-icon-btn ${isBookmarked ? 'bookmark-active' : ''}" onclick="toggleBookmark('${q._uid}', this)" title="Save Question">
+        <span style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:12px; padding:4px 10px; border-radius:15px;">Question ${index + 1}</span>
+        <div class="q-actions" style="display:flex; gap:10px;">
+            <button onclick="toggleBookmark('${q._uid}', this)" title="Save Question" style="background:none; border:none; cursor:pointer; font-size:18px; transition:transform 0.2s;">
                 ${isBookmarked ? '⭐' : '☆'}
             </button>
-            <button class="action-icon-btn ${isFlagged ? 'flag-active' : ''}" onclick="toggleFlag('${q._uid}', this, ${index})" title="Flag Question">
+            <button onclick="toggleFlag('${q._uid}', this, ${index})" title="Flag Question" style="background:none; border:none; cursor:pointer; font-size:18px; opacity:${isFlagged ? '1' : '0.4'};">
                 ${isFlagged ? '🚩' : '🏳️'}
             </button>
         </div>
     `;
     block.appendChild(header);
 
-    // 4. Question Text
+    // 3. Question Text
     const qText = document.createElement('div');
     qText.className = "test-q-text";
-    qText.innerHTML = q.Question || "Missing Text";
+    qText.style.cssText = "font-size:16px; font-weight:600; color:#1e293b; line-height:1.6; margin-bottom:20px;";
+    qText.innerHTML = q.Question || "Missing Question Text";
     block.appendChild(qText);
 
-    // 5. Options Area
+    // 4. Options Area
     const optionsDiv = document.createElement('div');
     optionsDiv.className = "options-group";
     optionsDiv.id = `opts-${index}`;
+    optionsDiv.style.cssText = "display:flex; flex-direction:column; gap:10px;";
 
-    // Filter valid options only
-    let rawOpts = [q.OptionA, q.OptionB, q.OptionC, q.OptionD, q.OptionE].filter(o => o && String(o).trim() !== "");
+    // Robust Option Checking (Checks "OptionA" and "Option A")
+    const getOpt = (key) => q[key] || q[key.replace("Option", "Option ")];
+    
+    let rawOpts = [
+        getOpt('OptionA'), getOpt('OptionB'), getOpt('OptionC'), getOpt('OptionD'), getOpt('OptionE')
+    ].filter(o => o && String(o).trim() !== "");
 
     let normalOpts = [];
     let bottomOpts = [];
@@ -2175,14 +2197,14 @@ function createQuestionCard(q, index, showNumber = true) {
     // Handle "All of the above" logic
     rawOpts.forEach(opt => {
         const lower = String(opt).toLowerCase();
-        if (lower.includes("all of") || lower.includes("none of") || lower.includes("of the above") || lower.includes("all the")) {
+        if (lower.includes("all of") || lower.includes("none of") || lower.includes("of the above")) {
             bottomOpts.push(opt);
         } else {
             normalOpts.push(opt);
         }
     });
 
-    // Shuffle normal options (Safety check for shuffle function)
+    // Shuffle normal options
     const shuffledNormals = (typeof shuffleArray === 'function') ? shuffleArray(normalOpts) : normalOpts;
     let finalOpts = [...shuffledNormals, ...bottomOpts];
 
@@ -2190,20 +2212,26 @@ function createQuestionCard(q, index, showNumber = true) {
     finalOpts.forEach(opt => {
         const btn = document.createElement('button');
         btn.className = "option-btn";
-        // Span ensures layout works with flexbox
-        btn.innerHTML = `<span class="opt-text">${opt}</span><span class="elim-eye">👁️</span>`;
+        // Inline styles to ensure it looks good even if CSS is broken
+        btn.style.cssText = "display:flex; justify-content:space-between; align-items:center; text-align:left; padding:12px 15px; background:white; border:1px solid #cbd5e1; border-radius:8px; width:100%; cursor:pointer; transition:all 0.2s; color:#334155; font-size:14px;";
+        
+        btn.innerHTML = `<span class="opt-text">${opt}</span><span class="elim-eye" style="opacity:0.3; font-size:16px;" title="Hide option">👁️</span>`;
 
         // Eye Click (Elimination)
         const eye = btn.querySelector('.elim-eye');
         eye.onclick = (e) => { 
             e.stopPropagation(); 
             btn.classList.toggle('eliminated'); 
+            btn.style.opacity = btn.classList.contains('eliminated') ? '0.4' : '1';
         };
 
         // Main Click (Select Answer)
         btn.onclick = (e) => {
             if (e.target.classList.contains('elim-eye')) return;
-            if (btn.classList.contains('eliminated')) btn.classList.remove('eliminated');
+            if (btn.classList.contains('eliminated')) {
+                btn.classList.remove('eliminated');
+                btn.style.opacity = '1';
+            }
             
             // Ensure checkAnswer exists before calling
             if(typeof checkAnswer === 'function') {
@@ -2213,15 +2241,11 @@ function createQuestionCard(q, index, showNumber = true) {
             }
         };
 
-        // Right Click (Alternative Elimination)
-        btn.addEventListener('contextmenu', (e) => { 
-            e.preventDefault(); 
-            btn.classList.toggle('eliminated'); 
-        });
-
         // Restore State (if re-rendering)
         if (typeof testAnswers !== 'undefined' && testAnswers[q._uid] === opt) {
             btn.classList.add('selected');
+            btn.style.borderColor = "#3b82f6";
+            btn.style.background = "#eff6ff";
         }
         
         optionsDiv.appendChild(btn);
@@ -2229,20 +2253,39 @@ function createQuestionCard(q, index, showNumber = true) {
 
     block.appendChild(optionsDiv);
 
+    // 5. Explanation Area (Hidden by default)
+    // We append a container for explanation if user clicks "Check" or answers correctly
+    const explainBox = document.createElement('div');
+    explainBox.id = `explain-${q._uid}`;
+    explainBox.style.display = 'none'; // Hidden initially
+    block.appendChild(explainBox);
+
     return block;
 }
 
 function checkAnswer(selectedOption, btnElement, q) {
     if (currentMode === 'test') {
+        // EXAM MODE: Just select, don't show green/red
         testAnswers[q._uid] = selectedOption;
+        
+        // Reset siblings
         const container = btnElement.parentElement;
-        container.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+        Array.from(container.children).forEach(b => {
+            b.classList.remove('selected');
+            b.style.borderColor = "#cbd5e1";
+            b.style.background = "white";
+        });
+        
+        // Highlight Selected
         btnElement.classList.add('selected');
+        btnElement.style.borderColor = "#3b82f6";
+        btnElement.style.background = "#eff6ff";
+        
         renderNavigator();
         return;
     }
 
-    // PRACTICE MODE
+    // PRACTICE MODE: Instant Feedback
     let correctData = (q.CorrectAnswer || "").trim();
     let userText = String(selectedOption).trim();
     let isCorrect = false;
@@ -2250,22 +2293,28 @@ function checkAnswer(selectedOption, btnElement, q) {
     // Logic to check if answer matches (handles text vs option letters)
     if (userText.toLowerCase() === correctData.toLowerCase()) isCorrect = true;
     else {
-        const map = {'A': q.OptionA, 'B': q.OptionB, 'C': q.OptionC, 'D': q.OptionD, 'E': q.OptionE};
+        // Map letters to text
+        const getOpt = (key) => q[key] || q[key.replace("Option", "Option ")];
+        const map = {'A': getOpt('OptionA'), 'B': getOpt('OptionB'), 'C': getOpt('OptionC'), 'D': getOpt('OptionD'), 'E': getOpt('OptionE')};
         if (map[correctData] === userText) isCorrect = true;
     }
 
     if (isCorrect) {
-        btnElement.classList.remove('wrong');
         btnElement.classList.add('correct');
+        btnElement.style.background = "#dcfce7";
+        btnElement.style.borderColor = "#22c55e";
+        btnElement.style.color = "#14532d";
         
-        // ✅ NEW: Save using the Offline-Ready engine
         updateUserStats(true, q.Subject || "General", q._uid);
         
-        setTimeout(() => showExplanation(q), 300);
+        // Show Explanation
+        showExplanation(q);
     } else {
         btnElement.classList.add('wrong');
+        btnElement.style.background = "#fee2e2";
+        btnElement.style.borderColor = "#ef4444";
+        btnElement.style.color = "#7f1d1d";
         
-        // ✅ NEW: Save using the Offline-Ready engine
         updateUserStats(false, q.Subject || "General", q._uid);
     }
     
@@ -2287,39 +2336,51 @@ function toggleFlag(uid, btn, index) {
         delete testFlags[uid];
         if(btn) { 
             btn.innerHTML = "🏳️"; 
-            btn.classList.remove('flag-active'); 
+            btn.style.opacity = "0.4";
         }
-        if(card) card.classList.remove('is-flagged-card');
     } else {
         testFlags[uid] = true;
         if(btn) { 
             btn.innerHTML = "🚩"; 
-            btn.classList.add('flag-active'); 
+            btn.style.opacity = "1";
         }
-        if(card) card.classList.add('is-flagged-card');
     }
     renderNavigator();
 }
 
 // ==========================================
-// FIX 2: QUESTION NAVIGATORS
+// FIX: QUESTION NAVIGATORS
 // ==========================================
 
 function renderNavigator() {
-    // Target the ID found in your HTML: <div id="nav-grid">
+    // Target the sidebar nav grid
     const nav = document.getElementById('nav-grid'); 
     if (!nav) return;
     nav.innerHTML = "";
 
     filteredQuestions.forEach((q, idx) => {
         const btn = document.createElement('button');
-        btn.className = "nav-btn"; // Ensure you have CSS for this class
+        btn.className = "nav-btn"; 
         btn.innerText = idx + 1;
         
+        // Inline styles for safety
+        btn.style.cssText = "width:35px; height:35px; border:1px solid #ccc; border-radius:4px; cursor:pointer; background:white;";
+
         // Style styling based on state
-        if (currentIndex === idx) btn.classList.add('current');
-        if (testFlags[q._uid]) btn.classList.add('flagged');
-        if (testAnswers[q._uid]) btn.classList.add('answered');
+        if (currentIndex === idx) {
+            btn.style.borderColor = "black";
+            btn.style.borderWidth = "2px";
+            btn.style.fontWeight = "bold";
+        }
+        if (testFlags[q._uid]) {
+            btn.innerText = "🚩";
+            btn.style.color = "red";
+        }
+        if (testAnswers[q._uid]) {
+            btn.style.background = "#3b82f6";
+            btn.style.color = "white";
+            btn.style.border = "none";
+        }
 
         btn.onclick = () => {
             currentIndex = idx;
@@ -2350,42 +2411,56 @@ function renderPracticeNavigator() {
     filteredQuestions.forEach((q, idx) => {
         const btn = document.createElement('button');
         
-        // Use the NEW Class Name from style.css
         btn.className = "prac-nav-btn"; 
         btn.innerText = idx + 1;
+        
+        // Base Style
+        let bg = "white";
+        let color = "#334155";
+        let border = "1px solid #cbd5e1";
+        let scale = "1";
 
-        // A. Active State (Current Question)
-        if (currentIndex === idx) {
-            btn.classList.add('active');
-        }
-        
-        // B. Solved State (Green)
-        // Check if ID is in solved list AND not the current one (optional preference)
+        // A. Solved State (Green)
         if (safeSolved.includes(q._uid)) {
-            btn.classList.add('solved');
+            bg = "#10b981"; // Green
+            color = "white";
+            border = "none";
         }
         
-        // C. Mistake State (Red) - Overrides green if it was a mistake
+        // B. Mistake State (Red) - Overrides green
         if (safeMistakes.includes(q._uid)) {
-            btn.classList.remove('solved'); // Ensure it shows red if both exist
-            btn.classList.add('wrong');
+            bg = "#ef4444"; // Red
+            color = "white";
+            border = "none";
         }
+
+        // C. Active State (Current Question)
+        if (currentIndex === idx) {
+            scale = "1.2";
+            border = "2px solid #0f172a";
+            if(bg === "white") bg = "#f1f5f9";
+        }
+
+        btn.style.cssText = `
+            min-width: 40px; height: 40px; border-radius: 50%; 
+            background: ${bg}; color: ${color}; border: ${border};
+            font-weight: bold; cursor: pointer; transform: scale(${scale});
+            transition: transform 0.2s; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+        `;
 
         // D. Click Action
         btn.onclick = () => {
             currentIndex = idx;
             renderPage();
-            
-            // Re-render navigator to update the 'active' bubble
             renderPracticeNavigator(); 
-            
-            // Scroll the button into view smoothly
             btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
         };
 
         nav.appendChild(btn);
     });
 }
+
 // ======================================================
 // 9. DATABASE SAVING & SUBMISSION (UPDATED PREFIX)
 // ======================================================
@@ -4650,3 +4725,4 @@ function startMultiSubjectExam() {
     testTimer = setInterval(updateTimer, 1000);
     renderPage();
 }
+
