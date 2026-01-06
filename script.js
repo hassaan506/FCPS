@@ -4068,7 +4068,7 @@ function renderPracticeNavigator() {
         };
         nav.appendChild(btn);
     });
-}
+
 // Helper Functions needed for quiz
 function updateTimer() {
     testTimeRemaining--;
