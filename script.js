@@ -1793,14 +1793,21 @@ function toggleSubjectAll(checkbox, subjName) {
 
 function setMode(mode) {
     currentMode = mode;
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    if(event && event.target) event.target.classList.add('active');
     
-    document.getElementById('test-settings').classList.toggle('hidden', mode !== 'test');
-    document.getElementById('dynamic-menus').classList.toggle('hidden', mode === 'test');
-    
-    const filterControls = document.getElementById('practice-filter-controls');
-    if(filterControls) filterControls.style.display = (mode === 'test') ? 'none' : 'flex';
+    // 1. Update the Tab Buttons (Visual State)
+    document.getElementById('btn-mode-practice').classList.toggle('active', mode === 'practice');
+    document.getElementById('btn-mode-test').classList.toggle('active', mode === 'test');
+
+    // 2. Show/Hide the "Create Multi-Subject Exam" button
+    // This button should only appear in Exam Mode
+    const multiBtn = document.getElementById('multi-exam-controls');
+    if(multiBtn) {
+        if (mode === 'test') {
+            multiBtn.classList.remove('hidden');
+        } else {
+            multiBtn.classList.add('hidden');
+        }
+    }
 }
 
 // ======================================================
@@ -4017,8 +4024,6 @@ function renderSubjectGrid(filterText = '') {
     grid.innerHTML = '';
 
     const searchText = filterText.toLowerCase().trim();
-
-    // Get unique subjects
     const subjects = [...new Set(allQuestions.map(q => q.Subject))].sort();
 
     if(subjects.length === 0) {
@@ -4026,43 +4031,33 @@ function renderSubjectGrid(filterText = '') {
         return;
     }
 
-    let foundAny = false;
-
     subjects.forEach(sub => {
         const subQuestions = allQuestions.filter(q => q.Subject === sub);
         
-        // CHECK 1: Does Subject Name match?
+        // Search Filter Logic
         const matchSubject = sub.toLowerCase().includes(searchText);
-        
-        // CHECK 2: Does ANY Topic inside match?
         const matchTopic = subQuestions.some(q => (q.Topic || "").toLowerCase().includes(searchText));
+        
+        if (searchText && !matchSubject && !matchTopic) return;
 
-        // CHECK 3: Does ANY Question Text inside match? (The fix you wanted)
-        const matchQuestionText = subQuestions.some(q => (q.Question || "").toLowerCase().includes(searchText));
-
-        // Show card if ANY of the above are true
-        if (searchText && !matchSubject && !matchTopic && !matchQuestionText) return;
-
-        foundAny = true;
         const count = subQuestions.length;
 
+        // Create Card (No Arrow)
         const card = document.createElement('div');
         card.className = 'subject-card';
         card.innerHTML = `
-            <div>
+            <div style="width:100%; display:flex; justify-content:space-between; align-items:center;">
                 <div class="subject-name">${sub}</div>
-                <div style="font-size:12px; color:#64748b; margin-top:2px;">${count} Questions</div>
+                <div style="font-size:12px; color:#64748b; font-weight:600; background:#f1f5f9; padding:2px 8px; border-radius:6px;">
+                    ${count} Qs
+                </div>
             </div>
-            <div style="color:#10b981; font-weight:bold; font-size:20px;">➜</div>
         `;
         card.onclick = () => openSubjectModal(sub);
         grid.appendChild(card);
     });
-
-    if (!foundAny) {
-        grid.innerHTML = "<div style='text-align:center; padding:20px; color:#aaa;'>No matching content found.</div>";
-    }
 }
+
 function filterSubjects() {
     const text = document.getElementById('subject-search').value;
     renderSubjectGrid(text);
@@ -4235,45 +4230,43 @@ function startExamFromModal() {
 // 🔍 SEARCH BAR FIX (Grid Filter + Dropdown List)
 // ======================================================
 
+// 🔍 SEARCH LOGIC
 function handleSearchInput() {
     const input = document.getElementById('subject-search');
     const term = input.value.toLowerCase().trim();
-    
-    // 1. Filter the Subject Grid (Visual Cards)
-    // We pass the term to the grid renderer
-    renderSubjectGrid(term);
-
-    // 2. Manage the Dropdown List (Specific Questions)
     const resultsBox = document.getElementById('search-results');
     
+    // 1. Filter the Subject Grid
+    renderSubjectGrid(term);
+
+    // 2. Hide dropdown if term is short
     if (term.length < 3) {
         resultsBox.style.display = 'none';
         return;
     }
 
-    // Find questions that match the term (checking Text OR Topic)
+    // 3. Search Questions & Topics
     const matches = allQuestions.filter(q => 
         (q.Question && q.Question.toLowerCase().includes(term)) || 
         (q.Topic && q.Topic.toLowerCase().includes(term))
-    ).slice(0, 10); // Limit to 10 results
+    ).slice(0, 15); // Show max 15 results
 
     if (matches.length === 0) {
         resultsBox.style.display = 'none';
         return;
     }
 
-    // Render the list
+    // 4. Render Dropdown
     resultsBox.innerHTML = '';
     resultsBox.style.display = 'block';
 
     matches.forEach(q => {
         const div = document.createElement('div');
         div.className = 'search-item';
-        // Highlight the Topic and show a snippet of the question
         div.innerHTML = `
-            <div style="font-weight:bold; color:#1e293b; font-size:13px;">${q.Topic || "General"}</div>
-            <div style="color:#64748b; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                ${q.Question.substring(0, 60)}...
+            <div style="font-weight:bold; color:#1e293b; font-size:12px;">${q.Subject} <span style="color:#cbd5e1;">|</span> ${q.Topic || "General"}</div>
+            <div style="color:#64748b; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;">
+                ${q.Question.substring(0, 70)}...
             </div>
         `;
         div.onclick = () => {
@@ -4285,7 +4278,7 @@ function handleSearchInput() {
     });
 }
 
-// Close search results if clicking outside
+// Close search when clicking outside
 document.addEventListener('click', function(e) {
     const box = document.getElementById('search-results');
     const input = document.getElementById('subject-search');
@@ -4293,3 +4286,86 @@ document.addEventListener('click', function(e) {
         box.style.display = 'none';
     }
 });
+
+// ==========================================
+// 🔀 MULTI-SUBJECT EXAM LOGIC
+// ==========================================
+
+let selectedMultiSubjects = [];
+
+function openMultiSubjectModal() {
+    const modal = document.getElementById('study-modal');
+    document.getElementById('modal-subject-title').innerText = "Create Custom Exam";
+    document.getElementById('modal-mode-subtitle').innerText = "Select multiple subjects to combine.";
+
+    // Show Exam Settings
+    document.getElementById('exam-settings-area').classList.remove('hidden');
+    document.getElementById('modal-footer').style.display = 'block';
+    document.getElementById('modal-actions-area').innerHTML = ''; // Clear old actions
+
+    // 1. Build List of ALL Subjects with Checkboxes
+    const list = document.getElementById('modal-topic-list');
+    list.innerHTML = '';
+    
+    const subjects = [...new Set(allQuestions.map(q => q.Subject))].sort();
+    selectedMultiSubjects = [];
+
+    subjects.forEach(sub => {
+        const row = document.createElement('div');
+        row.className = 'topic-row';
+        row.innerText = sub;
+        row.onclick = () => {
+            row.classList.toggle('selected');
+            if (selectedMultiSubjects.includes(sub)) {
+                selectedMultiSubjects = selectedMultiSubjects.filter(s => s !== sub);
+            } else {
+                selectedMultiSubjects.push(sub);
+            }
+        };
+        list.appendChild(row);
+    });
+
+    // 2. Override the Start Button to use Multi-Subject Logic
+    const startBtn = document.querySelector('#modal-footer button');
+    startBtn.onclick = startMultiSubjectExam;
+    
+    modal.classList.remove('hidden');
+}
+
+function startMultiSubjectExam() {
+    if (selectedMultiSubjects.length === 0) return alert("Please select at least one subject.");
+
+    const count = parseInt(document.getElementById('new-exam-q-count').value) || 20;
+    const mins = parseInt(document.getElementById('new-exam-timer').value) || 30;
+
+    // Filter Logic: Get questions from ANY of the selected subjects
+    let pool = allQuestions.filter(q => selectedMultiSubjects.includes(q.Subject));
+
+    // Unattempted Check
+    const unattemptedOnly = document.getElementById('unattempted-only').checked;
+    if (unattemptedOnly && typeof userSolvedIDs !== 'undefined') {
+        pool = pool.filter(q => !userSolvedIDs.includes(q._uid));
+    }
+
+    if (pool.length === 0) return alert("No questions found for these subjects.");
+
+    // Limit & Shuffle (Reusing your logic)
+    // ... (Add your standard limit check here if needed) ...
+    
+    filteredQuestions = pool.sort(() => Math.random() - 0.5).slice(0, count);
+    
+    closeStudyModal();
+    currentMode = 'test';
+    currentIndex = 0;
+    testAnswers = {};
+    testFlags = {}; 
+    testTimeRemaining = mins * 60;
+    
+    showScreen('quiz-screen');
+    document.getElementById('timer').classList.remove('hidden');
+    document.getElementById('test-sidebar').classList.add('active');
+    renderNavigator();
+    clearInterval(testTimer);
+    testTimer = setInterval(updateTimer, 1000);
+    renderPage();
+}
