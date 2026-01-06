@@ -1,4 +1,4 @@
-const CACHE_NAME = "edeetos-v30"; // Changed name to force update
+const CACHE_NAME = "edeetos-v31"; // Changed name to force update
 const ASSETS_TO_CACHE = [
   "./",                // The root folder
   "./index.html",      // The main file
