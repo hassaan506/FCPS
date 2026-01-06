@@ -4289,15 +4289,17 @@ function startExamFromModal() {
 }
 
 // ======================================================
-// 🔍 NEW SEARCH LOGIC (Replaces the old block)
+// 🔍 SEARCH & DASHBOARD LOGIC (FIXED & UPDATED)
 // ======================================================
 
 function handleSearchInput() {
     const input = document.getElementById('subject-search');
-    const term = input.value.toLowerCase().trim();
-    const resultsBox = document.getElementById('search-results');
-    
-   // 1. Render the Grid
+    // If the input exists, use its value, otherwise empty string
+    const term = input ? input.value : '';
+    renderSubjectGrid(term);
+}
+
+// 1. Render the Grid (Main Dashboard Cards)
 function renderSubjectGrid(filterText = '') {
     const grid = document.getElementById('subject-grid');
     if (!grid) return;
@@ -4322,19 +4324,27 @@ function renderSubjectGrid(filterText = '') {
         if (searchText && !matchSubject && !matchTopic && !matchQ) return;
 
         const count = subQuestions.length;
+        
+        // --- CALCULATION: Subject Progress ---
+        const safeSolvedIDs = (typeof userSolvedIDs !== 'undefined') ? userSolvedIDs : [];
+        const solvedCount = subQuestions.filter(q => safeSolvedIDs.includes(q._uid)).length;
+        const percent = count === 0 ? 0 : Math.round((solvedCount / count) * 100);
 
-        // Create Card
         const card = document.createElement('div');
         card.className = 'subject-card';
         
+        // --- UI: Subject Name + Counter + Green Bar ---
         card.innerHTML = `
-            <div class="subject-name">${sub}</div>
-            <div class="subject-count-badge">${count} Qs</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <div class="subject-name" style="margin:0;">${sub}</div>
+                <div style="font-size:12px; font-weight:bold; color:#64748b;">${solvedCount} / ${count}</div>
+            </div>
+            
+            <div style="background:#e2e8f0; height:8px; border-radius:4px; overflow:hidden;">
+                <div style="width:${percent}%; background:#10b981; height:100%; transition:width 0.3s ease;"></div>
+            </div>
         `;
         
-        // 🔥 THE FIX: Always open the Single Subject Modal
-        // We removed the "if (currentMode === 'test')" block that was forcing the wrong modal.
-        // Now, openSubjectModal will handle showing the checkboxes for topics.
         card.onclick = () => {
             openSubjectModal(sub);
         };
@@ -4342,18 +4352,218 @@ function renderSubjectGrid(filterText = '') {
         grid.appendChild(card);
     });
 }
+
+// 2. Open Subject Modal (Topic List)
+function openSubjectModal(subject) {
+    selectedSubjectForModal = subject;
+    selectedExamTopics = [];
+
+    const modal = document.getElementById('study-modal');
+    document.getElementById('modal-subject-title').innerText = subject;
+
+    // Get Topics
+    const subjectQs = allQuestions.filter(q => q.Subject === subject);
+    const topics = [...new Set(subjectQs.map(q => q.Topic))].sort();
+
+    // --- Stats for "Practice All" button ---
+    const safeSolvedIDs = (typeof userSolvedIDs !== 'undefined') ? userSolvedIDs : [];
+    const subjSolved = subjectQs.filter(q => safeSolvedIDs.includes(q._uid)).length;
+    const subjTotal = subjectQs.length;
+    const subjPct = subjTotal === 0 ? 0 : Math.round((subjSolved / subjTotal) * 100);
+
+    const list = document.getElementById('modal-topic-list');
+    const actions = document.getElementById('modal-actions-area');
+    const settings = document.getElementById('exam-settings-area');
+    const footer = document.getElementById('modal-footer');
+    const subtitle = document.getElementById('modal-mode-subtitle');
+
+    // Reset Footer Button (for Exam Mode)
+    const startBtn = footer.querySelector('button');
+    if(startBtn) {
+        startBtn.onclick = startExamFromModal;
+        startBtn.innerText = "Start Exam";
+    }
+
+    list.innerHTML = '';
+    actions.innerHTML = '';
+
+    if (currentMode === 'practice') {
+        // ============================================
+        // 🟢 PRACTICE MODE (Green Bars, Counters, NO Arrows)
+        // ============================================
+        subtitle.innerText = "Select a topic to start immediately.";
+        settings.classList.add('hidden');
+        footer.style.display = 'none'; 
+
+        // 1. "Practice All" Button (With Bar)
+        const btnAll = document.createElement('button');
+        btnAll.className = 'practice-all-btn';
+        btnAll.innerHTML = `
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                <span>Practice All ${subject}</span>
+                <span style="font-size:12px; opacity:0.8;">${subjSolved} / ${subjTotal}</span>
+            </div>
+            <div style="background:rgba(0,0,0,0.1); height:6px; border-radius:3px; overflow:hidden;">
+                <div style="width:${subjPct}%; background:#10b981; height:100%;"></div>
+            </div>
+        `;
+        btnAll.onclick = () => {
+            closeStudyModal();
+            startPractice(subject, null); 
+        };
+        actions.appendChild(btnAll);
+
+        // 2. Topic List (With Bars & Counters)
+        topics.forEach(topic => {
+            // Calculate Topic Stats
+            const topQs = subjectQs.filter(q => q.Topic === topic);
+            const topTotal = topQs.length;
+            const topSolved = topQs.filter(q => safeSolvedIDs.includes(q._uid)).length;
+            const topPct = topTotal === 0 ? 0 : Math.round((topSolved / topTotal) * 100);
+
+            const row = document.createElement('div');
+            row.className = 'topic-row';
+            
+            // UI: Topic Name, Counter, Green Bar
+            // Note: No Arrow Icon included here
+            row.innerHTML = `
+                <div style="margin-bottom:6px; display:flex; justify-content:space-between;">
+                    <span style="font-weight:500; color:#334155;">${topic}</span>
+                    <span style="font-size:11px; color:#64748b; font-weight:bold;">${topSolved} / ${topTotal}</span>
+                </div>
+                <div style="background:#f1f5f9; height:5px; border-radius:3px; overflow:hidden; width:100%;">
+                     <div style="width:${topPct}%; background:#22c55e; height:100%;"></div>
+                </div>
+            `;
+            
+            row.onclick = () => {
+                closeStudyModal();
+                startPractice(subject, topic);
+            };
+            list.appendChild(row);
+        });
+
+    } else {
+        // ============================================
+        // 🔵 EXAM MODE (Checkbox Selectors)
+        // ============================================
+        subtitle.innerText = "Select specific topics & limits.";
+        settings.classList.remove('hidden');
+        footer.style.display = 'block';
+
+        const selectAllDiv = document.createElement('div');
+        selectAllDiv.innerHTML = `
+            <div style="padding:10px; display:flex; align-items:center; gap:10px;">
+                <input type="checkbox" id="chk-select-all" onchange="toggleSelectAllTopics(this)" style="width:18px; height:18px;"> 
+                <label for="chk-select-all" style="font-weight:bold; color:#1e293b; font-size:14px;">Select Entire Subject</label>
+            </div>
+            <div style="height:1px; background:#f1f5f9; margin:5px 0 10px 0;"></div>
+        `;
+        actions.appendChild(selectAllDiv);
+
+        topics.forEach(topic => {
+            const row = document.createElement('div');
+            row.className = 'topic-row';
+            // Simple text for Exam Selection
+            row.innerText = topic;
+            row.onclick = () => {
+                row.classList.toggle('selected');
+                if (selectedExamTopics.includes(topic)) {
+                    selectedExamTopics = selectedExamTopics.filter(t => t !== topic);
+                } else {
+                    selectedExamTopics.push(topic);
+                }
+                document.getElementById('chk-select-all').checked = false;
+            };
+            list.appendChild(row);
+        });
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function toggleSelectAllTopics(checkbox) {
+    const rows = document.querySelectorAll('.topic-row');
+    const allTopics = [...new Set(
+        allQuestions.filter(q => q.Subject === selectedSubjectForModal).map(q => q.Topic)
+    )];
+
+    if (checkbox.checked) {
+        rows.forEach(r => r.classList.add('selected'));
+        selectedExamTopics = allTopics;
+    } else {
+        rows.forEach(r => r.classList.remove('selected'));
+        selectedExamTopics = [];
+    }
+}
+
+function closeStudyModal() {
+    document.getElementById('study-modal').classList.add('hidden');
+}
+
+function startExamFromModal() {
+    const countInput = document.getElementById('new-exam-q-count').value;
+    const minsInput = document.getElementById('new-exam-timer').value;
+
+    if (selectedExamTopics.length === 0) return alert("Please select at least one topic.");
+
+    // Filter Logic
+    let pool = allQuestions.filter(q => 
+        q.Subject === selectedSubjectForModal && selectedExamTopics.includes(q.Topic)
+    );
+
+    // Check Unattempted
+    const unattemptedOnly = document.getElementById('unattempted-only').checked;
+    if (unattemptedOnly && typeof userSolvedIDs !== 'undefined') {
+        pool = pool.filter(q => !userSolvedIDs.includes(q._uid));
+    }
+
+    if (pool.length === 0) return alert("No questions available for these settings.");
+
+    // Limit Logic
+    const isAdmin = userProfile && userProfile.role === 'admin';
+    const premKey = getStoreKey('isPremium');
+    const expKey = getStoreKey('expiryDate');
+    const isPrem = userProfile && userProfile[premKey] && isDateActive(userProfile[expKey]);
+
+    let maxQuestions = Infinity;
+    if (isAdmin) maxQuestions = Infinity;
+    else if (isGuest) maxQuestions = 20;
+    else if (!isPrem) maxQuestions = 50;
+
+    let finalCount = parseInt(countInput);
+    if (finalCount > maxQuestions) {
+        alert(`🔒 Limit Exceeded: Reducing to ${maxQuestions} questions.`);
+        finalCount = maxQuestions;
+    }
+
+    // Shuffle & Launch
+    filteredQuestions = pool.sort(() => Math.random() - 0.5).slice(0, finalCount);
     
+    closeStudyModal();
+    currentMode = 'test';
+    currentIndex = 0;
+    testAnswers = {};
+    testFlags = {}; 
+    testTimeRemaining = parseInt(minsInput) * 60;
+    
+    showScreen('quiz-screen');
+    document.getElementById('timer').classList.remove('hidden');
+    document.getElementById('test-sidebar').classList.add('active');
+    renderNavigator();
+    clearInterval(testTimer);
+    testTimer = setInterval(updateTimer, 1000);
+    renderPage();
+}
 
 function startSingleQuestionPractice(question) {
     filteredQuestions = [question]; 
     currentMode = 'practice';
     currentIndex = 0;
     
-    // 🔥 FIX: Initialize these to prevent crashes
     testFlags = {};
     testAnswers = {};
     
-    // Reset any exam specific UI
     const timer = document.getElementById('timer');
     if(timer) timer.classList.add('hidden');
     
@@ -4367,29 +4577,20 @@ document.addEventListener('click', function(e) {
     const box = document.getElementById('search-results');
     const input = document.getElementById('subject-search');
     
-    // If click is NOT on input AND NOT on the box, hide the box
     if (box && input && e.target !== input && !box.contains(e.target)) {
         box.style.display = 'none';
     }
 });
-
-// ==========================================
-// 🔀 MULTI-SUBJECT EXAM LOGIC
-// ==========================================
-
-let selectedMultiSubjects = [];
 
 function openMultiSubjectModal() {
     const modal = document.getElementById('study-modal');
     document.getElementById('modal-subject-title').innerText = "Create Custom Exam";
     document.getElementById('modal-mode-subtitle').innerText = "Select multiple subjects to combine.";
 
-    // Show Exam Settings
     document.getElementById('exam-settings-area').classList.remove('hidden');
     document.getElementById('modal-footer').style.display = 'block';
-    document.getElementById('modal-actions-area').innerHTML = ''; // Clear old actions
+    document.getElementById('modal-actions-area').innerHTML = ''; 
 
-    // 1. Build List of ALL Subjects with Checkboxes
     const list = document.getElementById('modal-topic-list');
     list.innerHTML = '';
     
@@ -4411,7 +4612,6 @@ function openMultiSubjectModal() {
         list.appendChild(row);
     });
 
-    // 2. Override the Start Button to use Multi-Subject Logic
     const startBtn = document.querySelector('#modal-footer button');
     startBtn.onclick = startMultiSubjectExam;
     
@@ -4424,19 +4624,14 @@ function startMultiSubjectExam() {
     const count = parseInt(document.getElementById('new-exam-q-count').value) || 20;
     const mins = parseInt(document.getElementById('new-exam-timer').value) || 30;
 
-    // Filter Logic: Get questions from ANY of the selected subjects
     let pool = allQuestions.filter(q => selectedMultiSubjects.includes(q.Subject));
 
-    // Unattempted Check
     const unattemptedOnly = document.getElementById('unattempted-only').checked;
     if (unattemptedOnly && typeof userSolvedIDs !== 'undefined') {
         pool = pool.filter(q => !userSolvedIDs.includes(q._uid));
     }
 
     if (pool.length === 0) return alert("No questions found for these subjects.");
-
-    // Limit & Shuffle (Reusing your logic)
-    // ... (Add your standard limit check here if needed) ...
     
     filteredQuestions = pool.sort(() => Math.random() - 0.5).slice(0, count);
     
@@ -4455,7 +4650,3 @@ function startMultiSubjectExam() {
     testTimer = setInterval(updateTimer, 1000);
     renderPage();
 }
-
-
-
-
