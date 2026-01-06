@@ -3986,6 +3986,14 @@ function createQuestionCard(q, index, showNumber = true) {
     block.appendChild(optionsDiv);
     return block;
 }
+
+
+function toggleFlag(uid, btn, idx) {
+    if(testFlags[uid]) delete testFlags[uid]; else testFlags[uid] = true;
+    renderPage(); 
+}
+
+
 function checkAnswer(selected, btn, q) {
     if (currentMode === 'test') {
         testAnswers[q._uid] = selected;
@@ -4070,7 +4078,3 @@ function renderPracticeNavigator() {
     });
 }
 
-function toggleFlag(uid, btn, idx) {
-    if(testFlags[uid]) delete testFlags[uid]; else testFlags[uid] = true;
-    renderPage(); 
-}
