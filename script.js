@@ -2846,15 +2846,20 @@ async function loadAdminReports() {
     }
 }
 
-function deleteReport(id) {
+window.deleteReport = function(id) {
+    // 1. Safety Check
     if(!confirm("Mark this report as resolved and delete it?")) return;
+
+    // 2. Delete from Database
     db.collection('reports').doc(id).delete()
-        .then(() => loadAdminReports())
-        .catch(e => alert("Error: " + e.message));
-}
-
-function deleteReport(id) { db.collection('reports').doc(id).delete().then(()=>loadAdminReports()); }
-
+        .then(() => {
+            // 3. Refresh the list on screen
+            loadAdminReports();
+        })
+        .catch(e => {
+            alert("Error: " + e.message);
+        });
+};
 
 
 async function loadAdminPayments() {
@@ -3991,6 +3996,7 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
 
 
 
