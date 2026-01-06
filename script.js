@@ -794,7 +794,7 @@ async function updateUserStats(isCorrect, subject, questionUID) {
     // If you want the button to change color instantly before any other logic runs:
     try {
         // Assuming your navigator buttons have IDs like 'nav-btn-0', 'nav-btn-1'
-        const navBtn = document.getElementById(`nav-btn-${currentQuestionIndex}`);
+        const navBtn = document.getElementById(`nav-btn-${currentIndex}`);
         if(navBtn) {
             if(isCorrect) {
                 navBtn.classList.add('solved');
@@ -4068,7 +4068,7 @@ function renderPracticeNavigator() {
         };
         nav.appendChild(btn);
     });
-
+}
 // Helper Functions needed for quiz
 function updateTimer() {
     testTimeRemaining--;
