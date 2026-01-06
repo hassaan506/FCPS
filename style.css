@@ -948,41 +948,48 @@ button {
 }
 
 /* SEARCH DROPDOWN (Updated) */
+/* SEARCH DROPDOWN (Fixed & Polished) */
 .search-results-list {
     position: absolute;
-    top: 100%;       /* Attach directly to the bottom of input */
+    top: 100%;       
     left: 0; 
     right: 0;
+    
+    /* Design Tweaks */
     background: white;
-    border: 1px solid #e2e8f0; /* Matches your new theme borders */
-    border-radius: 12px;
-    max-height: 300px;
+    border: 1px solid #e2e8f0;
+    border-top: none; /* Remove top border to blend with input */
+    border-radius: 0 0 16px 16px; /* Round only the bottom */
+    
+    max-height: 350px;
     overflow-y: auto;
-    z-index: 2000;   /* High Z-Index to float over everything */
-    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-    margin-top: 8px; /* Adds a clean gap */
-    display: none;   /* Hidden by default */
+    z-index: 5000;
+    
+    /* Cleaner Shadow */
+    box-shadow: 0 15px 30px -5px rgba(0,0,0,0.1);
+    
+    /* Remove the gap so it looks attached */
+    margin-top: 2px; 
+    display: none;
 }
 
-/* Individual Search Result Items */
+/* Individual Items */
 .search-item {
-    padding: 12px 15px;
+    padding: 14px 18px;
     border-bottom: 1px solid #f1f5f9;
     cursor: pointer;
     text-align: left;
     transition: all 0.2s ease;
 }
 
-.search-item:last-child {
-    border-bottom: none;
-}
+.search-item:last-child { border-bottom: none; }
 
 .search-item:hover {
-    background-color: #f0f9ff; /* Light Blue hover */
-    color: #0072ff;            /* Highlight Text Blue */
+    background-color: #f0f9ff;
+    padding-left: 22px; /* Slight slide effect */
 }
 
-/* Dark Mode Support for Search */
+/* Dark Mode Fixes */
 [data-theme="dark"] .search-results-list {
     background: var(--card-bg);
     border-color: var(--border-color);
@@ -994,7 +1001,6 @@ button {
 [data-theme="dark"] .search-item:hover {
     background-color: rgba(255, 255, 255, 0.05);
 }
-
 
 /* =========================================
    11. MOBILE OPTIMIZATIONS
@@ -2850,8 +2856,123 @@ button.secondary {
 }
 .btn-cancel { background: transparent; border: none; color: #64748b; font-size: 13px; font-weight: 500; cursor: pointer; }
 
+/* =========================================
+   🎨 REDESIGNED SUBJECT LIST (Modern Cards)
+   ========================================= */
 
+/* The Container */
+.subject-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;         /* Space between cards */
+    padding: 10px 5px; /* Breathing room inside the scroll area */
+}
 
+/* The Individual Card */
+.subject-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px; /* Smooth rounded corners */
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+    
+    /* Subtle Shadow for depth */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Hover Effect - Lift & Highlight */
+.subject-card:hover {
+    transform: translateY(-2px); /* Moves up slightly */
+    box-shadow: 0 8px 20px -5px rgba(0, 114, 255, 0.15); /* Blue soft glow */
+    border-color: var(--primary); /* Highlight border color */
+}
+
+/* Active/Click Effect */
+.subject-card:active {
+    transform: scale(0.98);
+    background: #f8fafc;
+}
+
+/* Colored Strip on Left (Visual Polish) */
+.subject-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: transparent;
+    transition: background 0.2s;
+}
+
+.subject-card:hover::before {
+    background: var(--primary); /* Shows green/blue strip on hover */
+}
+
+/* Text Styling */
+.subject-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1e293b; /* Dark slate */
+    letter-spacing: 0.3px;
+}
+
+/* The "Qs" Badge */
+.subject-count-badge {
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: 6px 12px;
+    border-radius: 20px; /* Pill shape */
+    transition: all 0.2s;
+}
+
+/* Badge turns colored on card hover */
+.subject-card:hover .subject-count-badge {
+    background: var(--primary);
+    color: white;
+}
+
+/* --- Dark Mode Fixes --- */
+[data-theme="dark"] .subject-card {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+}
+[data-theme="dark"] .subject-name { color: var(--text-dark); }
+[data-theme="dark"] .subject-count-badge { background: #334155; color: #cbd5e1; }
+
+/* Multi-Subject Button Styling */
+#multi-exam-controls button {
+    width: 100%;
+    padding: 14px;
+    background: white;
+    border: 2px dashed #cbd5e1; /* Dashed border suggests "Add" */
+    color: #475569;
+    font-weight: 700;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 0;
+}
+
+#multi-exam-controls button:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: #f0f9ff;
+    transform: translateY(-1px);
+}
 
 
 
