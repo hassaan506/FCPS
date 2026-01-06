@@ -4077,4 +4077,3 @@ function renderPracticeNavigator() {
         nav.appendChild(btn);
     });
 }
-
