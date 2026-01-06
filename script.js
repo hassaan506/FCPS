@@ -2046,50 +2046,75 @@ function startTest() {
 // 8. QUIZ ENGINE
 // ======================================================
 
-function renderPage() {
-    const container = document.getElementById('quiz-content-area');
-    container.innerHTML = "";
-    window.scrollTo(0,0);
+// ==========================================
+// 📄 RENDER PAGE (Handles Logic & Buttons)
+// ==========================================
 
+function renderPage() {
+    // 1. Target the correct container
+    const container = document.getElementById('quiz-content-area');
+    if (!container) return console.error("Missing #quiz-content-area");
+    
+    container.innerHTML = "";
+    window.scrollTo(0, 0);
+
+    // 2. Get Buttons (Safe Check)
     const prevBtn = document.getElementById('prev-btn');
     const nextBtn = document.getElementById('next-btn');
     const submitBtn = document.getElementById('submit-btn');
-    const flagBtn = document.getElementById('flag-btn'); 
-    
-    prevBtn.classList.toggle('hidden', currentIndex === 0);
+    const timerDisplay = document.getElementById('timer');
+    const sidebar = document.getElementById('test-sidebar');
 
-    if (currentMode === 'practice') {
-        document.getElementById('timer').classList.add('hidden');
-        document.getElementById('test-sidebar').classList.remove('active'); 
-        if(flagBtn) flagBtn.classList.add('hidden'); 
-        submitBtn.classList.add('hidden');
-        
-        if (currentIndex < filteredQuestions.length - 1) nextBtn.classList.remove('hidden');
-        else nextBtn.classList.add('hidden');
-        
-        container.appendChild(createQuestionCard(filteredQuestions[currentIndex], currentIndex, true));
-        renderPracticeNavigator(); 
+    // 3. Logic: Previous Button
+    if (prevBtn) {
+        if (currentIndex === 0) prevBtn.classList.add('hidden');
+        else prevBtn.classList.remove('hidden');
+    }
 
-    } else {
-        document.getElementById('timer').classList.remove('hidden');
-        if(flagBtn) flagBtn.classList.remove('hidden'); 
-        document.getElementById('test-sidebar').classList.add('active');
+    // 4. Logic: Next & Submit Buttons
+    const isLastQuestion = currentIndex === filteredQuestions.length - 1;
 
-        const start = currentIndex;
-        const end = Math.min(start + 5, filteredQuestions.length);
-        for (let i = start; i < end; i++) {
-            container.appendChild(createQuestionCard(filteredQuestions[i], i, true));
-        }
-        
-        if (end === filteredQuestions.length) {
-            nextBtn.classList.add('hidden');
+    if (nextBtn) {
+        if (isLastQuestion) nextBtn.classList.add('hidden');
+        else nextBtn.classList.remove('hidden');
+    }
+
+    if (submitBtn) {
+        // Only show Submit on the last question of TEST mode
+        if (currentMode === 'test' && isLastQuestion) {
             submitBtn.classList.remove('hidden');
         } else {
-            nextBtn.classList.remove('hidden');
             submitBtn.classList.add('hidden');
         }
+    }
+
+    // 5. Render the Question Card
+    // We use your NEW createQuestionCard function here
+    if (filteredQuestions[currentIndex]) {
+        const card = createQuestionCard(filteredQuestions[currentIndex], currentIndex, true);
+        container.appendChild(card);
+    }
+
+    // 6. Mode Specific UI Updates
+    if (currentMode === 'practice') {
+        // --- PRACTICE MODE ---
+        if (timerDisplay) timerDisplay.classList.add('hidden');
+        if (sidebar) sidebar.classList.remove('active');
         
-        renderNavigator(); 
+        // Update Bottom Bubble Navigator
+        if (typeof renderPracticeNavigator === 'function') {
+            renderPracticeNavigator();
+        }
+
+    } else {
+        // --- EXAM MODE ---
+        if (timerDisplay) timerDisplay.classList.remove('hidden');
+        if (sidebar) sidebar.classList.add('active');
+
+        // Update Sidebar Grid Navigator
+        if (typeof renderNavigator === 'function') {
+            renderNavigator();
+        }
     }
 }
 
@@ -2304,40 +2329,63 @@ function renderNavigator() {
     });
 }
 
+// ==========================================
+// 🧭 PRACTICE NAVIGATOR (Bottom Scroll Bar)
+// ==========================================
+
 function renderPracticeNavigator() {
-    // Target the ID found in your HTML: <div id="practice-nav-container">
+    // 1. Target the container
     const nav = document.getElementById('practice-nav-container');
     if (!nav) return;
     
-    nav.classList.remove('hidden'); // Make sure it's visible
+    // 2. Reset Container
+    nav.classList.remove('hidden'); 
     nav.innerHTML = "";
 
-    // In practice mode, we create a simple horizontal scroller or grid
+    // 3. Safety Check for Data
+    const safeSolved = (typeof userSolvedIDs !== 'undefined') ? userSolvedIDs : [];
+    const safeMistakes = (typeof userMistakes !== 'undefined') ? userMistakes : [];
+
+    // 4. Build Buttons
     filteredQuestions.forEach((q, idx) => {
         const btn = document.createElement('button');
-        btn.className = "nav-btn";
+        
+        // Use the NEW Class Name from style.css
+        btn.className = "prac-nav-btn"; 
         btn.innerText = idx + 1;
 
-        if (currentIndex === idx) btn.classList.add('current');
-        
-        // Show Red/Green if previously attempted
-        if (userSolvedIDs.includes(q._uid)) {
-            btn.style.borderColor = "#10b981"; // Green
-            btn.style.color = "#10b981";
+        // A. Active State (Current Question)
+        if (currentIndex === idx) {
+            btn.classList.add('active');
         }
-        if (userMistakes.includes(q._uid)) {
-            btn.style.borderColor = "#ef4444"; // Red
-            btn.style.color = "#ef4444";
+        
+        // B. Solved State (Green)
+        // Check if ID is in solved list AND not the current one (optional preference)
+        if (safeSolved.includes(q._uid)) {
+            btn.classList.add('solved');
+        }
+        
+        // C. Mistake State (Red) - Overrides green if it was a mistake
+        if (safeMistakes.includes(q._uid)) {
+            btn.classList.remove('solved'); // Ensure it shows red if both exist
+            btn.classList.add('wrong');
         }
 
+        // D. Click Action
         btn.onclick = () => {
             currentIndex = idx;
             renderPage();
+            
+            // Re-render navigator to update the 'active' bubble
+            renderPracticeNavigator(); 
+            
+            // Scroll the button into view smoothly
+            btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
         };
+
         nav.appendChild(btn);
     });
 }
-
 // ======================================================
 // 9. DATABASE SAVING & SUBMISSION (UPDATED PREFIX)
 // ======================================================
@@ -4368,5 +4416,6 @@ function startMultiSubjectExam() {
     testTimer = setInterval(updateTimer, 1000);
     renderPage();
 }
+
 
 
