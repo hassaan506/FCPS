@@ -178,10 +178,12 @@
                 <h2 class="premium-title" style="margin:0; font-size: 20px;">Study Session</h2>
             </div>
             
-            <div class="search-box">
-                <span class="search-icon">🔍</span>
-                <input type="text" id="subject-search" placeholder="Search topics..." onkeyup="filterSubjects()">
-            </div>
+           <div class="search-box" style="position: relative;">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="subject-search" placeholder="Search topics or questions..." onkeyup="handleSearchInput()">
+    
+    <div id="search-results" class="search-results-list"></div>
+</div>
 
             <div class="mode-toggle-container">
                 <button onclick="setMode('practice')" class="mode-btn active" id="btn-mode-practice">
@@ -710,3 +712,4 @@
 <script src="script.js?v=300"></script>
 </body>
 </html>
+
