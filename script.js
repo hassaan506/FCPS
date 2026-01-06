@@ -3895,77 +3895,95 @@ function renderPage() {
     }
 }
 
-function createQuestionCard(q, index) {
+function createQuestionCard(q, index, showNumber = true) {
     const block = document.createElement('div');
     block.className = "test-question-block";
-    block.style.cssText = "background:white; border-radius:12px; padding:20px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.05);";
+    block.id = `q-card-${index}`;
 
-    // Header
-    const safeFlags = (typeof testFlags !== 'undefined') ? testFlags : {};
-    const isFlagged = safeFlags[q._uid];
-    const safeBookmarks = (typeof userBookmarks !== 'undefined') ? userBookmarks : [];
-    const isBookmarked = safeBookmarks.includes(q._uid);
+    // ✅ SAFEGUARDS: Prevent crash if arrays are undefined
+    const safeFlags = (typeof testFlags !== 'undefined' && testFlags) ? testFlags : {};
+    const safeBookmarks = (typeof userBookmarks !== 'undefined' && Array.isArray(userBookmarks)) ? userBookmarks : [];
+    const safeSolved = (typeof userSolvedIDs !== 'undefined' && Array.isArray(userSolvedIDs)) ? userSolvedIDs : [];
 
-    block.innerHTML = `
-        <div style="display:flex; justify-content:space-between; margin-bottom:15px; border-bottom:1px solid #f1f5f9; padding-bottom:10px;">
-            <span style="background:#e0f2fe; color:#0369a1; font-weight:bold; padding:4px 10px; border-radius:15px; font-size:12px;">Question ${index + 1}</span>
-            <div>
-                <button onclick="toggleBookmark('${q._uid}', this)" style="border:none; background:none; cursor:pointer; font-size:18px;">${isBookmarked ? '⭐' : '☆'}</button>
-                <button onclick="toggleFlag('${q._uid}', this, ${index})" style="border:none; background:none; cursor:pointer; font-size:18px; margin-left:10px;">${isFlagged ? '🚩' : '🏳️'}</button>
-            </div>
-        </div>
-        <div style="font-size:16px; font-weight:600; color:#1e293b; line-height:1.6; margin-bottom:20px;">
-            ${q.Question || "Missing Text"}
+    if (safeFlags[q._uid]) {
+        block.classList.add('is-flagged-card');
+    }
+
+    const isBookmarked = (currentMode === 'test') ? false : safeBookmarks.includes(q._uid);
+    const isFlagged = safeFlags[q._uid] || false;
+
+    const header = document.createElement('div');
+    header.className = "question-card-header";
+    header.innerHTML = `
+        <span class="q-number-tag">Question ${index + 1}</span>
+        <div class="q-actions">
+            <button class="action-icon-btn ${isBookmarked ? 'bookmark-active' : ''}" onclick="toggleBookmark('${q._uid}', this)" title="Save Question">
+                ${isBookmarked ? '⭐' : '☆'}
+            </button>
+            <button class="action-icon-btn ${isFlagged ? 'flag-active' : ''}" onclick="toggleFlag('${q._uid}', this, ${index})" title="Flag Question">
+                ${isFlagged ? '🚩' : '🏳️'}
+            </button>
         </div>
     `;
+    block.appendChild(header);
 
-    // Options
+    const qText = document.createElement('div');
+    qText.className = "test-q-text";
+    qText.innerHTML = q.Question || "Missing Text";
+    block.appendChild(qText);
+
     const optionsDiv = document.createElement('div');
-    optionsDiv.style.cssText = "display:flex; flex-direction:column; gap:10px;";
+    optionsDiv.className = "options-group";
+    optionsDiv.id = `opts-${index}`;
 
-    const getOpt = (k) => q[k] || q[k.replace("Option", "Option ")];
-    let opts = [getOpt('OptionA'), getOpt('OptionB'), getOpt('OptionC'), getOpt('OptionD'), getOpt('OptionE')].filter(o => o && String(o).trim() !== "");
-    
-    // Shuffle Options
-    if(typeof shuffleArray === 'function') opts = shuffleArray(opts);
+    let rawOpts = [q.OptionA, q.OptionB, q.OptionC, q.OptionD, q.OptionE].filter(o => o && o.trim() !== "");
 
-    opts.forEach(opt => {
+    let normalOpts = [];
+    let bottomOpts = [];
+
+    rawOpts.forEach(opt => {
+        const lower = opt.toLowerCase();
+        if (lower.includes("all of") || lower.includes("none of") || lower.includes("of the above") || lower.includes("all the")) {
+            bottomOpts.push(opt);
+        } else {
+            normalOpts.push(opt);
+        }
+    });
+
+    let finalOpts = [...shuffleArray(normalOpts), ...bottomOpts];
+
+    finalOpts.forEach(opt => {
         const btn = document.createElement('button');
         btn.className = "option-btn";
-        btn.style.cssText = "text-align:left; padding:12px 15px; background:white; border:1px solid #cbd5e1; border-radius:8px; cursor:pointer; width:100%; color:#334155; font-size:14px; display:flex; justify-content:space-between;";
-        btn.innerHTML = `<span>${opt}</span> <span class="elim-eye" style="opacity:0.3;">👁️</span>`;
+        btn.innerHTML = `<span class="opt-text">${opt}</span><span class="elim-eye">👁️</span>`;
 
-        // Eye Click
-        btn.querySelector('.elim-eye').onclick = (e) => {
-            e.stopPropagation();
-            btn.style.opacity = btn.style.opacity === '0.4' ? '1' : '0.4';
+        btn.querySelector('.elim-eye').onclick = (e) => { 
+            e.stopPropagation(); 
+            btn.classList.toggle('eliminated'); 
         };
 
-        // Answer Click
         btn.onclick = (e) => {
-            if(e.target.classList.contains('elim-eye')) return;
+            if (e.target.classList.contains('elim-eye')) return;
+            if (btn.classList.contains('eliminated')) btn.classList.remove('eliminated');
             checkAnswer(opt, btn, q);
         };
 
-        // Restore State
-        if (typeof testAnswers !== 'undefined' && testAnswers[q._uid] === opt) {
-            btn.style.background = "#eff6ff"; btn.style.borderColor = "#3b82f6";
-        }
+        btn.addEventListener('contextmenu', (e) => { 
+            e.preventDefault(); 
+            btn.classList.toggle('eliminated'); 
+        });
 
+        // Safe check for testAnswers
+        if (typeof testAnswers !== 'undefined' && testAnswers && testAnswers[q._uid] === opt) {
+            btn.classList.add('selected');
+        }
+        
         optionsDiv.appendChild(btn);
     });
 
     block.appendChild(optionsDiv);
-
-    // Explanation Box
-    const explainBox = document.createElement('div');
-    explainBox.id = `explain-${q._uid}`;
-    explainBox.style.display = 'none';
-    block.appendChild(explainBox);
-
     return block;
 }
-
 function checkAnswer(selected, btn, q) {
     if (currentMode === 'test') {
         testAnswers[q._uid] = selected;
@@ -4016,25 +4034,39 @@ function renderNavigator() {
 
 function renderPracticeNavigator() {
     const nav = document.getElementById('practice-nav-container');
-    if(!nav) return;
-    nav.innerHTML = ""; nav.classList.remove('hidden');
+    if (!nav) return; // Stop if HTML element is missing
     
+    nav.classList.remove('hidden'); 
+    nav.innerHTML = "";
+
+    // ✅ SAFEGUARDS: Ensure arrays exist
+    const safeSolved = (typeof userSolvedIDs !== 'undefined' && Array.isArray(userSolvedIDs)) ? userSolvedIDs : [];
+    const safeMistakes = (typeof userMistakes !== 'undefined' && Array.isArray(userMistakes)) ? userMistakes : [];
+
     filteredQuestions.forEach((q, idx) => {
         const btn = document.createElement('button');
+        btn.className = "nav-btn";
         btn.innerText = idx + 1;
-        let bg = "white"; let color = "#334155";
+
+        if (currentIndex === idx) btn.classList.add('current');
         
-        if (userSolvedIDs && userSolvedIDs.includes(q._uid)) { bg = "#10b981"; color="white"; }
-        if (userMistakes && userMistakes.includes(q._uid)) { bg = "#ef4444"; color="white"; }
-        
-        btn.style.cssText = `min-width:40px; height:40px; border-radius:50%; background:${bg}; color:${color}; border:1px solid #cbd5e1; font-weight:bold; cursor:pointer; flex-shrink:0; margin-right:5px;`;
-        
-        if(currentIndex === idx) btn.style.transform = "scale(1.2)";
-        btn.onclick = () => { currentIndex = idx; renderPage(); renderPracticeNavigator(); btn.scrollIntoView({behavior:'smooth', inline:'center'}); };
+        // Use safe arrays
+        if (safeSolved.includes(q._uid)) {
+            btn.style.borderColor = "#10b981"; // Green
+            btn.style.color = "#10b981";
+        }
+        if (safeMistakes.includes(q._uid)) {
+            btn.style.borderColor = "#ef4444"; // Red
+            btn.style.color = "#ef4444";
+        }
+
+        btn.onclick = () => {
+            currentIndex = idx;
+            renderPage();
+        };
         nav.appendChild(btn);
     });
 }
-
 // Helper Functions needed for quiz
 function updateTimer() {
     testTimeRemaining--;
@@ -4049,7 +4081,3 @@ function toggleFlag(uid, btn, idx) {
     if(testFlags[uid]) delete testFlags[uid]; else testFlags[uid] = true;
     renderPage(); // Re-render to update icon state
 }
-
-// Add any missing closing brackets for the file if needed
-// End of Script
-
