@@ -437,24 +437,6 @@ button {
     font-weight: 700; 
 }
 
-/* SCROLLABLE SUBJECT LIST */
-#dynamic-menus {
-    max-height: 500px; 
-    overflow-y: auto;
-    margin-top: 15px; 
-    padding-top: 15px; 
-    border-top: 2px solid var(--border-color); 
-    padding-right: 10px;
-    scroll-behavior: smooth;
-}
-
-/* Custom Scrollbar Styling */
-#dynamic-menus::-webkit-scrollbar { width: 6px; }
-#dynamic-menus::-webkit-scrollbar-track { background: transparent; }
-#dynamic-menus::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-#dynamic-menus::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-
 /* =========================================
    8. QUIZ INTERFACE & EXAM MODE
    ========================================= */
@@ -904,18 +886,6 @@ button {
     box-shadow: var(--shadow-sm);
 }
 
-/* Fix 3: Tame the Long Subject List */
-.filter-container {
-    max-height: 250px;       /* Set a maximum height */
-    overflow-y: auto;        /* Add a scrollbar if it gets too long */
-    background: var(--input-bg);
-    padding: 15px;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    margin-top: 10px;
-    margin-bottom: 15px;
-}
-
 /* Make the checkboxes look better in the list */
 .filter-group { margin-bottom: 12px; }
 .filter-subject-label {
@@ -944,13 +914,6 @@ input[type="password"] {
     border: 1px solid var(--border-color) !important;
 }
 
-/* --- B. Exam Mode: Grid Layout --- */
-.filter-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 12px;
-}
-
 .filter-group {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
@@ -961,136 +924,6 @@ input[type="password"] {
 
 .filter-topic-list {
     border-left: none; margin-left: 0; padding-left: 0; margin-top: 8px;
-}
-
-
-/* =========================================
-   18. DROPDOWN + TEXT GRID + PROGRESS BARS (FIXED)
-   ========================================= */
-
-/* 1. The Card */
-.subject-dropdown-card {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 16px;
-    margin-bottom: 15px;
-    overflow: hidden;
-    box-shadow: var(--shadow-sm);
-}
-
-/* 2. The Header */
-.subject-summary {
-    padding: 20px;
-    cursor: pointer;
-    list-style: none; 
-    position: relative;
-}
-.subject-summary::-webkit-details-marker { display: none; }
-
-.subject-summary::after {
-    content: '▼';
-    position: absolute;
-    right: 20px;
-    top: 20px;
-    color: var(--text-light);
-    font-size: 12px;
-}
-details[open] .subject-summary::after {
-    transform: rotate(180deg);
-    color: var(--primary);
-}
-
-.summary-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
-.subj-name { font-weight: 700; font-size: 16px; color: var(--text-dark); }
-.subj-stats { font-size: 12px; color: var(--text-light); }
-
-.progress-bar-thin {
-    height: 4px;
-    background: #e2e8f0;
-    border-radius: 2px;
-    overflow: hidden;
-}
-.progress-bar-thin .fill {
-    height: 100%;
-    background: var(--success);
-}
-
-/* 3. The Content Box */
-.dropdown-content {
-    background: var(--input-bg); 
-    padding: 20px;
-    border-top: 1px solid var(--border-color);
-}
-
-/* 4. "Practice All" Button */
-.practice-all-row {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-weight: 700;
-    color: var(--primary);
-    padding: 12px;
-    background: white;
-    border: 2px solid var(--border-color);
-    border-radius: 12px;
-    margin-bottom: 20px;
-    cursor: pointer;
-}
-.practice-all-row:hover {
-    background: var(--primary);
-    color: white;
-}
-
-/* 5. THE TOPICS GRID */
-.topics-text-grid {
-    display: flex;
-    flex-wrap: wrap; 
-    gap: 15px 30px; 
-}
-
-/* Container for Text + Bar */
-.topic-item-container {
-    display: flex;
-    flex-direction: column;
-    cursor: pointer;
-    padding: 2px 5px; /* Added padding to make it clickable */
-}
-
-.topic-name {
-    font-size: 15px;
-    color: var(--text-dark);
-    margin-bottom: 4px; /* Space between text and bar */
-}
-
-/* THE MINI PROGRESS TRACK (High Visibility) */
-.topic-mini-track {
-    width: 100%;
-    min-width: 50px; /* Force minimum width */
-    height: 4px;     /* Made it thicker */
-    background-color: #cbd5e1 !important; /* Visible Grey */
-    border-radius: 2px;
-    overflow: hidden;
-    display: block; /* Force display */
-}
-
-/* THE MINI FILL (Green) */
-.topic-mini-fill {
-    height: 100%;
-    background-color: #10b981 !important; /* Bright Green */
-    border-radius: 2px;
-    display: block;
-}
-
-/* Hover Effects */
-.topic-item-container:hover .topic-name {
-    color: var(--primary);
-    font-weight: 600;
 }
 
 
@@ -2867,3 +2700,4 @@ button.secondary {
 [data-theme="dark"] .glass-progress-track {
     background: rgba(0,0,0,0.3);
 }
+
