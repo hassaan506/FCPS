@@ -1,3 +1,5 @@
+alert("Script Loaded Successfully!");
+console.log("✅ Script started...");
 // ======================================================
 // PWA & OFFLINE SETUP
 // ======================================================
@@ -4069,5 +4071,6 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
 
 
