@@ -141,8 +141,6 @@ let testAnswers = {};
 let testFlags = {}; 
 let testTimeRemaining = 0;
 
-let selectedSubjectForModal = ""; 
-let selectedExamTopics = [];
 // --- FEATURE: DEVICE LOCK ---
 let currentDeviceId = localStorage.getItem('fcps_device_id');
 if (!currentDeviceId) {
@@ -794,7 +792,7 @@ async function updateUserStats(isCorrect, subject, questionUID) {
     // If you want the button to change color instantly before any other logic runs:
     try {
         // Assuming your navigator buttons have IDs like 'nav-btn-0', 'nav-btn-1'
-        const navBtn = document.getElementById(`nav-btn-${currentIndex}`);
+        const navBtn = document.getElementById(`nav-btn-${currentQuestionIndex}`);
         if(navBtn) {
             if(isCorrect) {
                 navBtn.classList.add('solved');
@@ -1612,14 +1610,12 @@ function processData(data, reRenderOnly = false) {
         const seen = new Set();
         allQuestions = [];
         data.forEach((row, index) => {
-            // Clean up row data
             delete row.Book; delete row.Exam; delete row.Number;
             const qText = row.Question || row.Questions;
             const correctVal = row.CorrectAnswer;
 
             if (!qText || !correctVal) return;
 
-            // Generate Unique ID based on question text
             const qSignature = String(qText).trim().toLowerCase();
             if (seen.has(qSignature)) return; 
             seen.add(qSignature);
@@ -1628,7 +1624,6 @@ function processData(data, reRenderOnly = false) {
             row.Question = qText; 
             row.SheetRow = index + 2; 
 
-            // Normalize Subject/Topic
             const subj = row.Subject ? row.Subject.trim() : "General";
             const topic = row.Topic ? row.Topic.trim() : "Mixed";
             row.Subject = subj; 
@@ -1638,10 +1633,17 @@ function processData(data, reRenderOnly = false) {
         });
     }
 
-    // 🔥 NEW: Render the Grid Dashboard instead of the old lists
-    renderSubjectGrid();
+    const subjects = new Set();
+    const map = {}; 
+    allQuestions.forEach(q => {
+        subjects.add(q.Subject);
+        if (!map[q.Subject]) map[q.Subject] = new Set();
+        map[q.Subject].add(q.Topic);
+    });
+
+    renderMenus(subjects, map); 
+    renderTestFilters(subjects, map);
     
-    // Update Admin counter if present
     if(document.getElementById('admin-total-q')) {
         document.getElementById('admin-total-q').innerText = allQuestions.length;
     }
@@ -1795,21 +1797,133 @@ function toggleSubjectAll(checkbox, subjName) {
 
 function setMode(mode) {
     currentMode = mode;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    if(event && event.target) event.target.classList.add('active');
     
-    // 1. Update the Tab Buttons (Visual State)
-    document.getElementById('btn-mode-practice').classList.toggle('active', mode === 'practice');
-    document.getElementById('btn-mode-test').classList.toggle('active', mode === 'test');
+    document.getElementById('test-settings').classList.toggle('hidden', mode !== 'test');
+    document.getElementById('dynamic-menus').classList.toggle('hidden', mode === 'test');
+    
+    const filterControls = document.getElementById('practice-filter-controls');
+    if(filterControls) filterControls.style.display = (mode === 'test') ? 'none' : 'flex';
+}
 
-    // 2. Show/Hide the "Create Multi-Subject Exam" button
-    // This button should only appear in Exam Mode
-    const multiBtn = document.getElementById('multi-exam-controls');
-    if(multiBtn) {
-        if (mode === 'test') {
-            multiBtn.classList.remove('hidden');
-        } else {
-            multiBtn.classList.add('hidden');
+function startPractice(subject, topic) {
+    // 1. Get ALL questions for this Subject (Ignore Topic for now)
+    let subjectPool = allQuestions.filter(q => q.Subject === subject);
+    console.log(`[StartPractice] Raw Subject Pool: ${subjectPool.length}`);
+
+    // 2. Check Premium Status
+    const premKey = getStoreKey('isPremium');
+    const expKey = getStoreKey('expiryDate');
+    const isPrem = userProfile && userProfile[premKey] && isDateActive(userProfile[expKey]);
+    const isAdmin = userProfile && userProfile.role === 'admin';
+
+    // 3. Define Limits
+    let limit = Infinity;
+    let userType = "Premium";
+
+    if (isAdmin) {
+        limit = Infinity;
+    } else if (isGuest) {
+        limit = 20; // Guest Limit
+        userType = "Guest";
+    } else if (!isPrem) {
+        limit = 50; // Free User Limit
+        userType = "Free";
+    }
+
+    // 4. 🔥 GLOBAL LIMIT LOGIC (Round-Robin)
+    // We create a "Free Sample" of the entire subject BEFORE filtering by topic.
+    if (subjectPool.length > limit) {
+        console.log(`[StartPractice] Creating Balanced Sample of ${limit} for ${userType}`);
+        
+        // A. Group by Topic
+        const topicMap = {};
+        const topicNames = [];
+        
+        subjectPool.forEach(q => {
+            const tName = q.Topic || "General";
+            if (!topicMap[tName]) {
+                topicMap[tName] = [];
+                topicNames.push(tName);
+            }
+            topicMap[tName].push(q);
+        });
+
+        // B. Pick evenly from each topic until we hit the limit
+        let balancedList = [];
+        let i = 0; 
+        let addedSomething = true;
+
+        while (balancedList.length < limit && addedSomething) {
+            addedSomething = false;
+            for (const tName of topicNames) {
+                if (balancedList.length >= limit) break; 
+                
+                if (topicMap[tName][i]) {
+                    balancedList.push(topicMap[tName][i]);
+                    addedSomething = true;
+                }
+            }
+            i++;
+        }
+
+        // C. REPLACE the full subject with this small sample
+        subjectPool = balancedList;
+
+        // Reset alert flag (optional)
+        if (currentIndex === 0 && !window.hasShownLimitAlert) {
+             window.hasShownLimitAlert = true; 
         }
     }
+
+    // 5. NOW Filter by the requested Topic
+    // We filter INSIDE the "Free Sample" we just created.
+    let pool = [];
+
+    // Check if 'topic' exists and is a valid string
+    if (topic && typeof topic === 'string' && topic.trim() !== "") {
+        pool = subjectPool.filter(q => q.Topic === topic);
+        console.log(`[StartPractice] Filtered by Topic '${topic}': Found ${pool.length} in sample.`);
+    } else {
+        // If no topic selected (Practice All), show the whole mixed sample
+        pool = subjectPool;
+    }
+
+    // 6. Handle Empty Pool (e.g. Topic exists in DB but not in the Sample)
+    if (pool.length === 0) {
+        const topicExists = allQuestions.some(q => q.Subject === subject && q.Topic === topic);
+        
+        if (topicExists && limit !== Infinity) {
+             // Smart Alert: Tell them the topic exists but is blocked
+             return alert(`🔒 Premium Content\n\n${userType} users get a sample of ${limit} questions from the entire ${subject} course.\n\nQuestions for '${topic}' happen to fall outside this free sample.\n\nUpgrade to Premium to unlock everything!`);
+        } else {
+             return alert("No questions available.");
+        }
+    }
+
+    // 7. Handle "Unattempted Only"
+    const onlyUnattempted = document.getElementById('unattempted-only').checked;
+    if (onlyUnattempted) {
+        pool = pool.filter(q => !userSolvedIDs.includes(q._uid));
+        if (pool.length === 0) return alert("You have solved all available free questions in this section!");
+    }
+
+    // 8. Launch Quiz
+    filteredQuestions = pool;
+    let startIndex = 0;
+    if (!onlyUnattempted) {
+        startIndex = filteredQuestions.findIndex(q => !userSolvedIDs.includes(q._uid));
+        if (startIndex === -1) startIndex = 0;
+    }
+
+    currentMode = 'practice';
+    isMistakeReview = false;
+    currentIndex = startIndex;
+
+    showScreen('quiz-screen');
+    renderPage();
+    renderPracticeNavigator();
 }
 
 function startMistakePractice() {
@@ -1916,16 +2030,182 @@ function startTest() {
 }
 
 // ======================================================
-// 8. QUIZ ENGINE (FIXED & ROBUST)
+// 8. QUIZ ENGINE
 // ======================================================
 
-// ==========================================
-// 📄 RENDER PAGE (Handles Logic & Buttons)
-// ==========================================
+function renderPage() {
+    const container = document.getElementById('quiz-content-area');
+    container.innerHTML = "";
+    window.scrollTo(0,0);
 
-// ==========================================
-// 🛠️ CREATE QUESTION CARD (Safe Mode)
-// ==========================================
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const submitBtn = document.getElementById('submit-btn');
+    const flagBtn = document.getElementById('flag-btn'); 
+    
+    prevBtn.classList.toggle('hidden', currentIndex === 0);
+
+    if (currentMode === 'practice') {
+        document.getElementById('timer').classList.add('hidden');
+        document.getElementById('test-sidebar').classList.remove('active'); 
+        if(flagBtn) flagBtn.classList.add('hidden'); 
+        submitBtn.classList.add('hidden');
+        
+        if (currentIndex < filteredQuestions.length - 1) nextBtn.classList.remove('hidden');
+        else nextBtn.classList.add('hidden');
+        
+        container.appendChild(createQuestionCard(filteredQuestions[currentIndex], currentIndex, true));
+        renderPracticeNavigator(); 
+
+    } else {
+        document.getElementById('timer').classList.remove('hidden');
+        if(flagBtn) flagBtn.classList.remove('hidden'); 
+        document.getElementById('test-sidebar').classList.add('active');
+
+        const start = currentIndex;
+        const end = Math.min(start + 5, filteredQuestions.length);
+        for (let i = start; i < end; i++) {
+            container.appendChild(createQuestionCard(filteredQuestions[i], i, true));
+        }
+        
+        if (end === filteredQuestions.length) {
+            nextBtn.classList.add('hidden');
+            submitBtn.classList.remove('hidden');
+        } else {
+            nextBtn.classList.remove('hidden');
+            submitBtn.classList.add('hidden');
+        }
+        
+        renderNavigator(); 
+    }
+}
+
+function createQuestionCard(q, index, showNumber = true) {
+    const block = document.createElement('div');
+    block.className = "test-question-block";
+    block.id = `q-card-${index}`;
+
+    if (testFlags[q._uid]) {
+        block.classList.add('is-flagged-card');
+    }
+
+    const isBookmarked = (currentMode === 'test') ? false : userBookmarks.includes(q._uid);
+    const isFlagged = testFlags[q._uid] || false;
+
+    const header = document.createElement('div');
+    header.className = "question-card-header";
+    header.innerHTML = `
+        <span class="q-number-tag">Question ${index + 1}</span>
+        <div class="q-actions">
+            <button class="action-icon-btn ${isBookmarked ? 'bookmark-active' : ''}" onclick="toggleBookmark('${q._uid}', this)" title="Save Question">
+                ${isBookmarked ? '⭐' : '☆'}
+            </button>
+            <button class="action-icon-btn ${isFlagged ? 'flag-active' : ''}" onclick="toggleFlag('${q._uid}', this, ${index})" title="Flag Question">
+                ${isFlagged ? '🚩' : '🏳️'}
+            </button>
+        </div>
+    `;
+    block.appendChild(header);
+
+    const qText = document.createElement('div');
+    qText.className = "test-q-text";
+    qText.innerHTML = q.Question || "Missing Text";
+    block.appendChild(qText);
+
+    const optionsDiv = document.createElement('div');
+    optionsDiv.className = "options-group";
+    optionsDiv.id = `opts-${index}`;
+
+    let rawOpts = [q.OptionA, q.OptionB, q.OptionC, q.OptionD, q.OptionE].filter(o => o && o.trim() !== "");
+
+    let normalOpts = [];
+    let bottomOpts = [];
+
+    rawOpts.forEach(opt => {
+        const lower = opt.toLowerCase();
+
+        if (lower.includes("all of") || lower.includes("none of") || lower.includes("of the above") || lower.includes("all the")) {
+            bottomOpts.push(opt);
+        } else {
+            normalOpts.push(opt);
+        }
+    });
+
+    let finalOpts = [...shuffleArray(normalOpts), ...bottomOpts];
+
+    finalOpts.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = "option-btn";
+        // The span ensures the text and the eye icon are separated correctly
+        btn.innerHTML = `<span class="opt-text">${opt}</span><span class="elim-eye">👁️</span>`;
+
+        btn.querySelector('.elim-eye').onclick = (e) => { 
+            e.stopPropagation(); 
+            btn.classList.toggle('eliminated'); 
+        };
+
+        btn.onclick = (e) => {
+            if (e.target.classList.contains('elim-eye')) return;
+            if (btn.classList.contains('eliminated')) btn.classList.remove('eliminated');
+            checkAnswer(opt, btn, q);
+        };
+
+        btn.addEventListener('contextmenu', (e) => { 
+            e.preventDefault(); 
+            btn.classList.toggle('eliminated'); 
+        });
+
+        if (typeof testAnswers !== 'undefined' && testAnswers[q._uid] === opt) {
+            btn.classList.add('selected');
+        }
+        
+        optionsDiv.appendChild(btn);
+    });
+
+    block.appendChild(optionsDiv);
+
+    return block;
+}
+
+function checkAnswer(selectedOption, btnElement, q) {
+    if (currentMode === 'test') {
+        testAnswers[q._uid] = selectedOption;
+        const container = btnElement.parentElement;
+        container.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+        btnElement.classList.add('selected');
+        renderNavigator();
+        return;
+    }
+
+    // PRACTICE MODE
+    let correctData = (q.CorrectAnswer || "").trim();
+    let userText = String(selectedOption).trim();
+    let isCorrect = false;
+
+    // Logic to check if answer matches (handles text vs option letters)
+    if (userText.toLowerCase() === correctData.toLowerCase()) isCorrect = true;
+    else {
+        const map = {'A': q.OptionA, 'B': q.OptionB, 'C': q.OptionC, 'D': q.OptionD, 'E': q.OptionE};
+        if (map[correctData] === userText) isCorrect = true;
+    }
+
+    if (isCorrect) {
+        btnElement.classList.remove('wrong');
+        btnElement.classList.add('correct');
+        
+        // ✅ NEW: Save using the Offline-Ready engine
+        updateUserStats(true, q.Subject || "General", q._uid);
+        
+        setTimeout(() => showExplanation(q), 300);
+    } else {
+        btnElement.classList.add('wrong');
+        
+        // ✅ NEW: Save using the Offline-Ready engine
+        updateUserStats(false, q.Subject || "General", q._uid);
+    }
+    
+    renderPracticeNavigator();
+}
 
 function reportCurrentQuestion() {
     if (!filteredQuestions || filteredQuestions.length === 0) return;
@@ -1933,6 +2213,89 @@ function reportCurrentQuestion() {
     if (currentQ) {
         openReportModal(currentQ._uid);
     }
+}
+
+function toggleFlag(uid, btn, index) {
+    const card = document.getElementById(`q-card-${index}`);
+    
+    if (testFlags[uid]) {
+        delete testFlags[uid];
+        if(btn) { 
+            btn.innerHTML = "🏳️"; 
+            btn.classList.remove('flag-active'); 
+        }
+        if(card) card.classList.remove('is-flagged-card');
+    } else {
+        testFlags[uid] = true;
+        if(btn) { 
+            btn.innerHTML = "🚩"; 
+            btn.classList.add('flag-active'); 
+        }
+        if(card) card.classList.add('is-flagged-card');
+    }
+    renderNavigator();
+}
+
+// ==========================================
+// FIX 2: QUESTION NAVIGATORS
+// ==========================================
+
+function renderNavigator() {
+    // Target the ID found in your HTML: <div id="nav-grid">
+    const nav = document.getElementById('nav-grid'); 
+    if (!nav) return;
+    nav.innerHTML = "";
+
+    filteredQuestions.forEach((q, idx) => {
+        const btn = document.createElement('button');
+        btn.className = "nav-btn"; // Ensure you have CSS for this class
+        btn.innerText = idx + 1;
+        
+        // Style styling based on state
+        if (currentIndex === idx) btn.classList.add('current');
+        if (testFlags[q._uid]) btn.classList.add('flagged');
+        if (testAnswers[q._uid]) btn.classList.add('answered');
+
+        btn.onclick = () => {
+            currentIndex = idx;
+            renderPage();
+        };
+        nav.appendChild(btn);
+    });
+}
+
+function renderPracticeNavigator() {
+    // Target the ID found in your HTML: <div id="practice-nav-container">
+    const nav = document.getElementById('practice-nav-container');
+    if (!nav) return;
+    
+    nav.classList.remove('hidden'); // Make sure it's visible
+    nav.innerHTML = "";
+
+    // In practice mode, we create a simple horizontal scroller or grid
+    filteredQuestions.forEach((q, idx) => {
+        const btn = document.createElement('button');
+        btn.className = "nav-btn";
+        btn.innerText = idx + 1;
+
+        if (currentIndex === idx) btn.classList.add('current');
+        
+        // Show Red/Green if previously attempted
+        if (userSolvedIDs.includes(q._uid)) {
+            btn.style.borderColor = "#10b981"; // Green
+            btn.style.color = "#10b981";
+        }
+        if (userMistakes.includes(q._uid)) {
+            btn.style.borderColor = "#ef4444"; // Red
+            btn.style.color = "#ef4444";
+        }
+
+        btn.onclick = () => {
+            currentIndex = idx;
+            renderPage();
+        };
+        nav.appendChild(btn);
+    });
 }
 
 // ======================================================
@@ -2677,20 +3040,20 @@ function deleteKey(id) {
 
 function showScreen(screenId) {
     const ids = [
-        'auth-screen', 'course-selection-screen', 'dashboard-screen', 
-        'quiz-screen', 'result-screen', 'admin-screen',
-        'explanation-modal', 'premium-modal', 'profile-modal', 
-        'analytics-modal', 'badges-modal', 
-        'study-modal' // <--- ADDED THIS (Fixes the stuck modal)
+        'auth-screen', 'course-selection-screen', 'dashboard-screen', 'quiz-screen', 'result-screen', 'admin-screen',
+        'explanation-modal', 'premium-modal', 'profile-modal', 'analytics-modal', 'badges-modal'
     ];
 
-    // 1. Hide Everything
+    // 1. Hide Everything & Clean Up "Ghosts"
     ids.forEach(id => {
         const el = document.getElementById(id);
         if(el) { 
             el.classList.add('hidden'); 
             el.classList.remove('active'); 
-            el.style.display = ''; // Clear inline styles
+            
+            // 🔥 NEW FIX: Clear inline styles for EVERYTHING. 
+            // This fixes the "Buy Subscription" modal getting stuck with 'display: none'
+            el.style.display = ''; 
         }
     });
     
@@ -3049,6 +3412,67 @@ function toggleTheme() {
     document.getElementById('theme-btn').innerText = isDark ? '🌙' : '☀️';
     localStorage.setItem('fcps-theme', isDark ? 'light' : 'dark');
 }
+
+// Ensure Search works
+const searchInput = document.getElementById('global-search');
+if (searchInput) {
+    searchInput.addEventListener('input', function(e) {
+        const term = e.target.value.toLowerCase().trim();
+        const resultsBox = document.getElementById('search-results');
+        
+        if (term.length < 3) {
+            resultsBox.style.display = 'none';
+            return;
+        }
+
+        const matches = allQuestions.filter(q => 
+            (q.Question && q.Question.toLowerCase().includes(term)) || 
+            (q.Topic && q.Topic.toLowerCase().includes(term))
+        ).slice(0, 10); 
+
+        if (matches.length === 0) {
+            resultsBox.style.display = 'none';
+            return;
+        }
+
+        resultsBox.innerHTML = '';
+        resultsBox.style.display = 'block';
+
+        matches.forEach(q => {
+            const div = document.createElement('div');
+            div.className = 'search-item';
+            div.innerHTML = `
+                <div style="font-weight:bold; color:#1e293b; font-size:13px;">${q.Topic || "General"}</div>
+                <div style="color:#64748b; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    ${q.Question.substring(0, 60)}...
+                </div>
+            `;
+            div.onclick = () => {
+                resultsBox.style.display = 'none';
+                document.getElementById('global-search').value = ""; 
+                startSingleQuestionPractice(q);
+            };
+            resultsBox.appendChild(div);
+        });
+    });
+}
+
+function startSingleQuestionPractice(question) {
+    filteredQuestions = [question]; 
+    currentMode = 'practice';
+    currentIndex = 0;
+    
+    showScreen('quiz-screen'); 
+    renderPage();
+    renderPracticeNavigator();
+}
+
+document.addEventListener('click', function(e) {
+    if (e.target.id !== 'global-search') {
+        const box = document.getElementById('search-results');
+        if(box) box.style.display = 'none';
+    }
+});
 
 // INITIAL LOAD THEME
 window.onload = () => {
@@ -3571,509 +3995,4 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
     } catch (e) {
         alert("Error: " + e.message);
     }
-}
-
-// ======================================================
-// 🔍 SEARCH & DASHBOARD LOGIC (MASTER FIX)
-// ======================================================
-
-function handleSearchInput() {
-    const input = document.getElementById('subject-search');
-    const term = input ? input.value : '';
-    renderSubjectGrid(term);
-}
-
-// 1. Render the Grid (Main Dashboard Cards)
-function renderSubjectGrid(filterText = '') {
-    const grid = document.getElementById('subject-grid');
-    if (!grid) return;
-    grid.innerHTML = '';
-
-    const searchText = filterText.toLowerCase().trim();
-    
-    // Safety check if data isn't loaded yet
-    if (!allQuestions || allQuestions.length === 0) {
-        grid.innerHTML = "<div style='text-align:center; padding:30px; color:#94a3b8;'>Loading questions...</div>";
-        return;
-    }
-
-    const subjects = [...new Set(allQuestions.map(q => q.Subject))].sort();
-    let hasResults = false;
-
-    subjects.forEach(sub => {
-        const subQuestions = allQuestions.filter(q => q.Subject === sub);
-        
-        // Search Filter Logic
-        const matchSubject = sub.toLowerCase().includes(searchText);
-        const matchTopic = subQuestions.some(q => (q.Topic || "").toLowerCase().includes(searchText));
-        const matchQ = subQuestions.some(q => (q.Question || "").toLowerCase().includes(searchText));
-
-        if (searchText && !matchSubject && !matchTopic && !matchQ) return;
-        hasResults = true;
-
-        const count = subQuestions.length;
-        
-        // Subject Progress
-        const safeSolvedIDs = (typeof userSolvedIDs !== 'undefined') ? userSolvedIDs : [];
-        const solvedCount = subQuestions.filter(q => safeSolvedIDs.includes(q._uid)).length;
-        const percent = count === 0 ? 0 : Math.round((solvedCount / count) * 100);
-
-        const card = document.createElement('div');
-        card.className = 'subject-card';
-        card.style.cssText = "background:white; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:15px; box-shadow:0 2px 4px rgba(0,0,0,0.02); cursor:pointer; transition:transform 0.2s;";
-        
-        card.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:12px;">
-                <h3 style="margin:0; font-size:16px; font-weight:700; color:#1e293b;">${sub}</h3>
-                <span style="font-size:11px; font-weight:700; color:#059669; background:#d1fae5; padding:4px 10px; border-radius:20px;">
-                    ${solvedCount} / ${count}
-                </span>
-            </div>
-            <div style="background:#f1f5f9; height:8px; border-radius:4px; overflow:hidden;">
-                <div style="width:${percent}%; background:#10b981; height:100%; transition:width 0.3s ease;"></div>
-            </div>
-        `;
-        
-        card.onclick = () => openSubjectModal(sub);
-        grid.appendChild(card);
-    });
-
-    if(!hasResults) {
-        grid.innerHTML = "<div style='text-align:center; padding:30px; color:#94a3b8;'>No subjects found.</div>";
-    }
-}
-
-// 2. Open Subject Modal
-function openSubjectModal(subject) {
-    selectedSubjectForModal = subject;
-    selectedExamTopics = [];
-
-    const modal = document.getElementById('study-modal');
-    document.getElementById('modal-subject-title').innerText = subject;
-
-    const subjectQs = allQuestions.filter(q => q.Subject === subject);
-    const topics = [...new Set(subjectQs.map(q => q.Topic))].sort();
-
-    // Stats
-    const safeSolvedIDs = (typeof userSolvedIDs !== 'undefined') ? userSolvedIDs : [];
-    const subjSolved = subjectQs.filter(q => safeSolvedIDs.includes(q._uid)).length;
-    const subjTotal = subjectQs.length;
-    const subjPct = subjTotal === 0 ? 0 : Math.round((subjSolved / subjTotal) * 100);
-
-    const list = document.getElementById('modal-topic-list');
-    const actions = document.getElementById('modal-actions-area');
-    const settings = document.getElementById('exam-settings-area');
-    const footer = document.getElementById('modal-footer');
-    const subtitle = document.getElementById('modal-mode-subtitle');
-
-    list.innerHTML = '';
-    actions.innerHTML = '';
-
-    // Reset Exam Button
-    const startBtn = footer.querySelector('button');
-    if(startBtn) {
-        startBtn.onclick = startExamFromModal;
-        startBtn.innerText = "Start Exam";
-    }
-
-    if (currentMode === 'practice') {
-        // 🟢 PRACTICE MODE
-        subtitle.innerText = "Select a topic to start immediately.";
-        settings.classList.add('hidden');
-        footer.style.display = 'none'; 
-
-        // Practice All Button
-        const btnAll = document.createElement('button');
-        btnAll.style.cssText = "width:100%; text-align:left; background:linear-gradient(135deg, #10b981 0%, #059669 100%); color:white; border:none; padding:15px; border-radius:12px; margin-bottom:20px; box-shadow:0 4px 6px rgba(16, 185, 129, 0.2); cursor:pointer;";
-        btnAll.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <span style="font-weight:bold; font-size:15px;">Practice Entire Subject</span>
-                <span style="background:rgba(255,255,255,0.2); font-size:12px; padding:3px 8px; border-radius:12px; font-weight:600;">${subjSolved} / ${subjTotal}</span>
-            </div>
-            <div style="background:rgba(0,0,0,0.2); height:6px; border-radius:3px; overflow:hidden;">
-                <div style="width:${subjPct}%; background:white; height:100%;"></div>
-            </div>
-        `;
-        btnAll.onclick = () => {
-            closeStudyModal();
-            startPractice(subject, null); 
-        };
-        actions.appendChild(btnAll);
-
-        // Topic List
-        topics.forEach(topic => {
-            const topQs = subjectQs.filter(q => q.Topic === topic);
-            const topTotal = topQs.length;
-            const topSolved = topQs.filter(q => safeSolvedIDs.includes(q._uid)).length;
-            const topPct = topTotal === 0 ? 0 : Math.round((topSolved / topTotal) * 100);
-
-            const row = document.createElement('div');
-            row.style.cssText = "background:white; border:1px solid #f1f5f9; border-radius:10px; padding:12px 15px; margin-bottom:10px; cursor:pointer; transition:all 0.1s;";
-            row.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <span style="font-weight:600; color:#334155; font-size:14px;">${topic}</span>
-                    <span style="font-size:11px; font-weight:700; color:#0f766e; background:#ccfbf1; padding:3px 8px; border-radius:12px;">${topSolved} / ${topTotal}</span>
-                </div>
-                <div style="background:#f1f5f9; height:5px; border-radius:3px; overflow:hidden; width:100%;">
-                     <div style="width:${topPct}%; background:#10b981; height:100%;"></div>
-                </div>
-            `;
-            row.onclick = () => {
-                closeStudyModal();
-                startPractice(subject, topic);
-            };
-            list.appendChild(row);
-        });
-
-    } else {
-        // 🔵 EXAM MODE
-        subtitle.innerText = "Select topics to include in your exam.";
-        settings.classList.remove('hidden');
-        footer.style.display = 'block';
-
-        const selectAllDiv = document.createElement('div');
-        selectAllDiv.innerHTML = `
-            <div style="padding:12px; display:flex; align-items:center; gap:12px; background:#f8fafc; border-radius:8px; margin-bottom:15px; border:1px solid #e2e8f0;">
-                <input type="checkbox" id="chk-select-all" onchange="toggleSelectAllTopics(this)" style="width:18px; height:18px; cursor:pointer;"> 
-                <label for="chk-select-all" style="font-weight:bold; color:#1e293b; font-size:14px; cursor:pointer;">Select All '${subject}' Topics</label>
-            </div>
-        `;
-        actions.appendChild(selectAllDiv);
-
-        topics.forEach(topic => {
-            const row = document.createElement('div');
-            row.style.cssText = "padding:12px; border-bottom:1px solid #f1f5f9; cursor:pointer; font-size:14px; color:#334155; display:flex; align-items:center;";
-            row.innerText = topic;
-            row.onclick = () => {
-                row.classList.toggle('selected');
-                if (row.classList.contains('selected')) {
-                    row.style.background = "#eff6ff"; row.style.color = "#1d4ed8"; row.style.fontWeight = "bold";
-                    if(!selectedExamTopics.includes(topic)) selectedExamTopics.push(topic);
-                } else {
-                    row.style.background = "transparent"; row.style.color = "#334155"; row.style.fontWeight = "normal";
-                    selectedExamTopics = selectedExamTopics.filter(t => t !== topic);
-                }
-                document.getElementById('chk-select-all').checked = false;
-            };
-            list.appendChild(row);
-        });
-    }
-    modal.classList.remove('hidden');
-}
-
-function toggleSelectAllTopics(checkbox) {
-    const rows = document.getElementById('modal-topic-list').children;
-    const allTopics = [...new Set(allQuestions.filter(q => q.Subject === selectedSubjectForModal).map(q => q.Topic))];
-
-    if (checkbox.checked) {
-        Array.from(rows).forEach(r => {
-            r.classList.add('selected'); r.style.background = "#eff6ff"; r.style.color = "#1d4ed8"; r.style.fontWeight = "bold";
-        });
-        selectedExamTopics = allTopics;
-    } else {
-        Array.from(rows).forEach(r => {
-            r.classList.remove('selected'); r.style.background = "transparent"; r.style.color = "#334155"; r.style.fontWeight = "normal";
-        });
-        selectedExamTopics = [];
-    }
-}
-
-function closeStudyModal() {
-    document.getElementById('study-modal').classList.add('hidden');
-}
-
-// ======================================================
-// 🚀 START LOGIC (LINKING DASHBOARD TO QUIZ)
-// ======================================================
-
-function startPractice(subject, topic) {
-    // 1. Filter Questions
-    let pool = allQuestions.filter(q => q.Subject === subject);
-    if (topic) pool = pool.filter(q => q.Topic === topic);
-
-    // 2. Handle Limits (Guest/Free)
-    const isAdmin = userProfile && userProfile.role === 'admin';
-    const premKey = (typeof getStoreKey === 'function') ? getStoreKey('isPremium') : 'isPremium';
-    const expKey = (typeof getStoreKey === 'function') ? getStoreKey('expiryDate') : 'expiryDate';
-    const isPrem = userProfile && userProfile[premKey] && isDateActive(userProfile[expKey]);
-
-    let limit = 50; // Default Free
-    if (isAdmin || isPrem) limit = Infinity;
-    else if (isGuest) limit = 20;
-
-    if (pool.length > limit) pool = pool.slice(0, limit);
-
-    if (pool.length === 0) return alert("No questions available.");
-
-    // 3. Unattempted Check
-    const onlyUnattempted = document.getElementById('unattempted-only') ? document.getElementById('unattempted-only').checked : false;
-    if (onlyUnattempted && typeof userSolvedIDs !== 'undefined') {
-        pool = pool.filter(q => !userSolvedIDs.includes(q._uid));
-        if (pool.length === 0) return alert("🎉 You have solved all available free questions!");
-    }
-
-    // 4. Launch Quiz
-    filteredQuestions = pool;
-    currentMode = 'practice';
-    currentIndex = 0;
-    
-    // Switch Screen
-    showScreen('quiz-screen');
-    renderPage(); // <--- THIS IS THE KEY FUNCTION
-}
-
-function startExamFromModal() {
-    const countInput = document.getElementById('new-exam-q-count').value;
-    const minsInput = document.getElementById('new-exam-timer').value;
-    if (selectedExamTopics.length === 0) return alert("Select at least one topic.");
-
-    let pool = allQuestions.filter(q => q.Subject === selectedSubjectForModal && selectedExamTopics.includes(q.Topic));
-    
-    const unattemptedOnly = document.getElementById('unattempted-only').checked;
-    if (unattemptedOnly && typeof userSolvedIDs !== 'undefined') pool = pool.filter(q => !userSolvedIDs.includes(q._uid));
-    if (pool.length === 0) return alert("No questions available.");
-
-    let finalCount = parseInt(countInput) || 20;
-    filteredQuestions = pool.sort(() => Math.random() - 0.5).slice(0, finalCount);
-    
-    closeStudyModal();
-    currentMode = 'test';
-    currentIndex = 0;
-    testAnswers = {};
-    testFlags = {};
-    testTimeRemaining = parseInt(minsInput) * 60;
-    
-    showScreen('quiz-screen');
-    renderPage();
-    
-    clearInterval(testTimer);
-    testTimer = setInterval(updateTimer, 1000);
-}
-
-// ======================================================
-// 8. QUIZ ENGINE (DISPLAY LOGIC)
-// ======================================================
-
-function renderPage() {
-    const container = document.getElementById('quiz-content-area');
-    if (!container) return console.error("❌ Error: #quiz-content-area missing HTML");
-    
-    container.innerHTML = "";
-    window.scrollTo(0, 0);
-
-    // Sidebar & Timer Logic
-    const timerDisplay = document.getElementById('timer');
-    const sidebar = document.getElementById('test-sidebar');
-    if(currentMode === 'practice') {
-        if(timerDisplay) timerDisplay.classList.add('hidden');
-        if(sidebar) sidebar.classList.remove('active');
-        if(typeof renderPracticeNavigator === 'function') renderPracticeNavigator();
-    } else {
-        if(timerDisplay) timerDisplay.classList.remove('hidden');
-        if(sidebar) sidebar.classList.add('active');
-        if(typeof renderNavigator === 'function') renderNavigator();
-    }
-
-    // Buttons Logic
-    const prevBtn = document.getElementById('prev-btn');
-    const nextBtn = document.getElementById('next-btn');
-    const submitBtn = document.getElementById('submit-btn');
-
-    if(prevBtn) prevBtn.classList.toggle('hidden', currentIndex === 0);
-    
-    const isLast = currentIndex === filteredQuestions.length - 1;
-    if(nextBtn) nextBtn.classList.toggle('hidden', isLast);
-    
-    if(submitBtn) {
-        submitBtn.classList.toggle('hidden', !(currentMode === 'test' && isLast));
-    }
-
-    // Render Card
-    if (filteredQuestions[currentIndex]) {
-        const card = createQuestionCard(filteredQuestions[currentIndex], currentIndex);
-        container.appendChild(card);
-    } else {
-        container.innerHTML = "<div style='padding:20px;'>Error: Question not found.</div>";
-    }
-}
-
-function createQuestionCard(q, index, showNumber = true) {
-    const block = document.createElement('div');
-    block.className = "test-question-block";
-    block.id = `q-card-${index}`;
-
-    // ✅ SAFEGUARDS: Prevent crash if arrays are undefined
-    const safeFlags = (typeof testFlags !== 'undefined' && testFlags) ? testFlags : {};
-    const safeBookmarks = (typeof userBookmarks !== 'undefined' && Array.isArray(userBookmarks)) ? userBookmarks : [];
-    const safeSolved = (typeof userSolvedIDs !== 'undefined' && Array.isArray(userSolvedIDs)) ? userSolvedIDs : [];
-
-    if (safeFlags[q._uid]) {
-        block.classList.add('is-flagged-card');
-    }
-
-    const isBookmarked = (currentMode === 'test') ? false : safeBookmarks.includes(q._uid);
-    const isFlagged = safeFlags[q._uid] || false;
-
-    const header = document.createElement('div');
-    header.className = "question-card-header";
-    header.innerHTML = `
-        <span class="q-number-tag">Question ${index + 1}</span>
-        <div class="q-actions">
-            <button class="action-icon-btn ${isBookmarked ? 'bookmark-active' : ''}" onclick="toggleBookmark('${q._uid}', this)" title="Save Question">
-                ${isBookmarked ? '⭐' : '☆'}
-            </button>
-            <button class="action-icon-btn ${isFlagged ? 'flag-active' : ''}" onclick="toggleFlag('${q._uid}', this, ${index})" title="Flag Question">
-                ${isFlagged ? '🚩' : '🏳️'}
-            </button>
-        </div>
-    `;
-    block.appendChild(header);
-
-    const qText = document.createElement('div');
-    qText.className = "test-q-text";
-    qText.innerHTML = q.Question || "Missing Text";
-    block.appendChild(qText);
-
-    const optionsDiv = document.createElement('div');
-    optionsDiv.className = "options-group";
-    optionsDiv.id = `opts-${index}`;
-
-    let rawOpts = [q.OptionA, q.OptionB, q.OptionC, q.OptionD, q.OptionE].filter(o => o && o.trim() !== "");
-
-    let normalOpts = [];
-    let bottomOpts = [];
-
-    rawOpts.forEach(opt => {
-        const lower = opt.toLowerCase();
-        if (lower.includes("all of") || lower.includes("none of") || lower.includes("of the above") || lower.includes("all the")) {
-            bottomOpts.push(opt);
-        } else {
-            normalOpts.push(opt);
-        }
-    });
-
-    let finalOpts = [...shuffleArray(normalOpts), ...bottomOpts];
-
-    finalOpts.forEach(opt => {
-        const btn = document.createElement('button');
-        btn.className = "option-btn";
-        btn.innerHTML = `<span class="opt-text">${opt}</span><span class="elim-eye">👁️</span>`;
-
-        btn.querySelector('.elim-eye').onclick = (e) => { 
-            e.stopPropagation(); 
-            btn.classList.toggle('eliminated'); 
-        };
-
-        btn.onclick = (e) => {
-            if (e.target.classList.contains('elim-eye')) return;
-            if (btn.classList.contains('eliminated')) btn.classList.remove('eliminated');
-            checkAnswer(opt, btn, q);
-        };
-
-        btn.addEventListener('contextmenu', (e) => { 
-            e.preventDefault(); 
-            btn.classList.toggle('eliminated'); 
-        });
-
-        // Safe check for testAnswers
-        if (typeof testAnswers !== 'undefined' && testAnswers && testAnswers[q._uid] === opt) {
-            btn.classList.add('selected');
-        }
-        
-        optionsDiv.appendChild(btn);
-    });
-
-    block.appendChild(optionsDiv);
-    return block;
-}
-
-
-function toggleFlag(uid, btn, idx) {
-    if(testFlags[uid]) delete testFlags[uid]; else testFlags[uid] = true;
-    renderPage(); 
-}
-
-
-function checkAnswer(selected, btn, q) {
-    if (currentMode === 'test') {
-        testAnswers[q._uid] = selected;
-        Array.from(btn.parentElement.children).forEach(b => {
-            b.style.background = "white"; b.style.borderColor = "#cbd5e1";
-        });
-        btn.style.background = "#eff6ff"; btn.style.borderColor = "#3b82f6";
-        renderNavigator();
-        return;
-    }
-
-    // Practice Mode Logic
-    let correct = (q.CorrectAnswer || "").trim();
-    let isCorrect = false;
-    
-    if (selected.toLowerCase() === correct.toLowerCase()) isCorrect = true;
-    else {
-        const getOpt = (k) => q[k] || q[k.replace("Option", "Option ")];
-        const map = {'A': getOpt('OptionA'), 'B': getOpt('OptionB'), 'C': getOpt('OptionC'), 'D': getOpt('OptionD'), 'E': getOpt('OptionE')};
-        if (map[correct] === selected) isCorrect = true;
-    }
-
-    if (isCorrect) {
-        btn.style.background = "#dcfce7"; btn.style.borderColor = "#22c55e"; btn.style.color = "#14532d";
-        if(typeof updateUserStats === 'function') updateUserStats(true, q.Subject, q._uid);
-        showExplanation(q);
-    } else {
-        btn.style.background = "#fee2e2"; btn.style.borderColor = "#ef4444"; btn.style.color = "#7f1d1d";
-        if(typeof updateUserStats === 'function') updateUserStats(false, q.Subject, q._uid);
-    }
-    renderPracticeNavigator();
-}
-
-function renderNavigator() {
-    const nav = document.getElementById('nav-grid');
-    if(!nav) return;
-    nav.innerHTML = "";
-    filteredQuestions.forEach((q, idx) => {
-        const btn = document.createElement('button');
-        btn.innerText = idx + 1;
-        btn.style.cssText = "width:35px; height:35px; border:1px solid #ccc; border-radius:4px; cursor:pointer; background:white; margin:2px;";
-        if(currentIndex === idx) btn.style.border = "2px solid black";
-        if(testAnswers[q._uid]) { btn.style.background = "#3b82f6"; btn.style.color="white"; btn.style.border="none"; }
-        btn.onclick = () => { currentIndex = idx; renderPage(); };
-        nav.appendChild(btn);
-    });
-}
-
-function renderPracticeNavigator() {
-    const nav = document.getElementById('practice-nav-container');
-    if (!nav) return; // Stop if HTML element is missing
-    
-    nav.classList.remove('hidden'); 
-    nav.innerHTML = "";
-
-    // ✅ SAFEGUARDS: Ensure arrays exist
-    const safeSolved = (typeof userSolvedIDs !== 'undefined' && Array.isArray(userSolvedIDs)) ? userSolvedIDs : [];
-    const safeMistakes = (typeof userMistakes !== 'undefined' && Array.isArray(userMistakes)) ? userMistakes : [];
-
-    filteredQuestions.forEach((q, idx) => {
-        const btn = document.createElement('button');
-        btn.className = "nav-btn";
-        btn.innerText = idx + 1;
-
-        if (currentIndex === idx) btn.classList.add('current');
-        
-        // Use safe arrays
-        if (safeSolved.includes(q._uid)) {
-            btn.style.borderColor = "#10b981"; // Green
-            btn.style.color = "#10b981";
-        }
-        if (safeMistakes.includes(q._uid)) {
-            btn.style.borderColor = "#ef4444"; // Red
-            btn.style.color = "#ef4444";
-        }
-
-        btn.onclick = () => {
-            currentIndex = idx;
-            renderPage();
-        };
-        nav.appendChild(btn);
-    });
 }
