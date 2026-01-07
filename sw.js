@@ -1,65 +1,75 @@
-const CACHE_NAME = "edeetos-v38"; // Changed name to force update
+const CACHE_NAME = "edeetos-v39"; // Bump version to force update
+
+// Only local, guaranteed assets
 const ASSETS_TO_CACHE = [
-  "./",                // The root folder
-  "./index.html",      // The main file
-  "./style.css",       // Styles
-  "./script.js",       // Logic
-  "./manifest.json",   // PWA Settings
-  "./favicon.png",     // Icon
-  // External Library (Must be exact URL)
-  "https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"
+  "/",
+  "/index.html",
+  "/style.css",
+  "/script.js",
+  "/manifest.json",
+  "/favicon.png"
 ];
 
-// 1. INSTALL: Cache everything immediately
+// -------------------------------
+// 1. INSTALL
+// -------------------------------
 self.addEventListener("install", (event) => {
-  self.skipWaiting(); // Force this new SW to become active instantly
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log("[SW] Caching all assets...");
-      return cache.addAll(ASSETS_TO_CACHE);
-    })
-  );
+  self.skipWaiting();
+
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      console.log("[SW] Installing & caching core assets");
+      return cache.addAll(ASSETS_TO_CACHE);
+    })
+  );
 });
 
-// 2. ACTIVATE: Clean up old caches
+// -------------------------------
+// 2. ACTIVATE
+// -------------------------------
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((keyList) => {
-      return Promise.all(
-        keyList.map((key) => {
-          if (key !== CACHE_NAME) {
-            console.log("[SW] Deleting old cache:", key);
-            return caches.delete(key);
-          }
-        })
-      );
-    })
-  );
-  return self.clients.claim(); // Take control of the page immediately
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys
+          .filter((key) => key !== CACHE_NAME)
+          .map((key) => {
+            console.log("[SW] Removing old cache:", key);
+            return caches.delete(key);
+          })
+      );
+    })
+  );
+
+  self.clients.claim();
 });
 
-// 3. FETCH: Network-First Strategy
-// This tells the browser: "Check the internet first for the newest code."
+// -------------------------------
+// 3. FETCH (Network First)
+// -------------------------------
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
-        // If we have internet, update the cache with the fresh file
-        return caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, networkResponse.clone());
-          return networkResponse;
-        });
+        // Cache only same-origin files
+        if (event.request.url.startsWith(self.location.origin)) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+        }
+        return networkResponse;
       })
       .catch(() => {
-        // If internet is down, use the saved version from cache
+        // Offline fallback
         return caches.match(event.request).then((cachedResponse) => {
           if (cachedResponse) return cachedResponse;
-          
-          // If offline and moving between pages, return the cached index.html
-          if (event.request.mode === 'navigate') {
-            return caches.match('./index.html');
+
+          // SPA / navigation fallback
+          if (event.request.mode === "navigate") {
+            return caches.match("/index.html");
           }
         });
       })
