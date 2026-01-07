@@ -1871,7 +1871,7 @@ function setMode(mode) {
 }
 
 function startPractice(subject, topic) {
-    // 1. Get ALL questions for this Subject (Ignore Topic for now)
+    // 1. Get ALL questions for this Subject
     let subjectPool = allQuestions.filter(q => q.Subject === subject);
     console.log(`[StartPractice] Raw Subject Pool: ${subjectPool.length}`);
 
@@ -1896,7 +1896,6 @@ function startPractice(subject, topic) {
     }
 
     // 4. 🔥 GLOBAL LIMIT LOGIC (Round-Robin)
-    // We create a "Free Sample" of the entire subject BEFORE filtering by topic.
     if (subjectPool.length > limit) {
         console.log(`[StartPractice] Creating Balanced Sample of ${limit} for ${userType}`);
         
@@ -1953,21 +1952,21 @@ function startPractice(subject, topic) {
         pool = subjectPool;
     }
 
-    // 6. Handle Empty Pool (e.g. Topic exists in DB but not in the Sample)
+    // 6. Handle Empty Pool
     if (pool.length === 0) {
+        // Check if the topic actually exists in the full DB (not just sample)
         const topicExists = allQuestions.some(q => q.Subject === subject && q.Topic === topic);
         
         if (topicExists && limit !== Infinity) {
-             // Smart Alert: Tell them the topic exists but is blocked
-             return alert(`🔒 Premium Content\n\n${userType} users get a sample of ${limit} questions from the entire ${subject} course.\n\nQuestions for '${topic}' happen to fall outside this free sample.\n\nUpgrade to Premium to unlock everything!`);
+             return alert(`🔒 Premium Content\n\n${userType} users get a sample of ${limit} questions.\n\nQuestions for '${topic}' happen to fall outside this free sample.\n\nUpgrade to Premium to unlock everything!`);
         } else {
              return alert("No questions available.");
         }
     }
 
     // 7. Handle "Unattempted Only"
-    const onlyUnattempted = document.getElementById('unattempted-only').checked;
-    if (onlyUnattempted) {
+    const unattemptedEl = document.getElementById('unattempted-only');
+    if (unattemptedEl && unattemptedEl.checked) {
         pool = pool.filter(q => !userSolvedIDs.includes(q._uid));
         if (pool.length === 0) return alert("You have solved all available free questions in this section!");
     }
@@ -1975,7 +1974,9 @@ function startPractice(subject, topic) {
     // 8. Launch Quiz
     filteredQuestions = pool;
     let startIndex = 0;
-    if (!onlyUnattempted) {
+    
+    // Auto-jump to first unattempted question if in normal mode
+    if (!unattemptedEl || !unattemptedEl.checked) {
         startIndex = filteredQuestions.findIndex(q => !userSolvedIDs.includes(q._uid));
         if (startIndex === -1) startIndex = 0;
     }
@@ -1984,9 +1985,19 @@ function startPractice(subject, topic) {
     isMistakeReview = false;
     currentIndex = startIndex;
 
+    // Hide Timer for Practice Mode
+    const timerEl = document.getElementById('timer');
+    if(timerEl) timerEl.classList.add('hidden');
+
     showScreen('quiz-screen');
     renderPage();
-    renderPracticeNavigator();
+    
+    // ✅ SAFETY CHECK: Call the standard navigator
+    if (typeof renderPracticeNavigator === 'function') {
+        renderPracticeNavigator();
+    } else {
+        renderNavigator();
+    }
 }
 
 function startMistakePractice() {
@@ -4058,4 +4069,5 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
 
