@@ -740,41 +740,31 @@ async function updateUserStats(isCorrect, subject, questionUID) {
 
     // ============================================================
     // ✅ 4.5. CRITICAL FIX: SYNC LIVE GLOBAL VARIABLES
-    // This makes the Navigator change color WITHOUT refreshing
     // ============================================================
     
     // A. Sync Solved (Green)
-    // We check if the global array exists, then update it
     if (typeof userSolvedIDs !== 'undefined' && !userSolvedIDs.includes(questionUID)) {
         userSolvedIDs.push(questionUID);
     }
 
     // B. Sync Mistakes (Red)
     if (!isCorrect) {
-        // Database Object
         if (!userProfile[mistakesKey].includes(questionUID)) {
             userProfile[mistakesKey].push(questionUID);
         }
-        // ✅ Live Global Variable (Updates Navigator Red)
         if (typeof userMistakes !== 'undefined' && !userMistakes.includes(questionUID)) {
             userMistakes.push(questionUID);
         }
     } else {
         // If Correct...
         if (isMistakeReview === true) {
-            // Remove from Database Object
             userProfile[mistakesKey] = userProfile[mistakesKey].filter(id => id !== questionUID);
-            
-            // ✅ Remove from Live Global Variable
             if (typeof userMistakes !== 'undefined') {
                 const idx = userMistakes.indexOf(questionUID);
                 if (idx > -1) userMistakes.splice(idx, 1);
             }
         }
-        // Normal Mode: We do nothing (It stays in history)
     }
-    // ============================================================
-
 
     // 5. Save to Phone Memory
     localStorage.setItem('cached_user_profile', JSON.stringify(userProfile));
@@ -790,11 +780,9 @@ async function updateUserStats(isCorrect, subject, questionUID) {
         console.log("⚠️ Saved locally (Queueing for Cloud)");
     }
 
-    // 7. 🔥 OPTIONAL: INSTANT UI PAINT
-    // If you want the button to change color instantly before any other logic runs:
+    // 7. 🔥 THE FIX IS HERE: Used 'currentIndex' instead of 'currentQuestionIndex'
     try {
-        // Assuming your navigator buttons have IDs like 'nav-btn-0', 'nav-btn-1'
-        const navBtn = document.getElementById(`nav-btn-${currentQuestionIndex}`);
+        const navBtn = document.getElementById(`nav-btn-${currentIndex}`);
         if(navBtn) {
             if(isCorrect) {
                 navBtn.classList.add('solved');
@@ -2717,57 +2705,41 @@ function openAdminPanel() {
         return alert("⛔ Access Denied: Admins only.");
     }
 
-    // 2. 🔥 THE GHOST BUSTER: Force Hide ALL Known Containers by ID
-    // We list every single ID that could possibly take up space
+    // 2. Force Hide Everything (Ghost Buster)
     const idsToHide = [
-        'auth-screen', 
-        'course-selection-screen', 
-        'dashboard-screen', 
-        'quiz-screen', 
-        'result-screen', 
-        'main-menu-container',   
-        'mbbs-years-container',  
-        'test-sidebar', 
-        'practice-nav-container',
-        'premium-modal',
-        'explanation-modal',
-        'topic-selection-modal' // <--- ✅ ADDED THIS LINE (Safety Fix)
+        'auth-screen', 'course-selection-screen', 'dashboard-screen', 
+        'quiz-screen', 'result-screen', 'main-menu-container', 
+        'mbbs-years-container', 'test-sidebar', 'practice-nav-container',
+        'premium-modal', 'explanation-modal', 'topic-selection-modal'
     ];
 
     idsToHide.forEach(id => {
         const el = document.getElementById(id);
         if(el) {
-            el.style.display = 'none';       // Force CSS hide
-            el.classList.add('hidden');      // Add utility class
-            el.classList.remove('active');   // Remove active state
+            el.style.display = 'none';       
+            el.classList.add('hidden');      
+            el.classList.remove('active');   
         }
     });
 
-    // 3. Hide generic screens just in case we missed one
-    document.querySelectorAll('.screen').forEach(s => {
-        s.style.display = 'none';
-        s.classList.add('hidden');
-    });
-
-    // 4. PREPARE ADMIN SCREEN
+    // 3. Force Show Admin Screen
     const adminScreen = document.getElementById('admin-screen');
     if (!adminScreen) return alert("❌ Error: 'admin-screen' ID missing in HTML.");
     
-    // Reset Admin Screen Styles
     adminScreen.classList.remove('hidden');
     adminScreen.classList.add('active');
     adminScreen.style.display = 'block'; 
-    adminScreen.style.marginTop = "0px"; // Ensure no top margin issues
+    adminScreen.style.marginTop = "0px";
     adminScreen.style.paddingTop = "20px";
 
-    // 5. FORCE SHOW 'USERS' TAB
+    // 4. Force Show 'Users' Tab
     const userTab = document.getElementById('tab-users');
     if (userTab) {
         userTab.classList.remove('hidden');
         userTab.style.display = 'block'; 
     }
 
-    // 6. Hide other admin tabs
+    // 5. Hide other admin tabs
     ['tab-reports', 'tab-payments', 'tab-keys'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -2776,27 +2748,37 @@ function openAdminPanel() {
         }
     });
 
-    // 7. Update Buttons
-    document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
-    const buttons = document.querySelectorAll('.admin-tab');
-    buttons.forEach(btn => {
-        if(btn.innerText.includes('Users') || (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes('users'))) {
-            btn.classList.add('active');
-        }
-    });
+    // 6. Update Buttons (Wrapped in try-catch for safety)
+    try {
+        document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
+        const buttons = document.querySelectorAll('.admin-tab');
+        buttons.forEach(btn => {
+            if(btn.innerText.includes('Users') || (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes('users'))) {
+                btn.classList.add('active');
+            }
+        });
+    } catch(e) { console.log("Button update error", e); }
 
-    // 8. 🚀 FINAL SCROLL FORCE
+    // 7. Scroll to top
     setTimeout(() => {
         window.scrollTo(0, 0);
-        document.body.scrollTop = 0; // For Safari
-        document.documentElement.scrollTop = 0; // For Chrome/Firefox
     }, 10);
 
-    // 9. Load Data
-    if (typeof adminUsersCache !== 'undefined') adminUsersCache = null; // Clear old cache
-    loadAllUsers();
+    // 8. Load Data (SAFELY)
+    // If this fails, the panel will STILL be open, so you can see the error.
+    if (typeof adminUsersCache !== 'undefined') adminUsersCache = null; 
+    
+    try {
+        if(typeof loadAllUsers === 'function') {
+            loadAllUsers();
+        } else {
+            console.error("loadAllUsers function is missing!");
+        }
+    } catch(e) { 
+        console.error("Data load error", e); 
+        alert("⚠️ Admin Panel Opened, but data failed to load.\nCheck Console for details.");
+    }
 }
-
 // 2. TAB SWITCHER (Standard Logic)
 function switchAdminTab(tabName) {
     console.log("🔄 Switching to tab:", tabName);
@@ -4071,6 +4053,7 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
 
 
 
