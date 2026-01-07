@@ -169,57 +169,81 @@
 
     </div>
 
-<div class="panel" id="study-panel" style="padding: 0; background: transparent; box-shadow: none;">
+<div class="panel" id="study-panel">
+    <h3>📚 Study Session</h3>
     
-    <div class="premium-card" style="margin:0; width:100%; max-width:100%; border:none; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-        <div class="premium-header" style="background: white; border-bottom: 1px solid #f1f5f9; border-radius: 12px 12px 0 0; padding: 20px;">
-            <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:15px;">
-                <span style="font-size:24px;">📚</span>
-                <h2 class="premium-title" style="margin:0; font-size: 20px;">Study Session</h2>
-            </div>
-            
-            <div class="search-box" style="position: relative; z-index: 100;">
-                <span class="search-icon">🔍</span>
-                <input type="text" id="subject-search" placeholder="Search topics or questions..." onkeyup="handleSearchInput()" autocomplete="off">
-                
-                <div id="search-results" class="search-results-list" style="display:none;"></div>
-            </div>
+    <div class="search-container" style="margin-bottom: 15px; position: relative;">
+        <input type="text" id="global-search" placeholder="🔍 Search specific topics..." style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box;">
+        <div id="search-results" class="search-results-list"></div>
+    </div>
 
-            <div class="mode-toggle-container">
-                <button onclick="setMode('practice')" class="mode-btn active" id="btn-mode-practice">
-                    Practice
-                </button>
-                <button onclick="setMode('test')" class="mode-btn" id="btn-mode-test">
-                    Exam Mode
-                </button>
-            </div>
+    <div class="tabs">
+        <button class="tab-btn active" onclick="setMode('practice')">Practice</button>
+        <button class="tab-btn" onclick="setMode('test')">Exam Mode</button>
+    </div>
 
-            <div id="multi-exam-controls" class="hidden" style="margin-bottom: 15px;">
-                <button onclick="openMultiSubjectModal()" class="practice-all-btn" style="background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; margin:0;">
-                    ➕ Create Multi-Subject Exam
-                </button>
+    <div id="test-settings" class="hidden">
+        
+        <div style="display:flex; gap:15px; margin-bottom:15px;">
+            <div style="flex:1;">
+                <label style="color:#64748b; font-size:11px; font-weight:700; display:block; margin-bottom:5px; text-transform:uppercase;">Questions</label>
+                <input type="number" id="q-count" value="20" class="glass-input-field">
             </div>
-
-            <div style="margin-top: 5px; display: flex; align-items: center; gap: 10px; padding: 0 5px;">
-                <input type="checkbox" id="unattempted-only" style="width: 18px; height: 18px; cursor: pointer; accent-color: #10b981;">
-                <label for="unattempted-only" style="font-size: 14px; font-weight: 600; color: #334155; cursor: pointer;">
-                    Show Unattempted Only
-                </label>
+            <div style="flex:1;">
+                <label style="color:#64748b; font-size:11px; font-weight:700; display:block; margin-bottom:5px; text-transform:uppercase;">Minutes</label>
+                <input type="number" id="t-limit" value="30" class="glass-input-field">
             </div>
-
-            <input type="hidden" id="q-count" value="20">
-            <input type="hidden" id="t-limit" value="30">
         </div>
 
-        <div class="premium-scroll-area" style="background: #f8fafc; min-height: 200px; padding:15px; border-radius: 0 0 12px 12px;">
-            <div class="subject-grid" id="subject-grid">
-                <p style="text-align:center; color:#94a3b8; padding:20px;">Loading Subjects...</p>
-            </div>
+        <div class="glass-toggle-row" style="margin-bottom: 15px;">
+            <label class="glass-checkbox-label">
+                <input type="checkbox" id="single-subject-mode"> 
+                <span class="checkbox-text">Target Single Subject Only</span>
+            </label>
         </div>
+
+        <label style="color:#64748b; font-size:11px; font-weight:700; display:block; margin-bottom:10px; text-transform:uppercase;">Select Subject(s)</label>
+        
+        <div id="filter-container" class="filter-container glass-grid">
+            <p style="color:#999; font-size:12px;">Loading subjects...</p>
+        </div>
+
+        <button class="primary" onclick="startTest()" style="margin-top: 20px;">Start Exam</button>
+    </div>
+
+    <div id="practice-filter-controls" style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px; padding: 0 5px;">
+        <input type="checkbox" id="unattempted-only" style="width: 20px; height: 20px; margin: 0; cursor: pointer;">
+        <label for="unattempted-only" style="font-size: 14px; font-weight: 600; color: var(--text-dark); cursor: pointer;">
+            Show Unattempted Only
+        </label>
+    </div>
+
+    <div id="dynamic-menus" class="glass-grid">
+        <p style="color:#718096;">Loading Question Bank...</p>
+    </div>
+
+</div>
+        <div id="topic-selection-modal" class="modal-overlay hidden" style="z-index: 5000;">
+    <div class="glass-modal-card" style="max-width: 600px; width: 95%;">
+        
+        <div class="glass-header" style="justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px;">
+            <div>
+                <h2 id="modal-subject-title" class="glass-title" style="font-size: 24px;">Subject Name</h2>
+                <p class="glass-subtitle" style="margin: 5px 0 0 0;">Select a topic to begin</p>
+            </div>
+            <button onclick="closeTopicModal()" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">&times;</button>
+        </div>
+
+        <button id="btn-practice-all" class="glass-card-btn" style="width:100%; margin-bottom: 20px; justify-content: center; text-align: center;">
+            <span style="font-weight: 800; font-size: 16px;">🚀 Practice All Questions</span>
+        </button>
+
+        <div id="modal-topic-grid" class="topic-modal-grid">
+            </div>
+
     </div>
 </div>
-        
-        <div id="quiz-screen" class="screen hidden">
+<div id="quiz-screen" class="screen hidden">
     <div class="quiz-container-unique">
         
         <div class="quiz-header">
@@ -677,46 +701,7 @@
         <button class="primary" onclick="document.getElementById('badges-modal').classList.add('hidden')" style="margin-top:20px;">Close</button>
     </div>
 </div>
-<div id="study-modal" class="modal-overlay hidden" style="z-index: 5000;">
-    <div class="premium-card modal-box">
-        
-        <div class="modal-header-custom">
-            <div>
-                <h3 id="modal-subject-title" style="margin:0; font-size:18px; color:#1e293b; font-weight:800;">Subject Name</h3>
-                <p id="modal-mode-subtitle" style="margin:0; font-size:12px; color:#64748b;">Select a topic</p>
-            </div>
-            <button onclick="closeStudyModal()" class="close-icon-btn">✕</button>
-        </div>
 
-        <div class="modal-body-scroll">
-            
-            <div id="exam-settings-area" class="hidden" style="background:white; padding:15px; border-radius:10px; border:1px solid #e2e8f0; margin-bottom: 20px;">
-                <div class="exam-inputs-row">
-                    <div class="input-group">
-                        <label>QUESTIONS</label>
-                        <input type="number" id="new-exam-q-count" value="20" min="5">
-                    </div>
-                    <div class="input-group">
-                        <label>MINUTES</label>
-                        <input type="number" id="new-exam-timer" value="30" min="5">
-                    </div>
-                </div>
-                <div style="font-size:11px; font-weight:700; color:#64748b; margin-top:15px; text-transform:uppercase; text-align:center;">Select Syllabus Below</div>
-            </div>
-
-            <div id="modal-actions-area" style="margin-bottom:10px;"></div>
-
-            <div id="modal-topic-list" class="topic-list-wrapper"></div>
-        </div>
-
-        <div class="modal-footer-custom" id="modal-footer" style="display:none;">
-            <button class="primary" style="width:100%; background:#10b981; border:none;" onclick="startExamFromModal()">Start Exam</button>
-        </div>
-    </div>
-</div>
-        
 <script src="script.js?v=300"></script>
 </body>
 </html>
-
-
