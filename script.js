@@ -1641,14 +1641,14 @@ function processData(data, reRenderOnly = false) {
         map[q.Subject].add(q.Topic);
     });
 
-    renderMenus(subjects, map); 
-    renderTestFilters(subjects, map);
+    // 🔥 UPDATED CALLS FOR NEW UI
+    renderPracticeGrid(subjects, map); 
+    renderExamGrid(subjects, map);
     
     if(document.getElementById('admin-total-q')) {
         document.getElementById('admin-total-q').innerText = allQuestions.length;
     }
 }
-
 function generateHash(str) {
     let hash = 0;
     for (let i = 0; i < str.length; i++) hash = ((hash << 5) - hash) + str.charCodeAt(i) | 0;
@@ -1659,127 +1659,77 @@ function generateHash(str) {
 // 6. UI RENDERERS
 // ======================================================
 
-function renderMenus(subjects, map) {
-    const container = document.getElementById('dynamic-menus');
+function renderPracticeGrid(subjects, map) {
+    // We kept the ID "dynamic-menus" but styled it as a grid
+    const container = document.getElementById('dynamic-menus'); 
     if(!container) return;
     container.innerHTML = "";
     
     Array.from(subjects).sort().forEach(subj => {
+        // Calculate Stats
         const subjQuestions = allQuestions.filter(q => q.Subject === subj);
         const solvedCount = subjQuestions.filter(q => userSolvedIDs.includes(q._uid)).length;
         const totalSubj = subjQuestions.length;
         const pct = totalSubj > 0 ? Math.round((solvedCount/totalSubj)*100) : 0;
 
-        const details = document.createElement('details');
-        details.className = "subject-dropdown-card";
+        // Create Glass Card
+        const card = document.createElement('div');
+        card.className = "glass-card-btn";
         
-        details.innerHTML = `
-            <summary class="subject-summary">
-                <div class="summary-header">
-                    <span class="subj-name">${subj}</span>
-                    <span class="subj-stats">${solvedCount} / ${totalSubj}</span>
-                </div>
-                <div class="progress-bar-thin">
-                    <div class="fill" style="width:${pct}%"></div>
-                </div>
-            </summary>
+        // This will open the modal we build in the next step
+        card.onclick = () => openTopicModal(subj, 'practice'); 
+
+        card.innerHTML = `
+            <div class="glass-card-title">${subj}</div>
+            <div class="glass-card-stats">
+                ${solvedCount} / ${totalSubj} Questions (${pct}%)
+            </div>
+            <div class="glass-progress-track">
+                <div class="glass-progress-fill" style="width:${pct}%"></div>
+            </div>
         `;
 
-        const contentDiv = document.createElement('div');
-        contentDiv.className = "dropdown-content";
-
-        const allBtn = document.createElement('div');
-        allBtn.className = "practice-all-row";
-        allBtn.innerHTML = `<span>Practice All ${subj}</span> <span>⭐</span>`;
-        allBtn.onclick = () => startPractice(subj, null);
-        contentDiv.appendChild(allBtn);
-
-        const sortedTopics = Array.from(map[subj] || []).sort();
-        
-        if (sortedTopics.length > 0) {
-            const gridContainer = document.createElement('div');
-            gridContainer.className = "topics-text-grid";
-            
-            sortedTopics.forEach(topic => {
-                const topQuestions = subjQuestions.filter(q => q.Topic === topic);
-                const totalTop = topQuestions.length;
-                const solvedTop = topQuestions.filter(q => userSolvedIDs.includes(q._uid)).length;
-                const percentTop = totalTop > 0 ? Math.round((solvedTop / totalTop) * 100) : 0;
-                
-                const item = document.createElement('div');
-                item.className = "topic-item-container";
-                item.onclick = () => startPractice(subj, topic);
-
-                item.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span class="topic-name">${topic}</span>
-                        <span style="font-size:10px; color:#888;">${solvedTop}/${totalTop}</span>
-                    </div>
-                    <div class="topic-mini-track">
-                        <div class="topic-mini-fill" style="width:${percentTop}%"></div>
-                    </div>
-                `;
-                gridContainer.appendChild(item);
-            });
-            contentDiv.appendChild(gridContainer);
-        } else {
-            contentDiv.innerHTML += `<div style="text-align:center; padding:10px; opacity:0.5;">(No specific topics)</div>`;
-        }
-
-        details.appendChild(contentDiv);
-        container.appendChild(details);
+        container.appendChild(card);
     });
 }
 
-function renderTestFilters(subjects, map) {
+function renderExamGrid(subjects, map) {
     const container = document.getElementById('filter-container');
     if (!container) return; 
     container.innerHTML = "";
     
-    const sortedSubjects = Array.from(subjects).sort();
-
-    sortedSubjects.forEach(subj => {
-        const details = document.createElement('details');
-        details.className = "subject-dropdown-card"; 
-
-        details.innerHTML = `
-            <summary class="subject-summary">
-                <div class="summary-header">
-                    <span class="subj-name">${subj}</span>
-                    <label class="select-all-label" onclick="event.stopPropagation()">
-                        <input type="checkbox" onchange="toggleSubjectAll(this, '${subj}')"> Select All
-                    </label>
-                </div>
-            </summary>
-        `;
-
-        const contentDiv = document.createElement('div');
-        contentDiv.className = "dropdown-content";
-        const sortedTopics = Array.from(map[subj] || []).sort();
+    Array.from(subjects).sort().forEach(subj => {
+        const card = document.createElement('div');
+        card.className = "glass-card-btn exam-subject-card"; // Added class for easier selection
+        card.dataset.subject = subj;
         
-        if (sortedTopics.length > 0) {
-            const gridContainer = document.createElement('div');
-            gridContainer.className = "topics-text-grid"; 
-            
-            sortedTopics.forEach(topic => {
-                const item = document.createElement('div');
-                item.className = "topic-text-item exam-selectable"; 
-                item.innerText = topic;
-                item.dataset.subject = subj;
-                item.dataset.topic = topic;
-                item.onclick = function() {
-                    this.classList.toggle('selected');
-                    if(!this.classList.contains('selected')) {
-                        details.querySelector('input[type="checkbox"]').checked = false;
-                    }
-                };
-                gridContainer.appendChild(item);
-            });
-            contentDiv.appendChild(gridContainer);
-        }
-        details.appendChild(contentDiv);
-        container.appendChild(details);
+        // Logic: Handle click based on checkbox state
+        card.onclick = (e) => toggleExamSubject(e.currentTarget, subj);
+
+        card.innerHTML = `
+            <div class="glass-card-title">${subj}</div>
+            <div style="font-size:11px; color:#64748b;">
+                Tap to Select
+            </div>
+        `;
+        container.appendChild(card);
     });
+}
+
+function toggleExamSubject(btn, subject) {
+    const isSingleMode = document.getElementById('single-subject-mode').checked;
+
+    if (isSingleMode) {
+        // Single Mode: Open Modal to pick specific topics
+        openTopicModal(subject, 'exam');
+    } else {
+        // Multi Mode: Toggle Selection Visuals
+        btn.classList.toggle('selected');
+        
+        // Update text
+        const hint = btn.querySelector('div:last-child');
+        if (hint) hint.innerText = btn.classList.contains('selected') ? "✅ Selected" : "Tap to Select";
+    }
 }
 
 function toggleSubjectAll(checkbox, subjName) {
@@ -1789,6 +1739,119 @@ function toggleSubjectAll(checkbox, subjName) {
         if (checkbox.checked) item.classList.add('selected');
         else item.classList.remove('selected');
     });
+}
+
+let currentModalSubject = null;
+
+function openTopicModal(subject, mode) {
+    currentModalSubject = subject;
+    const modal = document.getElementById('topic-selection-modal');
+    const title = document.getElementById('modal-subject-title');
+    const grid = document.getElementById('modal-topic-grid');
+    const mainBtn = document.getElementById('btn-practice-all');
+
+    // 1. Setup UI
+    title.innerText = subject;
+    grid.innerHTML = "";
+    modal.classList.remove('hidden');
+
+    // 2. Get Topics dynamically
+    const topics = new Set();
+    allQuestions.filter(q => q.Subject === subject).forEach(q => topics.add(q.Topic));
+    const sortedTopics = Array.from(topics).sort();
+
+    // 3. Configure Mode (Practice vs Exam)
+    if (mode === 'practice') {
+        // --- PRACTICE MODE ---
+        mainBtn.innerHTML = `<span style="font-weight: 800; font-size: 16px;">🚀 Practice All Questions</span>`;
+        // Click "Practice All" -> Closes modal -> Starts Practice
+        mainBtn.onclick = () => { closeTopicModal(); startPractice(subject, null); };
+
+        sortedTopics.forEach(topic => {
+            const btn = document.createElement('div');
+            btn.className = "topic-glass-btn";
+            btn.innerText = topic;
+            // Click Topic -> Closes modal -> Starts Practice for that topic
+            btn.onclick = () => { closeTopicModal(); startPractice(subject, topic); };
+            grid.appendChild(btn);
+        });
+
+    } else {
+        // --- EXAM MODE (Single Subject) ---
+        mainBtn.innerHTML = `<span style="font-weight: 800; font-size: 16px;">⏱️ Start Exam (Selected)</span>`;
+        // Click Main Button -> Starts the Exam Logic
+        mainBtn.onclick = () => startModalExam(subject);
+
+        sortedTopics.forEach(topic => {
+            const btn = document.createElement('div');
+            btn.className = "topic-glass-btn";
+            btn.innerText = topic;
+            // Click Topic -> Just selects it (Visual toggle)
+            btn.onclick = () => btn.classList.toggle('selected');
+            grid.appendChild(btn);
+        });
+    }
+}
+
+function closeTopicModal() {
+    document.getElementById('topic-selection-modal').classList.add('hidden');
+}
+
+function startModalExam(subject) {
+    // 1. Gather Selected Topics from the Modal
+    const selectedBtns = document.querySelectorAll('#modal-topic-grid .topic-glass-btn.selected');
+    const selectedTopics = Array.from(selectedBtns).map(b => b.innerText);
+
+    // 2. Filter Questions
+    let pool = [];
+    if (selectedBtns.length === 0) {
+        // If nothing selected, ask if they want the WHOLE subject
+        if(!confirm(`Start exam for ALL topics in ${subject}?`)) return;
+        pool = allQuestions.filter(q => q.Subject === subject);
+    } else {
+        pool = allQuestions.filter(q => q.Subject === subject && selectedTopics.includes(q.Topic));
+    }
+
+    if (pool.length === 0) return alert("No questions found.");
+
+    // 3. Apply Limits (Guest/Free/Premium)
+    let count = parseInt(document.getElementById('q-count').value) || 20;
+    const mins = parseInt(document.getElementById('t-limit').value) || 30;
+    
+    // -- Limit Logic Copy --
+    const isAdmin = userProfile && userProfile.role === 'admin';
+    const isPrem = userProfile && userProfile[getStoreKey('isPremium')] && isDateActive(userProfile[getStoreKey('expiryDate')]);
+    
+    let maxQuestions = Infinity;
+    if (isAdmin) maxQuestions = Infinity;
+    else if (isGuest) maxQuestions = 20;
+    else if (!isPrem) maxQuestions = 50;
+
+    if (count > maxQuestions) {
+        alert(`🔒 Limit Exceeded\n\nReducing question count to ${maxQuestions}.`);
+        count = maxQuestions;
+    }
+
+    // 4. Shuffle and Slice
+    filteredQuestions = pool.sort(() => Math.random() - 0.5).slice(0, count);
+
+    // 5. Launch Exam
+    currentMode = 'test';
+    currentIndex = 0;
+    testAnswers = {};
+    testFlags = {};
+    testTimeRemaining = mins * 60;
+
+    closeTopicModal();
+    showScreen('quiz-screen');
+
+    document.getElementById('timer').classList.remove('hidden');
+    document.getElementById('test-sidebar').classList.add('active');
+    
+    renderNavigator();
+    clearInterval(testTimer);
+    testTimer = setInterval(updateTimer, 1000);
+    renderPage();
 }
 
 // ======================================================
@@ -1973,7 +2036,7 @@ function startTest() {
     let count = parseInt(document.getElementById('q-count').value);
     const mins = parseInt(document.getElementById('t-limit').value);
 
-    // --- NEW EXAM LIMIT LOGIC ---
+    // --- EXAM LIMIT LOGIC ---
     let maxQuestions = Infinity;
     
     if (isAdmin) {
@@ -1987,28 +2050,27 @@ function startTest() {
     if (count > maxQuestions) {
         alert(`🔒 Limit Exceeded\n\n${isGuest ? "Guest" : "Free"} accounts are limited to ${maxQuestions} questions per exam.\n\nReducing question count to ${maxQuestions}.`);
         count = maxQuestions;
-        // Update the input to reflect the change visually
         document.getElementById('q-count').value = maxQuestions;
     }
     // ----------------------------
 
-    const selectedElements = document.querySelectorAll('.exam-selectable.selected');
+    // 🔥 NEW: Check for selected Glass Cards
+    const selectedElements = document.querySelectorAll('.exam-subject-card.selected');
     let pool = [];
 
     if (selectedElements.length === 0) {
-        if(!confirm("Test from ALL subjects?")) return;
+        // If nothing selected, ask to include ALL subjects
+        if(!confirm("Start Mixed Exam from ALL subjects?")) return;
         pool = [...allQuestions];
     } else {
-        const selectedPairs = new Set();
-        selectedElements.forEach(el => selectedPairs.add(el.dataset.subject + "|" + el.dataset.topic));
-        pool = allQuestions.filter(q => selectedPairs.has(q.Subject + "|" + q.Topic));
+        // Filter by the selected subjects
+        const selectedSubjects = Array.from(selectedElements).map(el => el.dataset.subject);
+        pool = allQuestions.filter(q => selectedSubjects.includes(q.Subject));
     }
 
     if(pool.length === 0) return alert("No questions found.");
     
-    // Ensure we don't try to take more questions than exist in the pool
     const finalCount = Math.min(count, pool.length);
-    
     filteredQuestions = pool.sort(() => Math.random() - 0.5).slice(0, finalCount);
     
     currentMode = 'test';
@@ -2021,14 +2083,12 @@ function startTest() {
     document.getElementById('timer').classList.remove('hidden');
     document.getElementById('test-sidebar').classList.add('active');
     
-    // Ensure the navigator renders immediately
     renderNavigator();
 
     clearInterval(testTimer);
     testTimer = setInterval(updateTimer, 1000);
     renderPage();
 }
-
 // ======================================================
 // 8. QUIZ ENGINE
 // ======================================================
@@ -2638,6 +2698,7 @@ async function submitPaymentProof() {
 function openAdminPanel() {
     console.log("🚀 Force Opening Admin Panel...");
     localStorage.setItem('current_screen', 'admin-screen');
+    
     // 1. Security Check
     if (!userProfile || userProfile.role !== 'admin') {
         return alert("⛔ Access Denied: Admins only.");
@@ -2651,12 +2712,13 @@ function openAdminPanel() {
         'dashboard-screen', 
         'quiz-screen', 
         'result-screen', 
-        'main-menu-container',   // <--- Likely the culprit
-        'mbbs-years-container',  // <--- Likely the culprit
+        'main-menu-container',   
+        'mbbs-years-container',  
         'test-sidebar', 
         'practice-nav-container',
         'premium-modal',
-        'explanation-modal'
+        'explanation-modal',
+        'topic-selection-modal' // <--- ✅ ADDED THIS LINE (Safety Fix)
     ];
 
     idsToHide.forEach(id => {
@@ -2711,17 +2773,17 @@ function openAdminPanel() {
     });
 
     // 8. 🚀 FINAL SCROLL FORCE
-    // We do this inside a tiny timeout to let the DOM refresh first
     setTimeout(() => {
         window.scrollTo(0, 0);
         document.body.scrollTop = 0; // For Safari
         document.documentElement.scrollTop = 0; // For Chrome/Firefox
     }, 10);
 
- // 9. Load Data
-if (typeof adminUsersCache !== 'undefined') adminUsersCache = null; // Clear old cache
-loadAllUsers();
+    // 9. Load Data
+    if (typeof adminUsersCache !== 'undefined') adminUsersCache = null; // Clear old cache
+    loadAllUsers();
 }
+
 // 2. TAB SWITCHER (Standard Logic)
 function switchAdminTab(tabName) {
     console.log("🔄 Switching to tab:", tabName);
@@ -3996,3 +4058,4 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
