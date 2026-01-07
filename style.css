@@ -364,237 +364,96 @@ button {
    margin-bottom: 20px;
 }
 
-
 /* --- RIGHT COLUMN (Study Session) --- */
 #study-panel {
-    grid-column: 2; 
+    grid-column: 2; /* Force into Second Column */
     grid-row: 1 / span 10; 
     width: 100% !important;
     max-width: none !important;
-    
-    /* ✅ FIX: Change 22cm to 600px so it fits the screen perfectly */
-    height: 22cm !important; 
-    
+    height: 22cm !important;
+    overflow-y: auto !important;
     margin: 0 !important;
-    padding: 0 !important;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden !important; /* Hides the double scrollbar */
 }
 
 /* --- MOBILE FIX (UPDATED) --- */
 @media screen and (max-width: 950px) {
+    
+    /* 1. Switch from Grid to Flexbox (easiest way to stack) */
     #dashboard-screen .gameContainer {
         display: flex !important;
         flex-direction: column !important;
         gap: 20px !important;
     }
 
+    /* 2. Reset the Panels (Progress & Settings) */
     .panel {
         width: 100% !important;
         max-width: none !important;
         margin: 0 !important;
-        order: 1; 
+        order: 1; /* Force them to top */
     }
 
+    /* 3. Fix the Study Panel (Questions) */
     #study-panel {
         width: 100% !important;
         max-width: none !important;
         margin: 0 !important;
+        height: auto !important; 
         
-        /* On mobile, we let it grow a bit or stay fixed */
-        height: 600px !important; 
-        
+        /* 🔥 KILL THE GRID ROW RULE */
         grid-row: auto !important; 
         grid-column: auto !important;
+        
+        /* Force it to bottom */
         order: 10; 
     }
 }
-
 /* =========================================
-   🚀 NEW STUDY SESSION STYLES (Fixed & Polished)
+   7. STUDY MENU & INTERACTION
    ========================================= */
 
-/* 1. Card Container (Fills the panel) */
-#study-panel .premium-card {
-    height: 100%;       
-    display: flex;
-    flex-direction: column;
-    border-radius: 20px; /* Matches your other cards */
-    box-shadow: none;   
-    border: none;
-    background: white;
+/* TAB SWITCHER */
+.tabs { 
+    display: flex; 
+    background: var(--input-bg); 
+    padding: 6px; 
+    border-radius: 16px; 
+    margin-bottom: 25px; 
+    border: 1px solid var(--border-color);
 }
-
-/* 2. Scrollable Area (The part that actually scrolls) */
-#study-panel .premium-scroll-area {
-    flex: 1;            
-    overflow-y: auto;   
-    padding: 15px 20px;
-    background: #f8fafc;
-    border-radius: 0 0 20px 20px;
-}
-
-/* --- CUSTOM SCROLLBARS (Makes it look like an App) --- */
-#study-panel .premium-scroll-area::-webkit-scrollbar,
-.modal-body-scroll::-webkit-scrollbar {
-    width: 6px;
-}
-#study-panel .premium-scroll-area::-webkit-scrollbar-track,
-.modal-body-scroll::-webkit-scrollbar-track {
+.tab-btn { 
+    margin: 0 2px; 
     background: transparent; 
+    color: var(--text-light); 
+    border-radius: 12px; 
+    padding: 12px; 
+    flex: 1; 
+    transition: all 0.3s ease;
 }
-#study-panel .premium-scroll-area::-webkit-scrollbar-thumb,
-.modal-body-scroll::-webkit-scrollbar-thumb {
-    background-color: #cbd5e1;
-    border-radius: 10px;
-}
-
-/* 3. Mode Switcher */
-.mode-toggle-container {
-    display: flex;
-    background: #f1f5f9;
-    border-radius: 12px;
-    padding: 5px;
-    margin: 15px 0;
-    border: 1px solid var(--border-color);
+.tab-btn.active { 
+    background: white; 
+    color: var(--primary); 
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08); 
+    font-weight: 700; 
 }
 
-.mode-btn {
-    flex: 1;
-    border: none;
-    background: transparent;
-    padding: 12px;
-    border-radius: 10px;
-    font-weight: 700;
-    font-size: 14px;
-    color: var(--text-light);
-    cursor: pointer;
-    transition: all 0.2s;
-    margin: 0;
-}
-
-.mode-btn.active {
-    background: white;
-    color: var(--primary);
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-}
-
-/* 6. The Topic Modal (WIDER & CLEANER) */
-.modal-box {
-    width: 95%;
-    max-width: 600px; /* ✅ FIX: Increased width */
-    max-height: 85vh;
-    display: flex;
-    flex-direction: column;
-    background: white;
-    border-radius: 20px;
-    overflow: hidden;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-}
-
-.modal-header-custom {
-    padding: 20px 25px;
-    border-bottom: 1px solid var(--border-color);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: white !important; /* ✅ FIX: Force white background */
-    flex-shrink: 0;
-}
-
-.close-icon-btn {
-    background: #f1f5f9;
-    border: none;
-    font-size: 16px;
-    cursor: pointer;
-    color: #64748b;
-    width: 32px; height: 32px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    transition: all 0.2s;
-}
-.close-icon-btn:hover { background: #e2e8f0; color: #ef4444; }
-
-.modal-body-scroll {
-    padding: 20px;
+/* SCROLLABLE SUBJECT LIST */
+#dynamic-menus {
+    max-height: 500px; 
     overflow-y: auto;
-    flex: 1;
-    background: #f8fafc;
+    margin-top: 15px; 
+    padding-top: 15px; 
+    border-top: 2px solid var(--border-color); 
+    padding-right: 10px;
+    scroll-behavior: smooth;
 }
 
-/* Topic List */
-.topic-list-wrapper { display: flex; flex-direction: column; gap: 10px; }
+/* Custom Scrollbar Styling */
+#dynamic-menus::-webkit-scrollbar { width: 6px; }
+#dynamic-menus::-webkit-scrollbar-track { background: transparent; }
+#dynamic-menus::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+#dynamic-menus::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-.topic-row {
-    background: white;
-    padding: 15px;
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 14px;
-    color: var(--text-dark);
-    transition: all 0.2s;
-}
-
-.topic-row:hover { background: #f0f9ff; border-color: var(--primary); }
-
-.topic-row.selected {
-    background: #ecfdf5;
-    border-color: #10b981;
-    color: #065f46;
-    font-weight: 700;
-}
-
-/* Exam Inputs */
-.exam-inputs-row { display: flex; gap: 15px; margin-bottom: 5px; }
-.input-group { flex: 1; }
-.input-group label { 
-    display: block; font-size: 11px; font-weight: 700; 
-    color: #64748b; margin-bottom: 5px; text-transform: uppercase; 
-}
-.input-group input { width: 100%; margin: 0; font-size: 16px; font-weight: bold; }
-
-.practice-all-btn {
-    width: 100%;
-    padding: 14px;
-    background: white;
-    border: 2px solid var(--primary);
-    color: var(--primary);
-    border-radius: 12px;
-    font-weight: 700;
-    cursor: pointer;
-    margin-bottom: 15px;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    transition: all 0.2s;
-}
-.practice-all-btn:hover { background: var(--primary); color: white; }
-
-.modal-footer-custom {
-    padding: 15px 20px;
-    background: white;
-    border-top: 1px solid var(--border-color);
-}
-
-/* Dark Mode Fixes */
-[data-theme="dark"] .mode-toggle-container,
-[data-theme="dark"] .subject-card,
-[data-theme="dark"] .modal-box,
-[data-theme="dark"] .modal-header-custom,
-[data-theme="dark"] .modal-footer-custom,
-[data-theme="dark"] .topic-row {
-    background: var(--card-bg);
-    border-color: var(--border-color);
-}
-[data-theme="dark"] #study-panel .premium-scroll-area,
-[data-theme="dark"] .modal-body-scroll {
-    background: var(--bg-color);
-}
-[data-theme="dark"] .topic-row:hover { background: rgba(255,255,255,0.05); }
-[data-theme="dark"] .mode-btn.active { background: var(--primary); color: white; }
 
 /* =========================================
    8. QUIZ INTERFACE & EXAM MODE
@@ -946,61 +805,16 @@ button {
     display: block;
     margin-bottom: 5px;
 }
-
-/* SEARCH DROPDOWN (Updated) */
-/* SEARCH DROPDOWN (Fixed & Polished) */
+/* SEARCH */
 .search-results-list {
-    position: absolute;
-    top: 100%;       
-    left: 0; 
-    right: 0;
-    
-    /* Design Tweaks */
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-top: none; /* Remove top border to blend with input */
-    border-radius: 0 0 16px 16px; /* Round only the bottom */
-    
-    max-height: 350px;
-    overflow-y: auto;
-    z-index: 5000;
-    
-    /* Cleaner Shadow */
-    box-shadow: 0 15px 30px -5px rgba(0,0,0,0.1);
-    
-    /* Remove the gap so it looks attached */
-    margin-top: 2px; 
-    display: none;
+    position: absolute; top: 110%; left: 0; right: 0;
+    background: white; border: 1px solid #ccc; max-height: 250px;
+    overflow-y: auto; z-index: 1000; display: none;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-radius: 12px;
 }
+.search-item { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; cursor: pointer; text-align: left; font-size: 14px; transition: background 0.2s; }
+.search-item:hover { background-color: #f0f9ff; color: var(--primary); }
 
-/* Individual Items */
-.search-item {
-    padding: 14px 18px;
-    border-bottom: 1px solid #f1f5f9;
-    cursor: pointer;
-    text-align: left;
-    transition: all 0.2s ease;
-}
-
-.search-item:last-child { border-bottom: none; }
-
-.search-item:hover {
-    background-color: #f0f9ff;
-    padding-left: 22px; /* Slight slide effect */
-}
-
-/* Dark Mode Fixes */
-[data-theme="dark"] .search-results-list {
-    background: var(--card-bg);
-    border-color: var(--border-color);
-}
-[data-theme="dark"] .search-item {
-    border-color: var(--border-color);
-    color: var(--text-dark);
-}
-[data-theme="dark"] .search-item:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-}
 
 /* =========================================
    11. MOBILE OPTIMIZATIONS
@@ -2857,125 +2671,199 @@ button.secondary {
 .btn-cancel { background: transparent; border: none; color: #64748b; font-size: 13px; font-weight: 500; cursor: pointer; }
 
 /* =========================================
-   🎨 REDESIGNED SUBJECT LIST (Modern Cards)
+   25. NEW GLASS UI (STUDY PANEL & MODALS)
    ========================================= */
 
-/* The Container */
-.subject-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;         /* Space between cards */
-    padding: 10px 5px; /* Breathing room inside the scroll area */
+/* --- A. THE MAIN GRID (Subjects) --- */
+.glass-grid {
+    display: grid;
+    /* Responsive Grid: Cards are at least 160px wide, or split space equally */
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+    padding-bottom: 20px;
 }
 
-/* The Individual Card */
-.subject-card {
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 16px; /* Smooth rounded corners */
-    padding: 16px 20px;
+/* On Mobile, force 2 columns (or 1 if very small) to look like an app */
+@media screen and (max-width: 600px) {
+    .glass-grid {
+        grid-template-columns: 1fr; /* Stack vertically on mobile as requested */
+    }
+}
+
+/* --- B. THE GLASS CARD (Subject Button) --- */
+.glass-card-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
+    justify-content: center;
     
+    background: rgba(255, 255, 255, 0.8); /* Milky white */
+    backdrop-filter: blur(12px);          /* The "Frost" effect */
+    -webkit-backdrop-filter: blur(12px);
+    
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 16px;
+    padding: 20px;
+    
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-    
-    /* Subtle Shadow for depth */
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+    text-align: left;
     position: relative;
+    overflow: hidden;
+    min-height: 100px;
+}
+
+.glass-card-btn:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 0.95);
+    border-color: var(--primary);
+}
+
+.glass-card-btn.selected {
+    background: #e0f2fe; /* Light Blue */
+    border-color: #0072ff;
+    box-shadow: 0 0 0 2px rgba(0, 114, 255, 0.3);
+}
+
+/* Card Content Typography */
+.glass-card-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 5px;
+    line-height: 1.3;
+}
+
+.glass-card-stats {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-bottom: 12px;
+}
+
+/* --- C. THE PROGRESS BAR (Inside Card) --- */
+.glass-progress-track {
+    width: 100%;
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 3px;
     overflow: hidden;
 }
 
-/* Hover Effect - Lift & Highlight */
-.subject-card:hover {
-    transform: translateY(-2px); /* Moves up slightly */
-    box-shadow: 0 8px 20px -5px rgba(0, 114, 255, 0.15); /* Blue soft glow */
-    border-color: var(--primary); /* Highlight border color */
+.glass-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981, #34d399); /* Green Gradient */
+    border-radius: 3px;
+    width: 0%; /* JS will set this */
+    transition: width 0.5s ease;
 }
 
-/* Active/Click Effect */
-.subject-card:active {
-    transform: scale(0.98);
-    background: #f8fafc;
+/* --- D. GLASS INPUTS (For Exam Settings) --- */
+.glass-input-wrapper {
+    position: relative;
 }
 
-/* Colored Strip on Left (Visual Polish) */
-.subject-card::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    background: transparent;
-    transition: background 0.2s;
-}
-
-.subject-card:hover::before {
-    background: var(--primary); /* Shows green/blue strip on hover */
-}
-
-/* Text Styling */
-.subject-name {
-    font-size: 15px;
-    font-weight: 600;
-    color: #1e293b; /* Dark slate */
-    letter-spacing: 0.3px;
-}
-
-/* The "Qs" Badge */
-.subject-count-badge {
-    font-size: 12px;
-    font-weight: 700;
-    color: #64748b;
-    background: #f1f5f9;
-    padding: 6px 12px;
-    border-radius: 20px; /* Pill shape */
+.glass-input-field {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.5) !important;
+    border: 1px solid rgba(0,0,0,0.1) !important;
+    backdrop-filter: blur(5px);
+    font-size: 18px !important;
+    font-weight: bold;
+    color: var(--primary) !important;
+    text-align: center;
+    border-radius: 12px !important;
+    padding: 15px !important;
     transition: all 0.2s;
 }
 
-/* Badge turns colored on card hover */
-.subject-card:hover .subject-count-badge {
-    background: var(--primary);
-    color: white;
+.glass-input-field:focus {
+    background: white !important;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(0, 114, 255, 0.1);
 }
 
-/* --- Dark Mode Fixes --- */
-[data-theme="dark"] .subject-card {
-    background: var(--card-bg);
-    border-color: var(--border-color);
+/* --- E. SINGLE SUBJECT TOGGLE --- */
+.glass-toggle-row {
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(0,0,0,0.05);
+    border-radius: 12px;
+    padding: 10px;
+    display: flex;
+    justify-content: center;
 }
-[data-theme="dark"] .subject-name { color: var(--text-dark); }
-[data-theme="dark"] .subject-count-badge { background: #334155; color: #cbd5e1; }
 
-/* Multi-Subject Button Styling */
-#multi-exam-controls button {
-    width: 100%;
-    padding: 14px;
-    background: white;
-    border: 2px dashed #cbd5e1; /* Dashed border suggests "Add" */
-    color: #475569;
-    font-weight: 700;
-    border-radius: 14px;
-    cursor: pointer;
-    transition: all 0.2s ease;
+.glass-checkbox-label {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
-    margin: 0;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-dark);
 }
 
-#multi-exam-controls button:hover {
+.glass-checkbox-label input {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+/* --- F. TOPIC MODAL GRID --- */
+.topic-modal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.topic-glass-btn {
+    background: rgba(255,255,255,0.1); /* Darker/Transparent for modal */
+    border: 1px solid rgba(255,255,255,0.2);
+    color: white;
+    padding: 15px;
+    border-radius: 12px;
+    text-align: center;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.topic-glass-btn:hover {
+    background: rgba(255,255,255,0.2);
+    transform: scale(1.02);
+}
+
+.topic-glass-btn.selected {
+    background: var(--primary);
     border-color: var(--primary);
-    color: var(--primary);
-    background: #f0f9ff;
-    transform: translateY(-1px);
+    box-shadow: 0 0 15px rgba(0, 114, 255, 0.4);
 }
 
-
-
-
-
-
+/* --- G. DARK MODE OVERRIDES --- */
+[data-theme="dark"] .glass-card-btn {
+    background: rgba(30, 41, 59, 0.6); /* Dark Blue tint */
+    border-color: rgba(255, 255, 255, 0.1);
+}
+[data-theme="dark"] .glass-card-btn:hover {
+    background: rgba(30, 41, 59, 0.9);
+}
+[data-theme="dark"] .glass-card-title {
+    color: white;
+}
+[data-theme="dark"] .glass-toggle-row {
+    background: rgba(255,255,255,0.05);
+}
+[data-theme="dark"] .glass-checkbox-label {
+    color: #e2e8f0;
+}
+[data-theme="dark"] .glass-progress-track {
+    background: rgba(0,0,0,0.3);
+}
