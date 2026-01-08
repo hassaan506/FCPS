@@ -169,80 +169,51 @@
 
     </div>
 
-<div class="panel" id="study-panel">
-    <h3>📚 Study Session</h3>
-    
-    <div class="search-container" style="margin-bottom: 15px; position: relative;">
-        <input type="text" id="global-search" placeholder="🔍 Search specific topics..." style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box;">
-        <div id="search-results" class="search-results-list"></div>
-    </div>
-
-    <div class="tabs">
-        <button class="tab-btn active" onclick="setMode('practice')">Practice</button>
-        <button class="tab-btn" onclick="setMode('test')">Exam Mode</button>
-    </div>
-
-    <div id="test-settings" class="hidden">
+    <div class="panel" id="study-panel">
+        <h3>📚 Study Session</h3>
         
-        <div style="display:flex; gap:15px; margin-bottom:15px;">
-            <div style="flex:1;">
-                <label style="color:#64748b; font-size:11px; font-weight:700; display:block; margin-bottom:5px; text-transform:uppercase;">Questions</label>
-                <input type="number" id="q-count" value="20" class="glass-input-field">
-            </div>
-            <div style="flex:1;">
-                <label style="color:#64748b; font-size:11px; font-weight:700; display:block; margin-bottom:5px; text-transform:uppercase;">Minutes</label>
-                <input type="number" id="t-limit" value="30" class="glass-input-field">
-            </div>
+        <div class="search-container" style="margin-bottom: 15px; position: relative;">
+            <input type="text" id="global-search" placeholder="🔍 Search specific topics..." style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box;">
+            <div id="search-results" class="search-results-list"></div>
         </div>
 
-        <div class="glass-toggle-row" style="margin-bottom: 15px;">
-            <label class="glass-checkbox-label">
-                <input type="checkbox" id="single-subject-mode"> 
-                <span class="checkbox-text">Target Single Subject Only</span>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="setMode('practice')">Practice</button>
+            <button class="tab-btn" onclick="setMode('test')">Exam Mode</button>
+        </div>
+
+        <div id="test-settings" class="hidden">
+            <div style="display:flex; gap:15px; margin-bottom:15px;">
+                <div style="flex:1;">
+                    <label style="color:#64748b; font-size:11px; font-weight:700; display:block; margin-bottom:5px; text-transform:uppercase;">Questions</label>
+                    <input type="number" id="q-count" value="20">
+                </div>
+                <div style="flex:1;">
+                    <label style="color:#64748b; font-size:11px; font-weight:700; display:block; margin-bottom:5px; text-transform:uppercase;">Minutes</label>
+                    <input type="number" id="t-limit" value="30">
+                </div>
+            </div>
+            <label style="color:#64748b; font-size:11px; font-weight:700; display:block; margin-bottom:5px; text-transform:uppercase;">Select Syllabus</label>
+            <div id="filter-container" class="filter-container">
+                <p style="color:#999; font-size:12px;">Loading subjects...</p>
+            </div>
+            <button class="primary" onclick="startTest()">Start Exam</button>
+        </div>
+
+        <div id="practice-filter-controls" style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px; padding: 0 5px;">
+            <input type="checkbox" id="unattempted-only" style="width: 20px; height: 20px; margin: 0; cursor: pointer;">
+            <label for="unattempted-only" style="font-size: 14px; font-weight: 600; color: var(--text-dark); cursor: pointer;">
+                Show Unattempted Only
             </label>
         </div>
 
-        <label style="color:#64748b; font-size:11px; font-weight:700; display:block; margin-bottom:10px; text-transform:uppercase;">Select Subject(s)</label>
-        
-        <div id="filter-container" class="filter-container glass-grid">
-            <p style="color:#999; font-size:12px;">Loading subjects...</p>
+        <div id="dynamic-menus">
+            <p style="color:#718096;">Loading Question Bank...</p>
         </div>
-
-        <button class="primary" onclick="startTest()" style="margin-top: 20px;">Start Exam</button>
-    </div>
-
-    <div id="practice-filter-controls" style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px; padding: 0 5px;">
-        <input type="checkbox" id="unattempted-only" style="width: 20px; height: 20px; margin: 0; cursor: pointer;">
-        <label for="unattempted-only" style="font-size: 14px; font-weight: 600; color: var(--text-dark); cursor: pointer;">
-            Show Unattempted Only
-        </label>
-    </div>
-
-    <div id="dynamic-menus" class="glass-grid">
-        <p style="color:#718096;">Loading Question Bank...</p>
-    </div>
-
-</div>
-        <div id="topic-selection-modal" class="modal-overlay hidden" style="z-index: 5000;">
-    <div class="glass-modal-card" style="max-width: 600px; width: 95%;">
-        
-        <div class="glass-header" style="justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px;">
-            <div>
-                <h2 id="modal-subject-title" class="glass-title" style="font-size: 24px;">Subject Name</h2>
-                <p class="glass-subtitle" style="margin: 5px 0 0 0;">Select a topic to begin</p>
-            </div>
-            <button onclick="closeTopicModal()" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">&times;</button>
-        </div>
-
-        <button id="btn-practice-all" class="glass-card-btn" style="width:100%; margin-bottom: 20px; justify-content: center; text-align: center;">
-            <span style="font-weight: 800; font-size: 16px;">🚀 Practice All Questions</span>
-        </button>
-
-        <div id="modal-topic-grid" class="topic-modal-grid">
-            </div>
-
     </div>
 </div>
+</div>
+
 <div id="quiz-screen" class="screen hidden">
     <div class="quiz-container-unique">
         
