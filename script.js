@@ -1,5 +1,3 @@
-alert("Script Loaded Successfully!");
-console.log("✅ Script started...");
 // ======================================================
 // PWA & OFFLINE SETUP
 // ======================================================
@@ -740,31 +738,41 @@ async function updateUserStats(isCorrect, subject, questionUID) {
 
     // ============================================================
     // ✅ 4.5. CRITICAL FIX: SYNC LIVE GLOBAL VARIABLES
+    // This makes the Navigator change color WITHOUT refreshing
     // ============================================================
     
     // A. Sync Solved (Green)
+    // We check if the global array exists, then update it
     if (typeof userSolvedIDs !== 'undefined' && !userSolvedIDs.includes(questionUID)) {
         userSolvedIDs.push(questionUID);
     }
 
     // B. Sync Mistakes (Red)
     if (!isCorrect) {
+        // Database Object
         if (!userProfile[mistakesKey].includes(questionUID)) {
             userProfile[mistakesKey].push(questionUID);
         }
+        // ✅ Live Global Variable (Updates Navigator Red)
         if (typeof userMistakes !== 'undefined' && !userMistakes.includes(questionUID)) {
             userMistakes.push(questionUID);
         }
     } else {
         // If Correct...
         if (isMistakeReview === true) {
+            // Remove from Database Object
             userProfile[mistakesKey] = userProfile[mistakesKey].filter(id => id !== questionUID);
+            
+            // ✅ Remove from Live Global Variable
             if (typeof userMistakes !== 'undefined') {
                 const idx = userMistakes.indexOf(questionUID);
                 if (idx > -1) userMistakes.splice(idx, 1);
             }
         }
+        // Normal Mode: We do nothing (It stays in history)
     }
+    // ============================================================
+
 
     // 5. Save to Phone Memory
     localStorage.setItem('cached_user_profile', JSON.stringify(userProfile));
@@ -780,9 +788,11 @@ async function updateUserStats(isCorrect, subject, questionUID) {
         console.log("⚠️ Saved locally (Queueing for Cloud)");
     }
 
-    // 7. 🔥 THE FIX IS HERE: Used 'currentIndex' instead of 'currentQuestionIndex'
+    // 7. 🔥 OPTIONAL: INSTANT UI PAINT
+    // If you want the button to change color instantly before any other logic runs:
     try {
-        const navBtn = document.getElementById(`nav-btn-${currentIndex}`);
+        // Assuming your navigator buttons have IDs like 'nav-btn-0', 'nav-btn-1'
+        const navBtn = document.getElementById(`nav-btn-${currentQuestionIndex}`);
         if(navBtn) {
             if(isCorrect) {
                 navBtn.classList.add('solved');
@@ -1631,14 +1641,14 @@ function processData(data, reRenderOnly = false) {
         map[q.Subject].add(q.Topic);
     });
 
-    // 🔥 UPDATED CALLS FOR NEW UI
-    renderPracticeGrid(subjects, map); 
-    renderExamGrid(subjects, map);
+    renderMenus(subjects, map); 
+    renderTestFilters(subjects, map);
     
     if(document.getElementById('admin-total-q')) {
         document.getElementById('admin-total-q').innerText = allQuestions.length;
     }
 }
+
 function generateHash(str) {
     let hash = 0;
     for (let i = 0; i < str.length; i++) hash = ((hash << 5) - hash) + str.charCodeAt(i) | 0;
@@ -1649,77 +1659,127 @@ function generateHash(str) {
 // 6. UI RENDERERS
 // ======================================================
 
-function renderPracticeGrid(subjects, map) {
-    // We kept the ID "dynamic-menus" but styled it as a grid
-    const container = document.getElementById('dynamic-menus'); 
+function renderMenus(subjects, map) {
+    const container = document.getElementById('dynamic-menus');
     if(!container) return;
     container.innerHTML = "";
     
     Array.from(subjects).sort().forEach(subj => {
-        // Calculate Stats
         const subjQuestions = allQuestions.filter(q => q.Subject === subj);
         const solvedCount = subjQuestions.filter(q => userSolvedIDs.includes(q._uid)).length;
         const totalSubj = subjQuestions.length;
         const pct = totalSubj > 0 ? Math.round((solvedCount/totalSubj)*100) : 0;
 
-        // Create Glass Card
-        const card = document.createElement('div');
-        card.className = "glass-card-btn";
+        const details = document.createElement('details');
+        details.className = "subject-dropdown-card";
         
-        // This will open the modal we build in the next step
-        card.onclick = () => openTopicModal(subj, 'practice'); 
-
-        card.innerHTML = `
-            <div class="glass-card-title">${subj}</div>
-            <div class="glass-card-stats">
-                ${solvedCount} / ${totalSubj} Questions (${pct}%)
-            </div>
-            <div class="glass-progress-track">
-                <div class="glass-progress-fill" style="width:${pct}%"></div>
-            </div>
+        details.innerHTML = `
+            <summary class="subject-summary">
+                <div class="summary-header">
+                    <span class="subj-name">${subj}</span>
+                    <span class="subj-stats">${solvedCount} / ${totalSubj}</span>
+                </div>
+                <div class="progress-bar-thin">
+                    <div class="fill" style="width:${pct}%"></div>
+                </div>
+            </summary>
         `;
 
-        container.appendChild(card);
+        const contentDiv = document.createElement('div');
+        contentDiv.className = "dropdown-content";
+
+        const allBtn = document.createElement('div');
+        allBtn.className = "practice-all-row";
+        allBtn.innerHTML = `<span>Practice All ${subj}</span> <span>⭐</span>`;
+        allBtn.onclick = () => startPractice(subj, null);
+        contentDiv.appendChild(allBtn);
+
+        const sortedTopics = Array.from(map[subj] || []).sort();
+        
+        if (sortedTopics.length > 0) {
+            const gridContainer = document.createElement('div');
+            gridContainer.className = "topics-text-grid";
+            
+            sortedTopics.forEach(topic => {
+                const topQuestions = subjQuestions.filter(q => q.Topic === topic);
+                const totalTop = topQuestions.length;
+                const solvedTop = topQuestions.filter(q => userSolvedIDs.includes(q._uid)).length;
+                const percentTop = totalTop > 0 ? Math.round((solvedTop / totalTop) * 100) : 0;
+                
+                const item = document.createElement('div');
+                item.className = "topic-item-container";
+                item.onclick = () => startPractice(subj, topic);
+
+                item.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span class="topic-name">${topic}</span>
+                        <span style="font-size:10px; color:#888;">${solvedTop}/${totalTop}</span>
+                    </div>
+                    <div class="topic-mini-track">
+                        <div class="topic-mini-fill" style="width:${percentTop}%"></div>
+                    </div>
+                `;
+                gridContainer.appendChild(item);
+            });
+            contentDiv.appendChild(gridContainer);
+        } else {
+            contentDiv.innerHTML += `<div style="text-align:center; padding:10px; opacity:0.5;">(No specific topics)</div>`;
+        }
+
+        details.appendChild(contentDiv);
+        container.appendChild(details);
     });
 }
 
-function renderExamGrid(subjects, map) {
+function renderTestFilters(subjects, map) {
     const container = document.getElementById('filter-container');
     if (!container) return; 
     container.innerHTML = "";
     
-    Array.from(subjects).sort().forEach(subj => {
-        const card = document.createElement('div');
-        card.className = "glass-card-btn exam-subject-card"; // Added class for easier selection
-        card.dataset.subject = subj;
-        
-        // Logic: Handle click based on checkbox state
-        card.onclick = (e) => toggleExamSubject(e.currentTarget, subj);
+    const sortedSubjects = Array.from(subjects).sort();
 
-        card.innerHTML = `
-            <div class="glass-card-title">${subj}</div>
-            <div style="font-size:11px; color:#64748b;">
-                Tap to Select
-            </div>
+    sortedSubjects.forEach(subj => {
+        const details = document.createElement('details');
+        details.className = "subject-dropdown-card"; 
+
+        details.innerHTML = `
+            <summary class="subject-summary">
+                <div class="summary-header">
+                    <span class="subj-name">${subj}</span>
+                    <label class="select-all-label" onclick="event.stopPropagation()">
+                        <input type="checkbox" onchange="toggleSubjectAll(this, '${subj}')"> Select All
+                    </label>
+                </div>
+            </summary>
         `;
-        container.appendChild(card);
-    });
-}
 
-function toggleExamSubject(btn, subject) {
-    const isSingleMode = document.getElementById('single-subject-mode').checked;
-
-    if (isSingleMode) {
-        // Single Mode: Open Modal to pick specific topics
-        openTopicModal(subject, 'exam');
-    } else {
-        // Multi Mode: Toggle Selection Visuals
-        btn.classList.toggle('selected');
+        const contentDiv = document.createElement('div');
+        contentDiv.className = "dropdown-content";
+        const sortedTopics = Array.from(map[subj] || []).sort();
         
-        // Update text
-        const hint = btn.querySelector('div:last-child');
-        if (hint) hint.innerText = btn.classList.contains('selected') ? "✅ Selected" : "Tap to Select";
-    }
+        if (sortedTopics.length > 0) {
+            const gridContainer = document.createElement('div');
+            gridContainer.className = "topics-text-grid"; 
+            
+            sortedTopics.forEach(topic => {
+                const item = document.createElement('div');
+                item.className = "topic-text-item exam-selectable"; 
+                item.innerText = topic;
+                item.dataset.subject = subj;
+                item.dataset.topic = topic;
+                item.onclick = function() {
+                    this.classList.toggle('selected');
+                    if(!this.classList.contains('selected')) {
+                        details.querySelector('input[type="checkbox"]').checked = false;
+                    }
+                };
+                gridContainer.appendChild(item);
+            });
+            contentDiv.appendChild(gridContainer);
+        }
+        details.appendChild(contentDiv);
+        container.appendChild(details);
+    });
 }
 
 function toggleSubjectAll(checkbox, subjName) {
@@ -1729,119 +1789,6 @@ function toggleSubjectAll(checkbox, subjName) {
         if (checkbox.checked) item.classList.add('selected');
         else item.classList.remove('selected');
     });
-}
-
-let currentModalSubject = null;
-
-function openTopicModal(subject, mode) {
-    currentModalSubject = subject;
-    const modal = document.getElementById('topic-selection-modal');
-    const title = document.getElementById('modal-subject-title');
-    const grid = document.getElementById('modal-topic-grid');
-    const mainBtn = document.getElementById('btn-practice-all');
-
-    // 1. Setup UI
-    title.innerText = subject;
-    grid.innerHTML = "";
-    modal.classList.remove('hidden');
-
-    // 2. Get Topics dynamically
-    const topics = new Set();
-    allQuestions.filter(q => q.Subject === subject).forEach(q => topics.add(q.Topic));
-    const sortedTopics = Array.from(topics).sort();
-
-    // 3. Configure Mode (Practice vs Exam)
-    if (mode === 'practice') {
-        // --- PRACTICE MODE ---
-        mainBtn.innerHTML = `<span style="font-weight: 800; font-size: 16px;">🚀 Practice All Questions</span>`;
-        // Click "Practice All" -> Closes modal -> Starts Practice
-        mainBtn.onclick = () => { closeTopicModal(); startPractice(subject, null); };
-
-        sortedTopics.forEach(topic => {
-            const btn = document.createElement('div');
-            btn.className = "topic-glass-btn";
-            btn.innerText = topic;
-            // Click Topic -> Closes modal -> Starts Practice for that topic
-            btn.onclick = () => { closeTopicModal(); startPractice(subject, topic); };
-            grid.appendChild(btn);
-        });
-
-    } else {
-        // --- EXAM MODE (Single Subject) ---
-        mainBtn.innerHTML = `<span style="font-weight: 800; font-size: 16px;">⏱️ Start Exam (Selected)</span>`;
-        // Click Main Button -> Starts the Exam Logic
-        mainBtn.onclick = () => startModalExam(subject);
-
-        sortedTopics.forEach(topic => {
-            const btn = document.createElement('div');
-            btn.className = "topic-glass-btn";
-            btn.innerText = topic;
-            // Click Topic -> Just selects it (Visual toggle)
-            btn.onclick = () => btn.classList.toggle('selected');
-            grid.appendChild(btn);
-        });
-    }
-}
-
-function closeTopicModal() {
-    document.getElementById('topic-selection-modal').classList.add('hidden');
-}
-
-function startModalExam(subject) {
-    // 1. Gather Selected Topics from the Modal
-    const selectedBtns = document.querySelectorAll('#modal-topic-grid .topic-glass-btn.selected');
-    const selectedTopics = Array.from(selectedBtns).map(b => b.innerText);
-
-    // 2. Filter Questions
-    let pool = [];
-    if (selectedBtns.length === 0) {
-        // If nothing selected, ask if they want the WHOLE subject
-        if(!confirm(`Start exam for ALL topics in ${subject}?`)) return;
-        pool = allQuestions.filter(q => q.Subject === subject);
-    } else {
-        pool = allQuestions.filter(q => q.Subject === subject && selectedTopics.includes(q.Topic));
-    }
-
-    if (pool.length === 0) return alert("No questions found.");
-
-    // 3. Apply Limits (Guest/Free/Premium)
-    let count = parseInt(document.getElementById('q-count').value) || 20;
-    const mins = parseInt(document.getElementById('t-limit').value) || 30;
-    
-    // -- Limit Logic Copy --
-    const isAdmin = userProfile && userProfile.role === 'admin';
-    const isPrem = userProfile && userProfile[getStoreKey('isPremium')] && isDateActive(userProfile[getStoreKey('expiryDate')]);
-    
-    let maxQuestions = Infinity;
-    if (isAdmin) maxQuestions = Infinity;
-    else if (isGuest) maxQuestions = 20;
-    else if (!isPrem) maxQuestions = 50;
-
-    if (count > maxQuestions) {
-        alert(`🔒 Limit Exceeded\n\nReducing question count to ${maxQuestions}.`);
-        count = maxQuestions;
-    }
-
-    // 4. Shuffle and Slice
-    filteredQuestions = pool.sort(() => Math.random() - 0.5).slice(0, count);
-
-    // 5. Launch Exam
-    currentMode = 'test';
-    currentIndex = 0;
-    testAnswers = {};
-    testFlags = {};
-    testTimeRemaining = mins * 60;
-
-    closeTopicModal();
-    showScreen('quiz-screen');
-
-    document.getElementById('timer').classList.remove('hidden');
-    document.getElementById('test-sidebar').classList.add('active');
-    
-    renderNavigator();
-    clearInterval(testTimer);
-    testTimer = setInterval(updateTimer, 1000);
-    renderPage();
 }
 
 // ======================================================
@@ -1861,7 +1808,7 @@ function setMode(mode) {
 }
 
 function startPractice(subject, topic) {
-    // 1. Get ALL questions for this Subject
+    // 1. Get ALL questions for this Subject (Ignore Topic for now)
     let subjectPool = allQuestions.filter(q => q.Subject === subject);
     console.log(`[StartPractice] Raw Subject Pool: ${subjectPool.length}`);
 
@@ -1886,6 +1833,7 @@ function startPractice(subject, topic) {
     }
 
     // 4. 🔥 GLOBAL LIMIT LOGIC (Round-Robin)
+    // We create a "Free Sample" of the entire subject BEFORE filtering by topic.
     if (subjectPool.length > limit) {
         console.log(`[StartPractice] Creating Balanced Sample of ${limit} for ${userType}`);
         
@@ -1942,21 +1890,21 @@ function startPractice(subject, topic) {
         pool = subjectPool;
     }
 
-    // 6. Handle Empty Pool
+    // 6. Handle Empty Pool (e.g. Topic exists in DB but not in the Sample)
     if (pool.length === 0) {
-        // Check if the topic actually exists in the full DB (not just sample)
         const topicExists = allQuestions.some(q => q.Subject === subject && q.Topic === topic);
         
         if (topicExists && limit !== Infinity) {
-             return alert(`🔒 Premium Content\n\n${userType} users get a sample of ${limit} questions.\n\nQuestions for '${topic}' happen to fall outside this free sample.\n\nUpgrade to Premium to unlock everything!`);
+             // Smart Alert: Tell them the topic exists but is blocked
+             return alert(`🔒 Premium Content\n\n${userType} users get a sample of ${limit} questions from the entire ${subject} course.\n\nQuestions for '${topic}' happen to fall outside this free sample.\n\nUpgrade to Premium to unlock everything!`);
         } else {
              return alert("No questions available.");
         }
     }
 
     // 7. Handle "Unattempted Only"
-    const unattemptedEl = document.getElementById('unattempted-only');
-    if (unattemptedEl && unattemptedEl.checked) {
+    const onlyUnattempted = document.getElementById('unattempted-only').checked;
+    if (onlyUnattempted) {
         pool = pool.filter(q => !userSolvedIDs.includes(q._uid));
         if (pool.length === 0) return alert("You have solved all available free questions in this section!");
     }
@@ -1964,9 +1912,7 @@ function startPractice(subject, topic) {
     // 8. Launch Quiz
     filteredQuestions = pool;
     let startIndex = 0;
-    
-    // Auto-jump to first unattempted question if in normal mode
-    if (!unattemptedEl || !unattemptedEl.checked) {
+    if (!onlyUnattempted) {
         startIndex = filteredQuestions.findIndex(q => !userSolvedIDs.includes(q._uid));
         if (startIndex === -1) startIndex = 0;
     }
@@ -1975,19 +1921,9 @@ function startPractice(subject, topic) {
     isMistakeReview = false;
     currentIndex = startIndex;
 
-    // Hide Timer for Practice Mode
-    const timerEl = document.getElementById('timer');
-    if(timerEl) timerEl.classList.add('hidden');
-
     showScreen('quiz-screen');
     renderPage();
-    
-    // ✅ SAFETY CHECK: Call the standard navigator
-    if (typeof renderPracticeNavigator === 'function') {
-        renderPracticeNavigator();
-    } else {
-        renderNavigator();
-    }
+    renderPracticeNavigator();
 }
 
 function startMistakePractice() {
@@ -2037,7 +1973,7 @@ function startTest() {
     let count = parseInt(document.getElementById('q-count').value);
     const mins = parseInt(document.getElementById('t-limit').value);
 
-    // --- EXAM LIMIT LOGIC ---
+    // --- NEW EXAM LIMIT LOGIC ---
     let maxQuestions = Infinity;
     
     if (isAdmin) {
@@ -2051,27 +1987,28 @@ function startTest() {
     if (count > maxQuestions) {
         alert(`🔒 Limit Exceeded\n\n${isGuest ? "Guest" : "Free"} accounts are limited to ${maxQuestions} questions per exam.\n\nReducing question count to ${maxQuestions}.`);
         count = maxQuestions;
+        // Update the input to reflect the change visually
         document.getElementById('q-count').value = maxQuestions;
     }
     // ----------------------------
 
-    // 🔥 NEW: Check for selected Glass Cards
-    const selectedElements = document.querySelectorAll('.exam-subject-card.selected');
+    const selectedElements = document.querySelectorAll('.exam-selectable.selected');
     let pool = [];
 
     if (selectedElements.length === 0) {
-        // If nothing selected, ask to include ALL subjects
-        if(!confirm("Start Mixed Exam from ALL subjects?")) return;
+        if(!confirm("Test from ALL subjects?")) return;
         pool = [...allQuestions];
     } else {
-        // Filter by the selected subjects
-        const selectedSubjects = Array.from(selectedElements).map(el => el.dataset.subject);
-        pool = allQuestions.filter(q => selectedSubjects.includes(q.Subject));
+        const selectedPairs = new Set();
+        selectedElements.forEach(el => selectedPairs.add(el.dataset.subject + "|" + el.dataset.topic));
+        pool = allQuestions.filter(q => selectedPairs.has(q.Subject + "|" + q.Topic));
     }
 
     if(pool.length === 0) return alert("No questions found.");
     
+    // Ensure we don't try to take more questions than exist in the pool
     const finalCount = Math.min(count, pool.length);
+    
     filteredQuestions = pool.sort(() => Math.random() - 0.5).slice(0, finalCount);
     
     currentMode = 'test';
@@ -2084,12 +2021,14 @@ function startTest() {
     document.getElementById('timer').classList.remove('hidden');
     document.getElementById('test-sidebar').classList.add('active');
     
+    // Ensure the navigator renders immediately
     renderNavigator();
 
     clearInterval(testTimer);
     testTimer = setInterval(updateTimer, 1000);
     renderPage();
 }
+
 // ======================================================
 // 8. QUIZ ENGINE
 // ======================================================
@@ -2699,47 +2638,61 @@ async function submitPaymentProof() {
 function openAdminPanel() {
     console.log("🚀 Force Opening Admin Panel...");
     localStorage.setItem('current_screen', 'admin-screen');
-    
     // 1. Security Check
     if (!userProfile || userProfile.role !== 'admin') {
         return alert("⛔ Access Denied: Admins only.");
     }
 
-    // 2. Force Hide Everything (Ghost Buster)
+    // 2. 🔥 THE GHOST BUSTER: Force Hide ALL Known Containers by ID
+    // We list every single ID that could possibly take up space
     const idsToHide = [
-        'auth-screen', 'course-selection-screen', 'dashboard-screen', 
-        'quiz-screen', 'result-screen', 'main-menu-container', 
-        'mbbs-years-container', 'test-sidebar', 'practice-nav-container',
-        'premium-modal', 'explanation-modal', 'topic-selection-modal'
+        'auth-screen', 
+        'course-selection-screen', 
+        'dashboard-screen', 
+        'quiz-screen', 
+        'result-screen', 
+        'main-menu-container',   // <--- Likely the culprit
+        'mbbs-years-container',  // <--- Likely the culprit
+        'test-sidebar', 
+        'practice-nav-container',
+        'premium-modal',
+        'explanation-modal'
     ];
 
     idsToHide.forEach(id => {
         const el = document.getElementById(id);
         if(el) {
-            el.style.display = 'none';       
-            el.classList.add('hidden');      
-            el.classList.remove('active');   
+            el.style.display = 'none';       // Force CSS hide
+            el.classList.add('hidden');      // Add utility class
+            el.classList.remove('active');   // Remove active state
         }
     });
 
-    // 3. Force Show Admin Screen
+    // 3. Hide generic screens just in case we missed one
+    document.querySelectorAll('.screen').forEach(s => {
+        s.style.display = 'none';
+        s.classList.add('hidden');
+    });
+
+    // 4. PREPARE ADMIN SCREEN
     const adminScreen = document.getElementById('admin-screen');
     if (!adminScreen) return alert("❌ Error: 'admin-screen' ID missing in HTML.");
     
+    // Reset Admin Screen Styles
     adminScreen.classList.remove('hidden');
     adminScreen.classList.add('active');
     adminScreen.style.display = 'block'; 
-    adminScreen.style.marginTop = "0px";
+    adminScreen.style.marginTop = "0px"; // Ensure no top margin issues
     adminScreen.style.paddingTop = "20px";
 
-    // 4. Force Show 'Users' Tab
+    // 5. FORCE SHOW 'USERS' TAB
     const userTab = document.getElementById('tab-users');
     if (userTab) {
         userTab.classList.remove('hidden');
         userTab.style.display = 'block'; 
     }
 
-    // 5. Hide other admin tabs
+    // 6. Hide other admin tabs
     ['tab-reports', 'tab-payments', 'tab-keys'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -2748,36 +2701,26 @@ function openAdminPanel() {
         }
     });
 
-    // 6. Update Buttons (Wrapped in try-catch for safety)
-    try {
-        document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
-        const buttons = document.querySelectorAll('.admin-tab');
-        buttons.forEach(btn => {
-            if(btn.innerText.includes('Users') || (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes('users'))) {
-                btn.classList.add('active');
-            }
-        });
-    } catch(e) { console.log("Button update error", e); }
+    // 7. Update Buttons
+    document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
+    const buttons = document.querySelectorAll('.admin-tab');
+    buttons.forEach(btn => {
+        if(btn.innerText.includes('Users') || (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes('users'))) {
+            btn.classList.add('active');
+        }
+    });
 
-    // 7. Scroll to top
+    // 8. 🚀 FINAL SCROLL FORCE
+    // We do this inside a tiny timeout to let the DOM refresh first
     setTimeout(() => {
         window.scrollTo(0, 0);
+        document.body.scrollTop = 0; // For Safari
+        document.documentElement.scrollTop = 0; // For Chrome/Firefox
     }, 10);
 
-    // 8. Load Data (SAFELY)
-    // If this fails, the panel will STILL be open, so you can see the error.
-    if (typeof adminUsersCache !== 'undefined') adminUsersCache = null; 
-    
-    try {
-        if(typeof loadAllUsers === 'function') {
-            loadAllUsers();
-        } else {
-            console.error("loadAllUsers function is missing!");
-        }
-    } catch(e) { 
-        console.error("Data load error", e); 
-        alert("⚠️ Admin Panel Opened, but data failed to load.\nCheck Console for details.");
-    }
+ // 9. Load Data
+if (typeof adminUsersCache !== 'undefined') adminUsersCache = null; // Clear old cache
+loadAllUsers();
 }
 // 2. TAB SWITCHER (Standard Logic)
 function switchAdminTab(tabName) {
@@ -4053,7 +3996,3 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
-
-
-
-
