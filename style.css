@@ -437,6 +437,24 @@ button {
     font-weight: 700; 
 }
 
+/* SCROLLABLE SUBJECT LIST */
+#dynamic-menus {
+    max-height: 500px; 
+    overflow-y: auto;
+    margin-top: 15px; 
+    padding-top: 15px; 
+    border-top: 2px solid var(--border-color); 
+    padding-right: 10px;
+    scroll-behavior: smooth;
+}
+
+/* Custom Scrollbar Styling */
+#dynamic-menus::-webkit-scrollbar { width: 6px; }
+#dynamic-menus::-webkit-scrollbar-track { background: transparent; }
+#dynamic-menus::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+#dynamic-menus::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+
 /* =========================================
    8. QUIZ INTERFACE & EXAM MODE
    ========================================= */
@@ -886,6 +904,18 @@ button {
     box-shadow: var(--shadow-sm);
 }
 
+/* Fix 3: Tame the Long Subject List */
+.filter-container {
+    max-height: 250px;       /* Set a maximum height */
+    overflow-y: auto;        /* Add a scrollbar if it gets too long */
+    background: var(--input-bg);
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    margin-top: 10px;
+    margin-bottom: 15px;
+}
+
 /* Make the checkboxes look better in the list */
 .filter-group { margin-bottom: 12px; }
 .filter-subject-label {
@@ -914,6 +944,13 @@ input[type="password"] {
     border: 1px solid var(--border-color) !important;
 }
 
+/* --- B. Exam Mode: Grid Layout --- */
+.filter-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+}
+
 .filter-group {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
@@ -924,6 +961,136 @@ input[type="password"] {
 
 .filter-topic-list {
     border-left: none; margin-left: 0; padding-left: 0; margin-top: 8px;
+}
+
+
+/* =========================================
+   18. DROPDOWN + TEXT GRID + PROGRESS BARS (FIXED)
+   ========================================= */
+
+/* 1. The Card */
+.subject-dropdown-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    margin-bottom: 15px;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+/* 2. The Header */
+.subject-summary {
+    padding: 20px;
+    cursor: pointer;
+    list-style: none; 
+    position: relative;
+}
+.subject-summary::-webkit-details-marker { display: none; }
+
+.subject-summary::after {
+    content: '▼';
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    color: var(--text-light);
+    font-size: 12px;
+}
+details[open] .subject-summary::after {
+    transform: rotate(180deg);
+    color: var(--primary);
+}
+
+.summary-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.subj-name { font-weight: 700; font-size: 16px; color: var(--text-dark); }
+.subj-stats { font-size: 12px; color: var(--text-light); }
+
+.progress-bar-thin {
+    height: 4px;
+    background: #e2e8f0;
+    border-radius: 2px;
+    overflow: hidden;
+}
+.progress-bar-thin .fill {
+    height: 100%;
+    background: var(--success);
+}
+
+/* 3. The Content Box */
+.dropdown-content {
+    background: var(--input-bg); 
+    padding: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+/* 4. "Practice All" Button */
+.practice-all-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: 700;
+    color: var(--primary);
+    padding: 12px;
+    background: white;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    margin-bottom: 20px;
+    cursor: pointer;
+}
+.practice-all-row:hover {
+    background: var(--primary);
+    color: white;
+}
+
+/* 5. THE TOPICS GRID */
+.topics-text-grid {
+    display: flex;
+    flex-wrap: wrap; 
+    gap: 15px 30px; 
+}
+
+/* Container for Text + Bar */
+.topic-item-container {
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+    padding: 2px 5px; /* Added padding to make it clickable */
+}
+
+.topic-name {
+    font-size: 15px;
+    color: var(--text-dark);
+    margin-bottom: 4px; /* Space between text and bar */
+}
+
+/* THE MINI PROGRESS TRACK (High Visibility) */
+.topic-mini-track {
+    width: 100%;
+    min-width: 50px; /* Force minimum width */
+    height: 4px;     /* Made it thicker */
+    background-color: #cbd5e1 !important; /* Visible Grey */
+    border-radius: 2px;
+    overflow: hidden;
+    display: block; /* Force display */
+}
+
+/* THE MINI FILL (Green) */
+.topic-mini-fill {
+    height: 100%;
+    background-color: #10b981 !important; /* Bright Green */
+    border-radius: 2px;
+    display: block;
+}
+
+/* Hover Effects */
+.topic-item-container:hover .topic-name {
+    color: var(--primary);
+    font-weight: 600;
 }
 
 
@@ -2502,202 +2669,3 @@ button.secondary {
     flex-shrink: 0; padding: 15px; border-top: 1px solid #f1f5f9; background: #fff; text-align: center;
 }
 .btn-cancel { background: transparent; border: none; color: #64748b; font-size: 13px; font-weight: 500; cursor: pointer; }
-
-/* =========================================
-   25. NEW GLASS UI (STUDY PANEL & MODALS)
-   ========================================= */
-
-/* --- A. THE MAIN GRID (Subjects) --- */
-.glass-grid {
-    display: grid;
-    /* Responsive Grid: Cards are at least 160px wide, or split space equally */
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 15px;
-    margin-top: 15px;
-    padding-bottom: 20px;
-}
-
-/* On Mobile, force 2 columns (or 1 if very small) to look like an app */
-@media screen and (max-width: 600px) {
-    .glass-grid {
-        grid-template-columns: 1fr; /* Stack vertically on mobile as requested */
-    }
-}
-
-/* --- B. THE GLASS CARD (Subject Button) --- */
-.glass-card-btn {
-    appearance: none;
-    -webkit-appearance: none;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    
-    background: rgba(255, 255, 255, 0.8); /* Milky white */
-    backdrop-filter: blur(12px);          /* The "Frost" effect */
-    -webkit-backdrop-filter: blur(12px);
-    
-    border: 1px solid rgba(255, 255, 255, 0.6);
-    border-radius: 16px;
-    padding: 20px;
-    
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
-    text-align: left;
-    position: relative;
-    overflow: hidden;
-    min-height: 100px;
-}
-
-.glass-card-btn:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    background: rgba(255, 255, 255, 0.95);
-    border-color: var(--primary);
-}
-
-.glass-card-btn.selected {
-    background: #e0f2fe; /* Light Blue */
-    border-color: #0072ff;
-    box-shadow: 0 0 0 2px rgba(0, 114, 255, 0.3);
-}
-
-/* Card Content Typography */
-.glass-card-title {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--text-dark);
-    margin-bottom: 5px;
-    line-height: 1.3;
-}
-
-.glass-card-stats {
-    font-size: 12px;
-    color: var(--text-light);
-    margin-bottom: 12px;
-}
-
-/* --- C. THE PROGRESS BAR (Inside Card) --- */
-.glass-progress-track {
-    width: 100%;
-    height: 6px;
-    background: #e2e8f0;
-    border-radius: 3px;
-    overflow: hidden;
-}
-
-.glass-progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #10b981, #34d399); /* Green Gradient */
-    border-radius: 3px;
-    width: 0%; /* JS will set this */
-    transition: width 0.5s ease;
-}
-
-/* --- D. GLASS INPUTS (For Exam Settings) --- */
-.glass-input-wrapper {
-    position: relative;
-}
-
-.glass-input-field {
-    width: 100%;
-    background: rgba(255, 255, 255, 0.5) !important;
-    border: 1px solid rgba(0,0,0,0.1) !important;
-    backdrop-filter: blur(5px);
-    font-size: 18px !important;
-    font-weight: bold;
-    color: var(--primary) !important;
-    text-align: center;
-    border-radius: 12px !important;
-    padding: 15px !important;
-    transition: all 0.2s;
-}
-
-.glass-input-field:focus {
-    background: white !important;
-    border-color: var(--primary) !important;
-    box-shadow: 0 0 0 3px rgba(0, 114, 255, 0.1);
-}
-
-/* --- E. SINGLE SUBJECT TOGGLE --- */
-.glass-toggle-row {
-    background: rgba(255, 255, 255, 0.6);
-    border: 1px solid rgba(0,0,0,0.05);
-    border-radius: 12px;
-    padding: 10px;
-    display: flex;
-    justify-content: center;
-}
-
-.glass-checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-dark);
-}
-
-.glass-checkbox-label input {
-    width: 20px;
-    height: 20px;
-    accent-color: var(--primary);
-    cursor: pointer;
-}
-
-/* --- F. TOPIC MODAL GRID --- */
-.topic-modal-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 10px;
-    max-height: 400px;
-    overflow-y: auto;
-    padding-right: 5px;
-}
-
-.topic-glass-btn {
-    background: rgba(255,255,255,0.1); /* Darker/Transparent for modal */
-    border: 1px solid rgba(255,255,255,0.2);
-    color: white;
-    padding: 15px;
-    border-radius: 12px;
-    text-align: center;
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.topic-glass-btn:hover {
-    background: rgba(255,255,255,0.2);
-    transform: scale(1.02);
-}
-
-.topic-glass-btn.selected {
-    background: var(--primary);
-    border-color: var(--primary);
-    box-shadow: 0 0 15px rgba(0, 114, 255, 0.4);
-}
-
-/* --- G. DARK MODE OVERRIDES --- */
-[data-theme="dark"] .glass-card-btn {
-    background: rgba(30, 41, 59, 0.6); /* Dark Blue tint */
-    border-color: rgba(255, 255, 255, 0.1);
-}
-[data-theme="dark"] .glass-card-btn:hover {
-    background: rgba(30, 41, 59, 0.9);
-}
-[data-theme="dark"] .glass-card-title {
-    color: white;
-}
-[data-theme="dark"] .glass-toggle-row {
-    background: rgba(255,255,255,0.05);
-}
-[data-theme="dark"] .glass-checkbox-label {
-    color: #e2e8f0;
-}
-[data-theme="dark"] .glass-progress-track {
-    background: rgba(0,0,0,0.3);
-}
-
