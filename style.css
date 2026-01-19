@@ -2803,45 +2803,42 @@ button.secondary {
 }
 
 /* =========================================
-   FINAL MOBILE FIX FOR EXAM GRID
-   (Paste at the bottom of style.css)
+   FINAL MOBILE FIX (CORRECTED SELECTOR)
+   Paste at the very bottom of style.css
    ========================================= */
 
 @media screen and (max-width: 600px) {
     
-    /* 1. Force 2 Columns for the grid */
+    /* 1. Target the actual container created by JS */
+    .summary-header {
+        display: flex !important;
+        flex-direction: column !important; /* Forces vertical stacking */
+        align-items: stretch !important;   /* Stretches items to full width */
+        gap: 10px !important;              /* Space between text and button */
+        padding-bottom: 5px !important;
+    }
+
+    /* 2. Center the Subject Name */
+    .subj-name {
+        text-align: center !important;
+        width: 100% !important;
+        display: block !important;
+    }
+
+    /* 3. Make the "Select All" button a full-width block */
+    .select-all-label {
+        width: 100% !important;
+        justify-content: center !important; /* Centers the text inside the button */
+        margin: 0 !important;
+        background: #f8fafc !important;
+        border: 1px solid #cbd5e1 !important;
+        padding: 8px !important;
+    }
+
+    /* 4. Ensure the grid is still 2 columns */
     .filter-container {
         display: grid !important;
         grid-template-columns: 1fr 1fr !important;
         gap: 10px !important;
     }
-
-    /* 2. Stack the Subject Name and "Select All" button vertically */
-    .filter-group h4 {
-        display: flex !important;
-        flex-direction: column !important; /* Stack Top-to-Bottom */
-        align-items: stretch !important;   /* Stretch to fill width */
-        justify-content: center !important;
-        text-align: center !important;
-        gap: 8px !important;
-        height: auto !important;
-        margin-bottom: 8px !important;
-    }
-
-    /* 3. Make the "Select All" button full width & easier to tap */
-    .select-all-label {
-        width: 100% !important;
-        justify-content: center !important;
-        background: #f1f5f9 !important;
-        border: 1px solid #cbd5e1 !important;
-        padding: 6px !important;
-        margin: 0 !important;
-    }
-    
-    /* 4. Adjust Card Padding */
-    .filter-group {
-        padding: 10px !important;
-    }
 }
-
-
