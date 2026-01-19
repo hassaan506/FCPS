@@ -2693,111 +2693,112 @@ button.secondary {
 }
 
 /* =========================================
-   FINAL CORRECTED FIX: EXAM MODE ONLY
+   FINAL UNIVERSAL FIX: LAPTOP & MOBILE
    (Paste at the very bottom of style.css)
    ========================================= */
 
-/* 1. RESET CHECKBOXES (Strictly for Exam Mode) */
+/* 1. RESET CHECKBOXES (Fixes giant box issue) */
 #test-settings input[type="checkbox"] {
-    width: 18px !important;       
-    height: 18px !important;      
-    min-width: 18px !important;
+    width: 16px !important;       
+    height: 16px !important;      
+    min-width: 16px !important;
     padding: 0 !important;        
     margin: 0 8px 0 0 !important; 
     border: 1px solid #cbd5e1 !important;
     background: white !important;
     border-radius: 4px !important;
-    box-shadow: none !important;
-    outline: none !important;
-    -webkit-appearance: checkbox !important;
-    appearance: checkbox !important;
     display: inline-block !important;
+    vertical-align: middle !important;
+    appearance: checkbox !important;
+    -webkit-appearance: checkbox !important;
 }
 
-/* 2. MOBILE LAYOUT (Strictly Scoped to #test-settings) */
+/* 2. UNIVERSAL CARD LAYOUT (Applies to Laptop AND Mobile) */
+/* We force vertical stacking everywhere to prevent text overlap */
+#test-settings .subject-dropdown-card {
+    min-height: 110px !important;
+    height: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    background: white !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    overflow: visible !important;
+}
+
+#test-settings .subject-summary {
+    height: 100% !important;
+    padding: 12px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+}
+
+#test-settings .summary-header {
+    display: flex !important;
+    flex-direction: column !important; /* Stack vertically on ALL screens */
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* 3. TEXT STYLING (Wraps long names like Community Medicine) */
+#test-settings .subj-name {
+    text-align: center !important;
+    white-space: normal !important; 
+    word-wrap: break-word !important;
+    line-height: 1.3 !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    color: #1e293b !important;
+    width: 100% !important;
+    display: block !important;
+}
+
+/* 4. BUTTON STYLING (Full Width, Centered) */
+#test-settings .select-all-label {
+    width: 100% !important;
+    font-size: 12px !important;
+    padding: 6px !important;
+    background: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* 5. GRID ADJUSTMENTS */
+#test-settings .filter-container {
+    display: grid !important;
+    /* Laptop: Fit as many as possible (min 160px wide) */
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
+    gap: 12px !important;
+    padding: 5px !important;
+    max-height: none !important;
+    border: none !important;
+}
+
+/* Hide the arrow icon */
+#test-settings .subject-summary::after { display: none !important; }
+
+/* Hide the 0/50 stats in Exam Mode */
+#test-settings .subj-stats { display: none !important; }
+
+/* 6. MOBILE SPECIFIC OVERRIDES */
 @media screen and (max-width: 600px) {
-
-    /* Grid Container */
+    /* Phone: Force exactly 2 columns */
     #test-settings .filter-container {
-        display: grid !important;
         grid-template-columns: 1fr 1fr !important;
-        gap: 10px !important;
-        padding: 5px !important;
-        background: transparent !important;
-        border: none !important;
-        max-height: none !important;
+        gap: 8px !important;
     }
-
-    /* Card Container - ONLY inside Test Settings */
+    
     #test-settings .subject-dropdown-card {
-        width: 100% !important;
-        height: auto !important;
-        min-height: 130px !important; 
-        display: flex !important;
-        flex-direction: column !important;
-        background: white !important;
-        border: 1px solid #e2e8f0 !important;
-        border-radius: 12px !important;
-        margin: 0 !important;
-        overflow: visible !important;
-    }
-
-    /* Summary Wrapper - ONLY inside Test Settings */
-    #test-settings .subject-summary {
-        height: 100% !important;
-        padding: 12px 8px !important;
-        display: flex !important;
-        flex-direction: column !important;
-        justify-content: center !important;
-    }
-
-    /* Header Alignment - ONLY inside Test Settings */
-    #test-settings .summary-header {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        height: 100% !important;
-        gap: 12px !important;
-        width: 100% !important;
-    }
-
-    /* Subject Name - ONLY inside Test Settings */
-    #test-settings .subj-name {
-        font-size: 13px !important;
-        font-weight: 700 !important;
-        color: #1e293b !important;
-        text-align: center !important;
-        white-space: normal !important; 
-        word-wrap: break-word !important;
-        line-height: 1.3 !important;
-        width: 100% !important;
-        display: block !important;
-    }
-
-    /* Select All Button - ONLY inside Test Settings */
-    #test-settings .select-all-label {
-        width: 100% !important;
-        font-size: 11px !important;
-        padding: 8px !important;
-        background: #f8fafc !important;
-        border: 1px solid #cbd5e1 !important;
-        border-radius: 8px !important;
-        margin: 0 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-    }
-    
-    /* Hide Arrow - ONLY inside Test Settings */
-    #test-settings .subject-summary::after { 
-        display: none !important; 
-    }
-    
-    /* RESTORE PRACTICE MODE STATS */
-    /* This ensures your 0/600 stats come back */
-    .subj-stats { 
-        display: inline-block !important; 
+        min-height: 120px !important; /* Slightly taller for touch */
     }
 }
-
