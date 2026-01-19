@@ -2399,7 +2399,6 @@ function submitTest() {
             }
         } else {
             // WRONG or LEFT (Unanswered)
-            // FIX: Add to mistakes list
             if(currentUser && !isGuest && !userMistakes.includes(q._uid)) {
                 newMistakes.push(q._uid);
             }
@@ -2408,6 +2407,62 @@ function submitTest() {
 
     const pct = Math.round((score/filteredQuestions.length)*100);
 
+    // ---------------------------------------------------------
+    // 🔥 NEW: INTELLIGENT EXAM TITLING (Final Version)
+    // ---------------------------------------------------------
+    let examTitle = `${currentCourse} Exam`; // Default
+
+    if (filteredQuestions.length > 0) {
+        // 1. Identify all Subjects and Topics in this specific test
+        const uniqueSubjects = [...new Set(filteredQuestions.map(q => q.Subject))];
+        const uniqueTopics = [...new Set(filteredQuestions.map(q => q.Topic))];
+
+        if (uniqueSubjects.length === 1) {
+            // --- SCENARIO A: Single Subject (e.g., Anatomy) ---
+            const subj = uniqueSubjects[0];
+
+            // 2. Count TOTAL topics available for this subject in the Main Database
+            // This determines if you selected "All" (or nearly all) topics
+            const allPossibleTopics = new Set(
+                allQuestions.filter(q => q.Subject === subj).map(q => q.Topic)
+            );
+            
+            // 3. Compare Test Topics vs Total Available
+            // If you covered 50% or more of the subject's topics, we call it "Full"
+            const isFullSubject = uniqueTopics.length >= (allPossibleTopics.size * 0.5);
+
+            if (uniqueTopics.length === 1) {
+                // Specific: "Anatomy: Abdomen"
+                examTitle = `${subj}: ${uniqueTopics[0]}`;
+            } else if (isFullSubject) {
+                // Broad: "Anatomy (Full)"
+                examTitle = `${subj} (Full)`;
+            } else if (uniqueTopics.length <= 3) {
+                // List: "Anatomy: Abdomen, Pelvis"
+                examTitle = `${subj}: ${uniqueTopics.join(", ")}`;
+            } else {
+                // Random assortment: "Anatomy (Mixed)"
+                examTitle = `${subj} (Mixed)`;
+            }
+
+        } else {
+            // --- SCENARIO B: Multiple Subjects (e.g. Anatomy + Surgery) ---
+            
+            // Check for common topic (e.g. "Breast" in multiple subjects)
+            if (uniqueTopics.length === 1) {
+                 examTitle = `Topic: ${uniqueTopics[0]} (Mixed Subjects)`;
+            } 
+            else if (uniqueSubjects.length <= 3) {
+                // "Peads & Surgery"
+                examTitle = uniqueSubjects.join(" & ");
+            } else {
+                // "Mixed Subjects Exam"
+                examTitle = "Mixed Subjects Exam";
+            }
+        }
+    }
+    // ---------------------------------------------------------
+
     // --- SAVE TO DATABASE ---
     if(currentUser && !isGuest) {
         const batch = db.batch();
@@ -2415,31 +2470,30 @@ function submitTest() {
         const sKey = getStoreKey('solved');
         const mKey = getStoreKey('mistakes');
 
-        // 1. Save Result History
+        // 1. Save Result History with the NEW examTitle
         userRef.collection('results').add({
             date: new Date(), 
             score: pct, 
             total: filteredQuestions.length, 
-            subject: `${currentCourse} Exam`
+            subject: examTitle  // <--- UPDATED TITLE SAVED HERE
         });
 
         // 2. Bulk Add Solved
         if(newSolved.length > 0) {
             userRef.update({ [sKey]: firebase.firestore.FieldValue.arrayUnion(...newSolved) });
-            userSolvedIDs.push(...newSolved); // Update local state immediately
+            userSolvedIDs.push(...newSolved); 
         }
 
-        // 3. Bulk Add Mistakes (Wrong/Left)
+        // 3. Bulk Add Mistakes
         if(newMistakes.length > 0) {
             userRef.update({ [mKey]: firebase.firestore.FieldValue.arrayUnion(...newMistakes) });
-            userMistakes.push(...newMistakes); // Update local state immediately
+            userMistakes.push(...newMistakes); 
         }
     }
 
     showScreen('result-screen');
     document.getElementById('final-score').innerText = `${pct}% (${score}/${filteredQuestions.length})`;
 }
-
 // ======================================================
 // 10. ADMIN & PREMIUM FEATURES (UPDATED)
 // ======================================================
@@ -3996,3 +4050,4 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
