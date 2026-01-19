@@ -2681,4 +2681,17 @@ button.secondary {
 }
 .btn-cancel { background: transparent; border: none; color: #64748b; font-size: 13px; font-weight: 500; cursor: pointer; }
 
+/* --- PASTE AT THE VERY BOTTOM OF STYLE.CSS --- */
+
+@media screen and (max-width: 950px) {
+    /* force spacing specifically for the sidebar items */
+    .sidebar-column .panel {
+        margin-bottom: 20px !important;
+    }
+
+    /* Remove the extra space from the last item so layout stays even */
+    .sidebar-column .panel:last-child {
+        margin-bottom: 0 !important;
+    }
+}
 
