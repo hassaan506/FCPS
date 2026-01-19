@@ -937,10 +937,10 @@ button {
 }
 
 /* =========================================
-   14. INPUTS & EXAM GRID
+   14. INPUTS & EXAM GRID (FIXED)
    ========================================= */
 
-/* --- A. Fix the White Input Boxes --- */
+/* --- A. Fix the White Input Boxes (Kept from your old code) --- */
 input[type="number"], 
 input[type="text"], 
 input[type="email"], 
@@ -950,25 +950,99 @@ input[type="password"] {
     border: 1px solid var(--border-color) !important;
 }
 
-/* --- B. Exam Mode: Grid Layout --- */
+/* --- B. Exam Mode: Grid Layout (NEW FIXED VERSION) --- */
+
+/* 1. The Grid Container */
 .filter-container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 12px;
+    /* Increased width to 180px so "Community Medicine" fits on one line */
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 15px;
+    padding: 5px;
+    /* IMPORTANT: aligns items to top so they don't stretch awkwardly */
+    align-items: start; 
 }
 
+/* 2. The Subject Card */
 .filter-group {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 10px;
-    height: 100%;
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s;
+    height: auto; /* Allow height to adjust naturally */
 }
 
+/* 3. The Header (Subject Name + Select All) */
+.filter-group h4 {
+    display: flex; 
+    justify-content: space-between; /* Pushes 'Select All' to the right */
+    align-items: center;
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    color: var(--text-dark);
+    font-weight: 700;
+    gap: 10px;
+}
+
+/* 4. The "Select All" Button (Fixed Scattering) */
+.select-all-label {
+    font-size: 10px !important;
+    background: var(--input-bg);
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap; /* Prevents text from breaking into two lines */
+    font-weight: 600;
+    color: var(--text-light);
+    margin: 0; /* Removes any default margins causing shifts */
+}
+
+.select-all-label:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* 5. The Topic List (Scrollable Box) */
+/* This fixes the "Big Drop Down" issue */
 .filter-topic-list {
-    border-left: none; margin-left: 0; padding-left: 0; margin-top: 8px;
+    margin-left: 0;
+    padding-left: 0;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 10px;
+    
+    /* If list is taller than 150px, it will scroll internally */
+    max-height: 150px;  
+    overflow-y: auto;   
 }
 
+/* Custom Scrollbar for the list */
+.filter-topic-list::-webkit-scrollbar { width: 4px; }
+.filter-topic-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+/* 6. Individual Topic Items */
+.filter-topic-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-dark);
+    padding: 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.filter-topic-label:hover {
+    background: #f8fafc;
+}
 
 /* =========================================
    18. DROPDOWN + TEXT GRID + PROGRESS BARS (FIXED)
@@ -2691,4 +2765,5 @@ button.secondary {
         width: 100% !important;
     }
 }
+
 
