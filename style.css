@@ -993,13 +993,9 @@ input[type="password"] {
 }
 .subject-summary::-webkit-details-marker { display: none; }
 
+/* Remove the dropdown arrow to prevent text overlap */
 .subject-summary::after {
-    content: '▼';
-    position: absolute;
-    right: 20px;
-    top: 20px;
-    color: var(--text-light);
-    font-size: 12px;
+    display: none !important;
 }
 details[open] .subject-summary::after {
     transform: rotate(180deg);
@@ -2695,3 +2691,4 @@ button.secondary {
         width: 100% !important;
     }
 }
+
