@@ -2802,5 +2802,46 @@ button.secondary {
     }
 }
 
+/* =========================================
+   FINAL MOBILE FIX FOR EXAM GRID
+   (Paste at the bottom of style.css)
+   ========================================= */
+
+@media screen and (max-width: 600px) {
+    
+    /* 1. Force 2 Columns for the grid */
+    .filter-container {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 10px !important;
+    }
+
+    /* 2. Stack the Subject Name and "Select All" button vertically */
+    .filter-group h4 {
+        display: flex !important;
+        flex-direction: column !important; /* Stack Top-to-Bottom */
+        align-items: stretch !important;   /* Stretch to fill width */
+        justify-content: center !important;
+        text-align: center !important;
+        gap: 8px !important;
+        height: auto !important;
+        margin-bottom: 8px !important;
+    }
+
+    /* 3. Make the "Select All" button full width & easier to tap */
+    .select-all-label {
+        width: 100% !important;
+        justify-content: center !important;
+        background: #f1f5f9 !important;
+        border: 1px solid #cbd5e1 !important;
+        padding: 6px !important;
+        margin: 0 !important;
+    }
+    
+    /* 4. Adjust Card Padding */
+    .filter-group {
+        padding: 10px !important;
+    }
+}
 
 
