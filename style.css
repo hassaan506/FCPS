@@ -1045,6 +1045,42 @@ input[type="password"] {
 }
 
 /* =========================================
+   MOBILE FIX FOR EXAM SELECTION
+   (Paste this below Section 14)
+   ========================================= */
+
+@media screen and (max-width: 600px) {
+    
+    /* 1. Force 2 Columns so it doesn't become a huge long list */
+    .filter-container {
+        grid-template-columns: 1fr 1fr !important; /* Forces 2 equal columns */
+        gap: 10px !important;
+    }
+
+    /* 2. Stack the Name and the Button vertically */
+    /* This fixes the "Scattered" look */
+    .filter-group h4 {
+        flex-direction: column !important; /* Stack top-to-bottom */
+        align-items: stretch !important;   /* Stretch to fill width */
+        gap: 8px !important;
+        text-align: center;                /* Center the text */
+    }
+
+    /* 3. Style the "Select All" as a nice button */
+    .select-all-label {
+        width: 100%;
+        justify-content: center;
+        margin-top: 2px;
+        background: #f1f5f9;
+    }
+
+    /* 4. Adjust the list height for smaller screens */
+    .filter-topic-list {
+        max-height: 120px; /* Slightly shorter on mobile */
+    }
+}
+
+/* =========================================
    18. DROPDOWN + TEXT GRID + PROGRESS BARS (FIXED)
    ========================================= */
 
@@ -2765,5 +2801,6 @@ button.secondary {
         width: 100% !important;
     }
 }
+
 
 
