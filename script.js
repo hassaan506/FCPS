@@ -2421,14 +2421,12 @@ function submitTest() {
             // --- SCENARIO A: Single Subject (e.g., Anatomy) ---
             const subj = uniqueSubjects[0];
 
-            // 2. Count TOTAL topics available for this subject in the Main Database
-            // This determines if you selected "All" (or nearly all) topics
+            // 2. Count TOTAL topics available for this subject
             const allPossibleTopics = new Set(
                 allQuestions.filter(q => q.Subject === subj).map(q => q.Topic)
             );
             
-            // 3. Compare Test Topics vs Total Available
-            // If you covered 50% or more of the subject's topics, we call it "Full"
+            // 3. Compare Test Topics vs Total Available (>50% = Full)
             const isFullSubject = uniqueTopics.length >= (allPossibleTopics.size * 0.5);
 
             if (uniqueTopics.length === 1) {
@@ -2446,17 +2444,13 @@ function submitTest() {
             }
 
         } else {
-            // --- SCENARIO B: Multiple Subjects (e.g. Anatomy + Surgery) ---
-            
-            // Check for common topic (e.g. "Breast" in multiple subjects)
+            // --- SCENARIO B: Multiple Subjects ---
             if (uniqueTopics.length === 1) {
                  examTitle = `Topic: ${uniqueTopics[0]} (Mixed Subjects)`;
             } 
             else if (uniqueSubjects.length <= 3) {
-                // "Peads & Surgery"
                 examTitle = uniqueSubjects.join(" & ");
             } else {
-                // "Mixed Subjects Exam"
                 examTitle = "Mixed Subjects Exam";
             }
         }
@@ -2470,12 +2464,13 @@ function submitTest() {
         const sKey = getStoreKey('solved');
         const mKey = getStoreKey('mistakes');
 
-        // 1. Save Result History with the NEW examTitle
+        // 1. Save Result History
         userRef.collection('results').add({
             date: new Date(), 
             score: pct, 
             total: filteredQuestions.length, 
-            subject: examTitle  // <--- UPDATED TITLE SAVED HERE
+            subject: examTitle,      // Saved the smart name
+            courseId: currentCourse  // <--- 🔥 THIS IS THE CRITICAL LINE YOU WERE MISSING
         });
 
         // 2. Bulk Add Solved
@@ -2494,6 +2489,7 @@ function submitTest() {
     showScreen('result-screen');
     document.getElementById('final-score').innerText = `${pct}% (${score}/${filteredQuestions.length})`;
 }
+
 // ======================================================
 // 10. ADMIN & PREMIUM FEATURES (UPDATED)
 // ======================================================
@@ -3379,8 +3375,7 @@ function updateBadgeButton() {
 }
 
 async function openAnalytics() {
-    // ✅ 1. Guest Check (Immediate Popup)
-    // This runs BEFORE opening the modal
+    // 1. Guest Check
     if (isGuest) {
         return alert("Login to view your detailed analytics.");
     }
@@ -3432,10 +3427,16 @@ async function openAnalytics() {
             .limit(20) 
             .get();
         
-        // 2. FILTER THE RECORDS 
+        // 2. FILTER THE RECORDS (UPDATED LOGIC)
         const allResults = snaps.docs.map(doc => doc.data());
-        // We filter by checking if the saved subject contains our current course key (e.g. MBBS_1)
-        const filteredResults = allResults.filter(r => r.subject && r.subject.includes(currentCourse));
+        
+        const filteredResults = allResults.filter(r => {
+            // Priority: Check if it has the new "courseId" tag we just added
+            if (r.courseId) return r.courseId === currentCourse;
+            
+            // Fallback: Check if the title matches (For your old records)
+            return r.subject && r.subject.includes(currentCourse);
+        });
 
         // 3. CHECK IF EMPTY AFTER FILTERING
         if(filteredResults.length === 0) {
@@ -4050,4 +4051,5 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
 
