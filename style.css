@@ -937,10 +937,10 @@ button {
 }
 
 /* =========================================
-   14. INPUTS & EXAM GRID (FIXED)
+   14. INPUTS & EXAM GRID
    ========================================= */
 
-/* --- A. Fix the White Input Boxes (Kept from your old code) --- */
+/* --- A. Fix the White Input Boxes --- */
 input[type="number"], 
 input[type="text"], 
 input[type="email"], 
@@ -950,135 +950,25 @@ input[type="password"] {
     border: 1px solid var(--border-color) !important;
 }
 
-/* --- B. Exam Mode: Grid Layout (NEW FIXED VERSION) --- */
-
-/* 1. The Grid Container */
+/* --- B. Exam Mode: Grid Layout --- */
 .filter-container {
     display: grid;
-    /* Increased width to 180px so "Community Medicine" fits on one line */
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 15px;
-    padding: 5px;
-    /* IMPORTANT: aligns items to top so they don't stretch awkwardly */
-    align-items: start; 
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
 }
 
-/* 2. The Subject Card */
 .filter-group {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    box-shadow: var(--shadow-sm);
-    transition: transform 0.2s;
-    height: auto; /* Allow height to adjust naturally */
+    border-radius: 8px;
+    padding: 10px;
+    height: 100%;
 }
 
-/* 3. The Header (Subject Name + Select All) */
-.filter-group h4 {
-    display: flex; 
-    justify-content: space-between; /* Pushes 'Select All' to the right */
-    align-items: center;
-    margin: 0 0 10px 0;
-    font-size: 14px;
-    color: var(--text-dark);
-    font-weight: 700;
-    gap: 10px;
-}
-
-/* 4. The "Select All" Button (Fixed Scattering) */
-.select-all-label {
-    font-size: 10px !important;
-    background: var(--input-bg);
-    padding: 4px 8px;
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    white-space: nowrap; /* Prevents text from breaking into two lines */
-    font-weight: 600;
-    color: var(--text-light);
-    margin: 0; /* Removes any default margins causing shifts */
-}
-
-.select-all-label:hover {
-    border-color: var(--primary);
-    color: var(--primary);
-}
-
-/* 5. The Topic List (Scrollable Box) */
-/* This fixes the "Big Drop Down" issue */
 .filter-topic-list {
-    margin-left: 0;
-    padding-left: 0;
-    border-top: 1px solid #f1f5f9;
-    padding-top: 10px;
-    
-    /* If list is taller than 150px, it will scroll internally */
-    max-height: 150px;  
-    overflow-y: auto;   
+    border-left: none; margin-left: 0; padding-left: 0; margin-top: 8px;
 }
 
-/* Custom Scrollbar for the list */
-.filter-topic-list::-webkit-scrollbar { width: 4px; }
-.filter-topic-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-
-/* 6. Individual Topic Items */
-.filter-topic-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    color: var(--text-dark);
-    padding: 6px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.1s;
-}
-
-.filter-topic-label:hover {
-    background: #f8fafc;
-}
-
-/* =========================================
-   MOBILE FIX FOR EXAM SELECTION
-   (Paste this below Section 14)
-   ========================================= */
-
-@media screen and (max-width: 600px) {
-    
-    /* 1. Force 2 Columns so it doesn't become a huge long list */
-    .filter-container {
-        grid-template-columns: 1fr 1fr !important; /* Forces 2 equal columns */
-        gap: 10px !important;
-    }
-
-    /* 2. Stack the Name and the Button vertically */
-    /* This fixes the "Scattered" look */
-    .filter-group h4 {
-        flex-direction: column !important; /* Stack top-to-bottom */
-        align-items: stretch !important;   /* Stretch to fill width */
-        gap: 8px !important;
-        text-align: center;                /* Center the text */
-    }
-
-    /* 3. Style the "Select All" as a nice button */
-    .select-all-label {
-        width: 100%;
-        justify-content: center;
-        margin-top: 2px;
-        background: #f1f5f9;
-    }
-
-    /* 4. Adjust the list height for smaller screens */
-    .filter-topic-list {
-        max-height: 120px; /* Slightly shorter on mobile */
-    }
-}
 
 /* =========================================
    18. DROPDOWN + TEXT GRID + PROGRESS BARS (FIXED)
@@ -2803,78 +2693,81 @@ button.secondary {
 }
 
 /* =========================================
-   FINAL MOBILE FIX (Compact & Wrapped Text)
+   FINAL MOBILE FIX FOR EXAM MODE GRID
    (Paste at the bottom of style.css)
    ========================================= */
 
 @media screen and (max-width: 600px) {
 
-    /* 1. Grid Layout: 2 Columns, tight spacing */
-    .filter-container {
+    /* 1. Force the Grid to be 2 Columns */
+    #test-settings .filter-container {
         display: grid !important;
         grid-template-columns: 1fr 1fr !important;
         gap: 8px !important;
         padding: 2px !important;
+        max-height: none !important; /* Let it grow */
     }
 
-    /* 2. The Card: Allow it to grow so text isn't cut */
-    .subject-dropdown-card, 
-    .filter-group {
+    /* 2. Style the Card (The <details> element) */
+    .subject-dropdown-card {
         width: 100% !important;
-        height: auto !important;     /* Allow height to grow */
-        min-height: 90px !important; /* Minimum height */
-        display: flex !important;
-        flex-direction: column !important;
-        justify-content: space-between !important; /* Push button to bottom */
-        padding: 8px !important;
-        margin: 0 !important;
-    }
-
-    /* 3. The Header Container */
-    .summary-header, 
-    .filter-group h4 {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        gap: 5px !important;
-        width: 100% !important;
+        min-height: 95px !important;  /* Taller to fit stacked text */
+        height: auto !important;
         margin: 0 !important;
         padding: 0 !important;
-        border: none !important; /* Remove any border lines inside */
+        display: flex !important;
+        flex-direction: column !important;
     }
 
-    /* 4. FIX: Subject Name (Prevent Cutting) */
-    .subj-name, 
-    .filter-group h4 span {
-        font-size: 12px !important;  /* Slightly smaller to fit */
-        white-space: normal !important; /* FORCE text to wrap to next line */
-        overflow: visible !important;   /* Ensure nothing is hidden */
-        text-overflow: clip !important; /* Remove "..." dots */
-        text-align: center !important;
-        line-height: 1.2 !important;    /* Tighten lines */
-        margin-bottom: 4px !important;
+    /* 3. The Clickable Area (Summary) */
+    .subject-summary {
+        padding: 8px !important;
+        height: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+    }
+
+    /* 4. The Container holding Name + Button */
+    .summary-header {
+        display: flex !important;
+        flex-direction: column !important; /* Stack Vertically */
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 6px !important;
         width: 100% !important;
+        height: 100% !important;
     }
 
-    /* 5. FIX: 'Select All' Button (Make it Slim) */
+    /* 5. FIX: Subject Name (Allow Wrapping) */
+    .subj-name {
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        text-align: center !important;
+        white-space: normal !important; /* CRITICAL: Allows text to wrap */
+        line-height: 1.3 !important;
+        width: 100% !important;
+        display: block !important;
+        overflow: visible !important;
+    }
+
+    /* 6. FIX: 'Select All' Button (Make it Slim) */
     .select-all-label {
         width: 100% !important;
         display: flex !important;
-        justify-content: center !important;
+        justify-content: center !important; /* Center text */
         align-items: center !important;
         
-        padding: 4px 0 !important;      /* Reduced padding (Slimmer) */
-        margin: 0 !important;
-        
         font-size: 10px !important;     /* Smaller text */
-        background: #f1f5f9 !important;
+        padding: 4px 0 !important;      /* Slim padding */
+        margin-top: 5px !important;     /* Push to bottom */
+        
+        background: #f8fafc !important;
         border: 1px solid #cbd5e1 !important;
         border-radius: 6px !important;
-        height: auto !important;
     }
 
-    /* 6. Hide the weird dropdown arrow */
+    /* 7. Hide the dropdown arrow to save space */
     .subject-summary::after {
         display: none !important;
     }
