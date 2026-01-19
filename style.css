@@ -2803,69 +2803,78 @@ button.secondary {
 }
 
 /* =========================================
-   FINAL UNIVERSAL MOBILE FIX
+   FINAL MOBILE FIX (Compact & Wrapped Text)
    (Paste at the bottom of style.css)
    ========================================= */
 
 @media screen and (max-width: 600px) {
 
-    /* 1. Force the Container into a 2-Column Grid */
+    /* 1. Grid Layout: 2 Columns, tight spacing */
     .filter-container {
         display: grid !important;
         grid-template-columns: 1fr 1fr !important;
-        gap: 10px !important;
-        padding: 5px !important;
+        gap: 8px !important;
+        padding: 2px !important;
     }
 
-    /* 2. Target the Card Items (Handling both potential class names) */
+    /* 2. The Card: Allow it to grow so text isn't cut */
     .subject-dropdown-card, 
     .filter-group {
         width: 100% !important;
-        height: auto !important;
-        min-height: 100px !important;
+        height: auto !important;     /* Allow height to grow */
+        min-height: 90px !important; /* Minimum height */
         display: flex !important;
         flex-direction: column !important;
-        justify-content: center !important;
+        justify-content: space-between !important; /* Push button to bottom */
+        padding: 8px !important;
         margin: 0 !important;
     }
 
-    /* 3. Target the Header Text/Button Container */
+    /* 3. The Header Container */
     .summary-header, 
     .filter-group h4 {
         display: flex !important;
-        flex-direction: column !important; /* Stack Vertical */
-        align-items: stretch !important;   /* Full Width */
+        flex-direction: column !important;
+        align-items: center !important;
         justify-content: center !important;
-        text-align: center !important;
-        gap: 8px !important;
+        gap: 5px !important;
         width: 100% !important;
         margin: 0 !important;
-        padding: 5px !important;
+        padding: 0 !important;
+        border: none !important; /* Remove any border lines inside */
     }
 
-    /* 4. Fix the Subject Name Text */
+    /* 4. FIX: Subject Name (Prevent Cutting) */
     .subj-name, 
     .filter-group h4 span {
-        font-size: 13px !important;
-        white-space: normal !important; /* Allow wrapping */
+        font-size: 12px !important;  /* Slightly smaller to fit */
+        white-space: normal !important; /* FORCE text to wrap to next line */
+        overflow: visible !important;   /* Ensure nothing is hidden */
+        text-overflow: clip !important; /* Remove "..." dots */
         text-align: center !important;
-        margin-bottom: 2px !important;
+        line-height: 1.2 !important;    /* Tighten lines */
+        margin-bottom: 4px !important;
+        width: 100% !important;
     }
 
-    /* 5. Fix the 'Select All' Button */
+    /* 5. FIX: 'Select All' Button (Make it Slim) */
     .select-all-label {
         width: 100% !important;
         display: flex !important;
         justify-content: center !important;
         align-items: center !important;
-        padding: 8px !important;
+        
+        padding: 4px 0 !important;      /* Reduced padding (Slimmer) */
+        margin: 0 !important;
+        
+        font-size: 10px !important;     /* Smaller text */
         background: #f1f5f9 !important;
         border: 1px solid #cbd5e1 !important;
-        border-radius: 8px !important;
-        margin-top: 5px !important;
+        border-radius: 6px !important;
+        height: auto !important;
     }
 
-    /* 6. Hide the weird dropdown arrow if present */
+    /* 6. Hide the weird dropdown arrow */
     .subject-summary::after {
         display: none !important;
     }
