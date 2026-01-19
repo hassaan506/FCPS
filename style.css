@@ -1047,11 +1047,15 @@ details[open] .subject-summary::after {
     color: white;
 }
 
-/* 5. THE TOPICS GRID */
+/* 5. THE TOPICS GRID (UPDATED) */
 .topics-text-grid {
-    display: flex;
-    flex-wrap: wrap; 
-    gap: 15px 30px; 
+    display: grid;
+    /* This creates equal columns. Adjust '140px' if you want them wider or narrower */
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 20px 20px; /* Vertical Gap | Horizontal Gap */
+    width: 100%;
+    align-items: start; /* Ensures items align to the top of their row */
+    margin-top: 10px;
 }
 
 /* Container for Text + Bar */
@@ -1059,7 +1063,8 @@ details[open] .subject-summary::after {
     display: flex;
     flex-direction: column;
     cursor: pointer;
-    padding: 2px 5px; /* Added padding to make it clickable */
+    padding: 5px; 
+    min-width: 0; /* Prevents flex items from overflowing grid cells */
 }
 
 .topic-name {
@@ -2669,3 +2674,4 @@ button.secondary {
     flex-shrink: 0; padding: 15px; border-top: 1px solid #f1f5f9; background: #fff; text-align: center;
 }
 .btn-cancel { background: transparent; border: none; color: #64748b; font-size: 13px; font-weight: 500; cursor: pointer; }
+
