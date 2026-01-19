@@ -2803,42 +2803,70 @@ button.secondary {
 }
 
 /* =========================================
-   FINAL MOBILE FIX (CORRECTED SELECTOR)
-   Paste at the very bottom of style.css
+   FINAL UNIVERSAL MOBILE FIX
+   (Paste at the bottom of style.css)
    ========================================= */
 
 @media screen and (max-width: 600px) {
-    
-    /* 1. Target the actual container created by JS */
-    .summary-header {
-        display: flex !important;
-        flex-direction: column !important; /* Forces vertical stacking */
-        align-items: stretch !important;   /* Stretches items to full width */
-        gap: 10px !important;              /* Space between text and button */
-        padding-bottom: 5px !important;
-    }
 
-    /* 2. Center the Subject Name */
-    .subj-name {
-        text-align: center !important;
-        width: 100% !important;
-        display: block !important;
-    }
-
-    /* 3. Make the "Select All" button a full-width block */
-    .select-all-label {
-        width: 100% !important;
-        justify-content: center !important; /* Centers the text inside the button */
-        margin: 0 !important;
-        background: #f8fafc !important;
-        border: 1px solid #cbd5e1 !important;
-        padding: 8px !important;
-    }
-
-    /* 4. Ensure the grid is still 2 columns */
+    /* 1. Force the Container into a 2-Column Grid */
     .filter-container {
         display: grid !important;
         grid-template-columns: 1fr 1fr !important;
         gap: 10px !important;
+        padding: 5px !important;
+    }
+
+    /* 2. Target the Card Items (Handling both potential class names) */
+    .subject-dropdown-card, 
+    .filter-group {
+        width: 100% !important;
+        height: auto !important;
+        min-height: 100px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        margin: 0 !important;
+    }
+
+    /* 3. Target the Header Text/Button Container */
+    .summary-header, 
+    .filter-group h4 {
+        display: flex !important;
+        flex-direction: column !important; /* Stack Vertical */
+        align-items: stretch !important;   /* Full Width */
+        justify-content: center !important;
+        text-align: center !important;
+        gap: 8px !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 5px !important;
+    }
+
+    /* 4. Fix the Subject Name Text */
+    .subj-name, 
+    .filter-group h4 span {
+        font-size: 13px !important;
+        white-space: normal !important; /* Allow wrapping */
+        text-align: center !important;
+        margin-bottom: 2px !important;
+    }
+
+    /* 5. Fix the 'Select All' Button */
+    .select-all-label {
+        width: 100% !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        padding: 8px !important;
+        background: #f1f5f9 !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+        margin-top: 5px !important;
+    }
+
+    /* 6. Hide the weird dropdown arrow if present */
+    .subject-summary::after {
+        display: none !important;
     }
 }
