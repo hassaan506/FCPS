@@ -384,7 +384,13 @@ button {
         flex-direction: column !important;
         gap: 20px !important;
     }
-
+/* FIX: Add space between Progress and Settings in mobile */
+    .sidebar-column {
+        display: flex;
+        flex-direction: column;
+        gap: 20px; /* This creates the gap between the cards */
+        width: 100%;
+    }
     /* 2. Reset the Panels (Progress & Settings) */
     .panel {
         width: 100% !important;
@@ -2674,4 +2680,5 @@ button.secondary {
     flex-shrink: 0; padding: 15px; border-top: 1px solid #f1f5f9; background: #fff; text-align: center;
 }
 .btn-cancel { background: transparent; border: none; color: #64748b; font-size: 13px; font-weight: 500; cursor: pointer; }
+
 
