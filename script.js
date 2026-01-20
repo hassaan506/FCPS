@@ -2245,39 +2245,48 @@ function renderNavigator() {
     if (!nav) return;
     nav.innerHTML = "";
 
-    // Calculate the end of the current page (e.g., if index is 10, end is 15)
-    const pageEnd = currentIndex + 5; 
+    // 1. Calculate the Exam Page Range (e.g., 0-5, 5-10)
+    // We align 'currentIndex' to the nearest 5 to find the start of the page
+    const pageStart = Math.floor(currentIndex / 5) * 5;
+    const pageEnd = pageStart + 5; 
 
     filteredQuestions.forEach((q, idx) => {
         const btn = document.createElement('button');
         btn.className = "nav-btn"; 
         btn.innerText = idx + 1;
         
-        // 1. IS THIS QUESTION VISIBLE RIGHT NOW? (The "Full Stack")
-        // If current index is 10, then 10,11,12,13,14 are "Active Stack"
-        if (currentMode === 'test' && idx >= currentIndex && idx < pageEnd) {
-            btn.classList.add('active-stack');
-        } else if (currentIndex === idx) {
-            // Fallback for practice mode (single active)
-            btn.classList.add('active-stack');
+        // --- HIGHLIGHTING LOGIC ---
+        if (currentMode === 'test') {
+            // EXAM MODE: Highlight the whole group (e.g. 11-15)
+            // We check if this button (idx) is inside the current page range
+            if (idx >= pageStart && idx < pageEnd) {
+                btn.classList.add('exam-active-stack');
+            }
+        } else {
+            // PRACTICE MODE: Highlight ONLY the specific question
+            if (currentIndex === idx) {
+                btn.classList.add('current');
+            }
         }
 
-        // 2. STATUS CHECK
+        // Status Checks
         if (testAnswers[q._uid]) btn.classList.add('answered');
         if (testFlags[q._uid]) btn.classList.add('flagged');
 
-        // 3. CLICK ACTION (Scroll & Snap)
+        // Click Logic
         btn.onclick = () => {
             if (currentMode === 'test') {
+                // Exam: Snap to the start of the page
                 currentIndex = Math.floor(idx / 5) * 5;
                 renderPage();
                 
-                // Smooth Scroll to specific card
+                // Scroll to card
                 setTimeout(() => {
                     const card = document.getElementById(`q-card-${idx}`);
                     if(card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }, 50);
             } else {
+                // Practice: Go to specific question
                 currentIndex = idx;
                 renderPage();
             }
@@ -2285,7 +2294,6 @@ function renderNavigator() {
         nav.appendChild(btn);
     });
 }
-
 function renderPracticeNavigator() {
     // Target the ID found in your HTML: <div id="practice-nav-container">
     const nav = document.getElementById('practice-nav-container');
@@ -4148,6 +4156,7 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
 
 
 
