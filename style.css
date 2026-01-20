@@ -2804,63 +2804,66 @@ button.secondary {
 }
 
 /* =========================================
-   FIX: QUIZ FOOTER BUTTONS ALIGNMENT
-   (Paste at the bottom of style.css)
+   NUCLEAR FIX: QUIZ FOOTER BUTTONS
+   (Paste at the very bottom of style.css)
    ========================================= */
 
-/* 1. Organize the Footer Container */
+/* 1. Force the Footer to behave like a Row */
 .quiz-footer {
     display: flex !important;
-    justify-content: space-between !important;
+    flex-direction: row !important;
     align-items: center !important;
-    gap: 12px !important;  /* Creates space between Previous, Flag, and Submit */
-    margin-top: 20px !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
     width: 100% !important;
+    padding-top: 15px !important;
 }
 
-/* 2. Fix All Buttons inside the Footer */
+/* 2. RESET ALL BUTTONS inside the footer */
 .quiz-footer button {
-    margin: 0 !important;       /* Remove global top margin */
-    width: auto !important;     /* Stop forcing 100% width */
-    height: 50px !important;    /* Consistent height */
+    margin: 0 !important;       /* Remove top margins */
+    width: auto !important;     /* CRITICAL: Stop them from being 100% wide */
+    height: 48px !important;    /* Uniform height */
+}
+
+/* 3. FLAG BUTTON (The small square one) */
+#flag-btn {
+    flex: 0 0 48px !important;  /* Fixed width & height (Don't shrink!) */
+    width: 48px !important;
+    padding: 0 !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    padding: 0 20px !important;
+    border-radius: 12px !important;
+    font-size: 20px !important;
+    background: white !important;
+    border: 1px solid #e2e8f0 !important;
 }
 
-/* 3. Specific Styling for "Previous" & "Next" */
-#prev-btn, #next-btn {
-    flex: 1 !important;         /* Grow to fill available space */
+/* 4. PREVIOUS BUTTON (Left side) */
+#prev-btn {
+    flex: 1 !important;         /* Allow it to grow */
+    min-width: 80px !important;
     background: white !important;
     border: 1px solid #e2e8f0 !important;
     color: #64748b !important;
 }
 
-/* 4. Specific Styling for "Submit Exam" (Green) */
-#submit-btn {
-    flex: 2 !important;         /* Make it wider (double size) for emphasis */
-    background: #10b981 !important; /* Green */
-    color: white !important;
-    font-weight: bold !important;
+/* 5. SUBMIT & NEXT BUTTONS (Right side - Green/Blue) */
+#submit-btn, #next-btn {
+    flex: 2 !important;         /* Make them wider than 'Previous' */
     border: none !important;
-    box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3) !important;
+    color: white !important;
+    font-weight: 700 !important;
 }
 
-/* 5. Fix the Flag Button (Small Square) */
-#flag-btn {
-    flex: 0 0 50px !important;  /* Fixed square size */
-    width: 50px !important;
-    padding: 0 !important;
-    border: 1px solid #e2e8f0 !important;
-    background: white !important;
-    font-size: 20px !important; /* Larger icon */
-    border-radius: 12px !important;
+/* Ensure Submit is Green */
+#submit-btn {
+    background: #10b981 !important;
+    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3) !important;
 }
 
-/* Active Flag State (Red) */
-#flag-btn.flag-active {
-    background: #fef2f2 !important;
-    color: #ef4444 !important;
-    border-color: #fecaca !important;
+/* Ensure Next is Blue (if visible) */
+#next-btn {
+    background: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%) !important;
 }
