@@ -2248,7 +2248,7 @@ function renderNavigator() {
 
     filteredQuestions.forEach((q, idx) => {
         const btn = document.createElement('button');
-        btn.className = "nav-btn"; // Ensure you have CSS for this class
+        btn.className = "nav-btn"; 
         btn.innerText = idx + 1;
         
         // Style styling based on state
@@ -2257,13 +2257,19 @@ function renderNavigator() {
         if (testAnswers[q._uid]) btn.classList.add('answered');
 
         btn.onclick = () => {
-            currentIndex = idx;
+            // 🔥 THE FIX: Snap to the start of the 5-question page
+            if (currentMode === 'test') {
+                // Example: Clicking Q8 (index 7) -> Math.floor(1.4) * 5 = 5 (Starts at Q6)
+                currentIndex = Math.floor(idx / 5) * 5;
+            } else {
+                // Practice mode (1 per page) stays normal
+                currentIndex = idx;
+            }
             renderPage();
         };
         nav.appendChild(btn);
     });
 }
-
 function renderPracticeNavigator() {
     // Target the ID found in your HTML: <div id="practice-nav-container">
     const nav = document.getElementById('practice-nav-container');
@@ -4126,6 +4132,7 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
 
 
 
