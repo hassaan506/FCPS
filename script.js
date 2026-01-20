@@ -3636,61 +3636,106 @@ async function submitReportFinal() {
 async function resetAccountData() {
     if (!currentUser || isGuest) return alert("Guests cannot reset progress.");
 
-    // 1. Confirm deletion
-    const confirmed = confirm(`⚠️ FINAL WARNING: This will delete ALL progress for ${currentCourse}.\n\n- Exam History will be wiped.\n- All Solved questions will be lost.\n- Mistakes list will be cleared.\n- Stats/Accuracy will be reset.\n\nAre you sure?`);
-    
-    if (!confirmed) return;
+    // 1. Show Option Menu
+    const choice = prompt(
+        `🗑️ RESET OPTIONS (${currentCourse})\n\n` +
+        `Type the number of what you want to clear:\n` +
+        `1️⃣ Everything (Full Reset)\n` +
+        `2️⃣ Mistakes Only\n` +
+        `3️⃣ Bookmarks Only\n` +
+        `4️⃣ Exam History Only\n` +
+        `5️⃣ Solved Questions Only\n\n` +
+        `Click Cancel to go back.`
+    );
 
-    const btn = event.target;
-    const oldText = btn.innerText;
-    btn.innerText = "Deleting...";
-    btn.disabled = true;
+    if (!choice) return; // User cancelled
+
+    // 2. Map choice to a readable name for confirmation
+    let actionName = "";
+    if (choice === '1') actionName = "EVERYTHING (Irreversible)";
+    else if (choice === '2') actionName = "Mistakes List";
+    else if (choice === '3') actionName = "Bookmarks";
+    else if (choice === '4') actionName = "Exam History";
+    else if (choice === '5') actionName = "Solved Questions & Stats";
+    else return alert("Invalid selection. Please type a number (1-5).");
+
+    // 3. Final Confirmation
+    if (!confirm(`⚠️ Are you sure you want to delete ${actionName}?`)) return;
+
+    // Optional: Update button text if triggered from a button
+    const btn = event ? event.target : null;
+    const oldText = btn ? btn.innerText : "";
+    if (btn && btn.tagName === 'BUTTON') {
+        btn.innerText = "Processing...";
+        btn.disabled = true;
+    }
 
     try {
         const userRef = db.collection('users').doc(currentUser.uid);
-        
-        // --- STEP 1: Wipe Main Profile Data (Solved, Mistakes, Stats) ---
+        const batch = db.batch();
+
+        // --- KEYS FROM YOUR OLD CODE ---
         const sKey = getStoreKey('solved');
         const mKey = getStoreKey('mistakes');
         const bKey = getStoreKey('bookmarks');
         const statKey = getStoreKey('stats');
 
-        // We use a Batch to do everything together safely
-        const batch = db.batch();
+        let msg = "";
 
-        batch.update(userRef, {
-            [sKey]: [],        // Clear Solved
-            [mKey]: [],        // Clear Mistakes
-            [bKey]: [],        // Clear Bookmarks
-            [statKey]: {}      // Clear Stats Object
-        });
+        // --- OPTION 2: CLEAR MISTAKES (or Full Reset) ---
+        if (choice === '1' || choice === '2') {
+            batch.update(userRef, { [mKey]: [] });
+            msg += "Mistakes cleared. ";
+        }
 
-        // --- STEP 2: Wipe Exam History (The Missing Part) ---
-        // We must query the results collection and delete docs that match the current course
-        const resultsSnapshot = await userRef.collection('results').get();
-        
-        let deletedCount = 0;
-        
-        resultsSnapshot.forEach(doc => {
-            const data = doc.data();
-            // Only delete results that belong to the current course (FCPS or MBBS)
-            if (data.subject && data.subject.includes(currentCourse)) {
-                batch.delete(doc.ref);
-                deletedCount++;
-            }
-        });
+        // --- OPTION 3: CLEAR BOOKMARKS (or Full Reset) ---
+        if (choice === '1' || choice === '3') {
+            batch.update(userRef, { [bKey]: [] });
+            msg += "Bookmarks cleared. ";
+        }
 
-        // --- STEP 3: Commit All Deletes ---
+        // --- OPTION 5: CLEAR SOLVED & STATS (or Full Reset) ---
+        if (choice === '1' || choice === '5') {
+            batch.update(userRef, { 
+                [sKey]: [],
+                [statKey]: {} 
+            });
+            msg += "Solved status reset. ";
+        }
+
+        // --- OPTION 4: CLEAR EXAM HISTORY (or Full Reset) ---
+        if (choice === '1' || choice === '4') {
+            const resultsSnapshot = await userRef.collection('results').get();
+            let deletedCount = 0;
+            
+            resultsSnapshot.forEach(doc => {
+                const data = doc.data();
+                
+                // 🔥 THE FIX: Checks for 'courseId' tag OR the old naming style
+                const belongsToCourse = (data.courseId === currentCourse) || 
+                                        (data.subject && data.subject.includes(currentCourse));
+                
+                if (belongsToCourse) {
+                    batch.delete(doc.ref);
+                    deletedCount++;
+                }
+            });
+            msg += `Deleted ${deletedCount} exams. `;
+        }
+
+        // --- COMMIT CHANGES ---
         await batch.commit();
 
-        alert(`✅ Reset Complete!\n\nDeleted ${deletedCount} exam records and all progress for ${currentCourse}.`);
+        alert(`✅ Success!\n\n${msg}`);
         window.location.reload();
 
     } catch (e) {
         console.error(e);
-        alert("Error resetting data: " + e.message);
-        btn.innerText = oldText;
-        btn.disabled = false;
+        alert("Error: " + e.message);
+        if (btn && btn.tagName === 'BUTTON') {
+            btn.innerText = oldText;
+            btn.disabled = false;
+        }
     }
 }
 
@@ -4051,5 +4096,6 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
 
 
