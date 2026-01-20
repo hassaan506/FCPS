@@ -2241,44 +2241,43 @@ function toggleFlag(uid, btn, index) {
 // ==========================================
 
 function renderNavigator() {
-    // Target the ID found in your HTML: <div id="nav-grid">
     const nav = document.getElementById('nav-grid'); 
     if (!nav) return;
     nav.innerHTML = "";
+
+    // Calculate the end of the current page (e.g., if index is 10, end is 15)
+    const pageEnd = currentIndex + 5; 
 
     filteredQuestions.forEach((q, idx) => {
         const btn = document.createElement('button');
         btn.className = "nav-btn"; 
         btn.innerText = idx + 1;
         
-        // Highlight logic
-        if (currentIndex === idx) btn.classList.add('current');
-        if (testFlags[q._uid]) btn.classList.add('flagged');
-        if (testAnswers[q._uid]) btn.classList.add('answered');
+        // 1. IS THIS QUESTION VISIBLE RIGHT NOW? (The "Full Stack")
+        // If current index is 10, then 10,11,12,13,14 are "Active Stack"
+        if (currentMode === 'test' && idx >= currentIndex && idx < pageEnd) {
+            btn.classList.add('active-stack');
+        } else if (currentIndex === idx) {
+            // Fallback for practice mode (single active)
+            btn.classList.add('active-stack');
+        }
 
+        // 2. STATUS CHECK
+        if (testAnswers[q._uid]) btn.classList.add('answered');
+        if (testFlags[q._uid]) btn.classList.add('flagged');
+
+        // 3. CLICK ACTION (Scroll & Snap)
         btn.onclick = () => {
             if (currentMode === 'test') {
-                // 1. Set the page to start at the correct block (e.g. Q6)
-                // This ensures "Next" still goes to Q11-15 later
                 currentIndex = Math.floor(idx / 5) * 5;
-                
-                // 2. Render the questions (Q6, Q7, Q8, Q9, Q10)
                 renderPage();
-
-                // 3. 🔥 THE FIX: Scroll specifically to Question 8
+                
+                // Smooth Scroll to specific card
                 setTimeout(() => {
-                    const specificCard = document.getElementById(`q-card-${idx}`);
-                    if (specificCard) {
-                        specificCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        // Optional: Flash the border so you know which one it is
-                        specificCard.style.transition = "border-color 0.3s";
-                        specificCard.style.borderColor = "#3b82f6";
-                        setTimeout(() => specificCard.style.borderColor = "", 1000);
-                    }
-                }, 50); // Small delay to let the page render first
-
+                    const card = document.getElementById(`q-card-${idx}`);
+                    if(card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 50);
             } else {
-                // Practice Mode
                 currentIndex = idx;
                 renderPage();
             }
@@ -4149,6 +4148,7 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
 
 
 
