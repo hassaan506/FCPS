@@ -1,4 +1,4 @@
-const CACHE_NAME = "edeetos-v62"; // Bump version to force update
+const CACHE_NAME = "edeetos-v63"; // Bump version to force update
 
 // Only local, guaranteed assets
 const ASSETS_TO_CACHE = [
