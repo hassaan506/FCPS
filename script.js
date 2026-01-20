@@ -2380,6 +2380,10 @@ function updateTimer() {
 }
 
 function submitTest() {
+    if (testTimeRemaining > 0) {
+        const confirmed = confirm("⚠️ Are you sure you want to submit?\n\nOnce submitted, you cannot go back and change answers.");
+        if (!confirmed) return; // User clicked "Cancel", so we stop here.
+    }
     clearInterval(testTimer);
     let score = 0;
     
@@ -2776,23 +2780,23 @@ loadAllUsers();
 function switchAdminTab(tabName) {
     console.log("🔄 Switching to tab:", tabName);
 
-    // Hide all tab contents
+    // 1. Hide all tab contents
     ['reports', 'payments', 'keys', 'users'].forEach(t => {
         const el = document.getElementById('tab-' + t);
         if (el) {
             el.classList.add('hidden');
-            el.style.display = 'none'; // Ensure hidden
+            el.style.display = 'none'; 
         }
     });
 
-    // Show target tab
+    // 2. Show target tab
     const target = document.getElementById('tab-' + tabName);
     if (target) {
         target.classList.remove('hidden');
-        target.style.display = 'block'; // Ensure visible
+        target.style.display = 'block'; 
     }
 
-    // Update Buttons
+    // 3. Update Buttons
     document.querySelectorAll('.admin-tab').forEach(btn => btn.classList.remove('active'));
     const buttons = document.querySelectorAll('.admin-tab');
     buttons.forEach(btn => {
@@ -2800,20 +2804,24 @@ function switchAdminTab(tabName) {
         if (attr && attr.includes(tabName)) btn.classList.add('active');
     });
 
-    // Load Data
+    // 4. Load Data
     if (tabName === 'users') loadAllUsers();
     if (tabName === 'reports' && typeof loadAdminReports === 'function') loadAdminReports();
     if (tabName === 'payments' && typeof loadAdminPayments === 'function') loadAdminPayments();
     
+    // 5. KEYS TAB FIX
     if (tabName === 'keys') {
         const select = document.getElementById('key-course-select');
-        if (select && select.children.length === 0 && typeof getCourseOptionsHTML === 'function') {
+        
+        // 🔥 FIX: We removed "&& select.children.length === 0"
+        // Now it ALWAYS wipes the old HTML and loads your 6 new courses from Config.
+        if (select && typeof getCourseOptionsHTML === 'function') {
             select.innerHTML = getCourseOptionsHTML('FCPS');
         }
+        
         if (typeof loadAdminKeys === 'function') loadAdminKeys();
     }
 }
-
 
 async function loadAdminReports() {
     const list = document.getElementById('admin-reports-list');
@@ -4096,6 +4104,7 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
 
 
 
