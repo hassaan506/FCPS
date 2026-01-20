@@ -2867,3 +2867,66 @@ button.secondary {
 #next-btn {
     background: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%) !important;
 }
+
+
+/* =========================================
+   FINAL NAVIGATOR FIX (Separated Modes)
+   (Paste at the bottom of style.css)
+   ========================================= */
+
+/* Base Button */
+.nav-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: white;
+    font-weight: 600;
+    font-size: 13px;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+/* --- 1. COMMON STATUS STYLES --- */
+.nav-btn.answered {
+    background-color: #f1f5f9 !important;
+    color: #334155 !important;
+    border-color: #cbd5e1 !important;
+}
+
+.nav-btn.flagged {
+    border: 2px solid #ef4444 !important;
+    color: #ef4444 !important;
+    font-weight: 800 !important;
+}
+
+/* --- 2. PRACTICE MODE STYLES (Single Highlight) --- */
+/* This restores the normal Blue Square for Practice Mode */
+.nav-btn.current {
+    background-color: #3b82f6 !important;
+    color: white !important;
+    border: 1px solid #2563eb !important;
+    transform: scale(1.1); /* Slight pop to show it's active */
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+/* --- 3. EXAM MODE STYLES (Stack Highlight) --- */
+/* This ONLY applies when in Exam Mode */
+.nav-btn.exam-active-stack {
+    background-color: #3b82f6 !important;
+    color: white !important;
+    border: 1px solid #2563eb !important;
+}
+
+/* Exam: Stack + Answered (Darker Blue) */
+.nav-btn.exam-active-stack.answered {
+    background-color: #1e40af !important;
+    color: #bfdbfe !important;
+}
+
+/* Exam: Stack + Flagged (Blue w/ Red Border) */
+.nav-btn.exam-active-stack.flagged {
+    border: 2px solid #fca5a5 !important; 
+    color: #fee2e2 !important;
+}
