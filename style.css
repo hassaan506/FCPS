@@ -2870,63 +2870,60 @@ button.secondary {
 
 
 /* =========================================
-   FINAL NAVIGATOR FIX (Separated Modes)
+   FINAL NAVIGATOR COLORS (Green, Red, Yellow)
    (Paste at the bottom of style.css)
    ========================================= */
 
-/* Base Button */
+/* Base Button Style */
 .nav-btn {
     width: 40px;
     height: 40px;
     border-radius: 8px;
     border: 1px solid #e2e8f0;
     background: white;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 13px;
     color: #64748b;
     cursor: pointer;
     transition: all 0.2s;
 }
 
-/* --- 1. COMMON STATUS STYLES --- */
-.nav-btn.answered {
-    background-color: #f1f5f9 !important;
-    color: #334155 !important;
-    border-color: #cbd5e1 !important;
-}
-
-.nav-btn.flagged {
-    border: 2px solid #ef4444 !important;
-    color: #ef4444 !important;
-    font-weight: 800 !important;
-}
-
-/* --- 2. PRACTICE MODE STYLES (Single Highlight) --- */
-/* This restores the normal Blue Square for Practice Mode */
-.nav-btn.current {
-    background-color: #3b82f6 !important;
-    color: white !important;
-    border: 1px solid #2563eb !important;
-    transform: scale(1.1); /* Slight pop to show it's active */
-    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
-}
-
-/* --- 3. EXAM MODE STYLES (Stack Highlight) --- */
-/* This ONLY applies when in Exam Mode */
+/* --- PRIORITY 4: ACTIVE STACK (Blue) --- */
+/* Shows the current page (e.g. 11-15) as Blue by default */
 .nav-btn.exam-active-stack {
     background-color: #3b82f6 !important;
     color: white !important;
     border: 1px solid #2563eb !important;
 }
 
-/* Exam: Stack + Answered (Darker Blue) */
-.nav-btn.exam-active-stack.answered {
-    background-color: #1e40af !important;
-    color: #bfdbfe !important;
+/* --- PRIORITY 3: ANSWERED (Green) --- */
+/* Overrides Blue. Shows Green if you selected an option. */
+.nav-btn.answered {
+    background-color: #10b981 !important; /* Emerald Green */
+    color: white !important;
+    border-color: #059669 !important;
 }
 
-/* Exam: Stack + Flagged (Blue w/ Red Border) */
-.nav-btn.exam-active-stack.flagged {
-    border: 2px solid #fca5a5 !important; 
-    color: #fee2e2 !important;
+/* --- PRIORITY 2: FLAGGED ONLY (Red) --- */
+/* Overrides Blue. Shows Red if flagged but NOT answered. */
+.nav-btn.flagged {
+    background-color: #ef4444 !important; /* Red */
+    color: white !important;
+    border-color: #dc2626 !important;
+}
+
+/* --- PRIORITY 1: ANSWERED + FLAGGED (Yellow) --- */
+/* Overrides everything. Shows Yellow if you did BOTH. */
+.nav-btn.answered.flagged {
+    background-color: #f59e0b !important; /* Amber/Yellow */
+    color: white !important; 
+    border-color: #d97706 !important;
+}
+
+/* --- PRACTICE MODE HIGHLIGHT --- */
+.nav-btn.current {
+    background-color: #3b82f6 !important;
+    color: white !important;
+    border-color: #2563eb !important;
+    transform: scale(1.1);
 }
