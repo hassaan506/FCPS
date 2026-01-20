@@ -3153,8 +3153,30 @@ function showExplanation(q) {
 
 function closeModal() { document.getElementById('explanation-modal').classList.add('hidden'); }
 function nextPageFromModal() { closeModal(); setTimeout(nextPage, 300); }
-function nextPage() { currentIndex++; renderPage(); }
-function prevPage() { currentIndex--; renderPage(); }
+
+function nextPage() {
+    if (currentMode === 'test') {
+        // Exam Mode: Jump 5 questions ahead (Page Turn)
+        currentIndex += 5;
+    } else {
+        // Practice Mode: Move 1 question at a time
+        currentIndex++;
+    }
+    renderPage();
+}
+
+function prevPage() {
+    if (currentMode === 'test') {
+        // Exam Mode: Jump 5 questions back
+        currentIndex -= 5;
+        // Safety: Never go below zero
+        if (currentIndex < 0) currentIndex = 0;
+    } else {
+        // Practice Mode: Move 1 question back
+        currentIndex--;
+    }
+    renderPage();
+}
 
 function openPremiumModal() { 
     // ✅ Guest Check
@@ -4104,6 +4126,7 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
 
 
 
