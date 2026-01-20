@@ -2251,25 +2251,42 @@ function renderNavigator() {
         btn.className = "nav-btn"; 
         btn.innerText = idx + 1;
         
-        // Style styling based on state
+        // Highlight logic
         if (currentIndex === idx) btn.classList.add('current');
         if (testFlags[q._uid]) btn.classList.add('flagged');
         if (testAnswers[q._uid]) btn.classList.add('answered');
 
         btn.onclick = () => {
-            // 🔥 THE FIX: Snap to the start of the 5-question page
             if (currentMode === 'test') {
-                // Example: Clicking Q8 (index 7) -> Math.floor(1.4) * 5 = 5 (Starts at Q6)
+                // 1. Set the page to start at the correct block (e.g. Q6)
+                // This ensures "Next" still goes to Q11-15 later
                 currentIndex = Math.floor(idx / 5) * 5;
+                
+                // 2. Render the questions (Q6, Q7, Q8, Q9, Q10)
+                renderPage();
+
+                // 3. 🔥 THE FIX: Scroll specifically to Question 8
+                setTimeout(() => {
+                    const specificCard = document.getElementById(`q-card-${idx}`);
+                    if (specificCard) {
+                        specificCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        // Optional: Flash the border so you know which one it is
+                        specificCard.style.transition = "border-color 0.3s";
+                        specificCard.style.borderColor = "#3b82f6";
+                        setTimeout(() => specificCard.style.borderColor = "", 1000);
+                    }
+                }, 50); // Small delay to let the page render first
+
             } else {
-                // Practice mode (1 per page) stays normal
+                // Practice Mode
                 currentIndex = idx;
+                renderPage();
             }
-            renderPage();
         };
         nav.appendChild(btn);
     });
 }
+
 function renderPracticeNavigator() {
     // Target the ID found in your HTML: <div id="practice-nav-container">
     const nav = document.getElementById('practice-nav-container');
@@ -4132,6 +4149,7 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
 
 
 
