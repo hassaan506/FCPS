@@ -1954,18 +1954,17 @@ function openMistakeSelectorModal() {
     const modalId = 'mistake-selector-modal';
     let modal = document.getElementById(modalId);
     
-    // Create Modal on the fly if it doesn't exist
+    // Create Modal if not exists
     if (!modal) {
         modal = document.createElement('div');
         modal.id = modalId;
-        // Use your existing 'admin-modal-overlay' class for styling
         modal.className = 'admin-modal-overlay'; 
         modal.style.display = 'flex'; 
         modal.style.justifyContent = 'center';
         modal.style.alignItems = 'center';
         modal.style.zIndex = '10000';
         
-        // Close on click outside
+        // Close on outside click
         modal.onclick = (e) => { 
             if(e.target.id === modalId) modal.classList.add('hidden'); 
         };
@@ -1974,28 +1973,21 @@ function openMistakeSelectorModal() {
     
     modal.classList.remove('hidden');
 
-    // --- GROUPING LOGIC ---
+    // --- GROUPING LOGIC (Same as before) ---
     const groups = {};
     
     userMistakes.forEach(uid => {
-        // 1. Find Question Data
         const q = allQuestions.find(item => item._uid === uid);
         if (!q) return;
 
-        // 2. Find Source (Default to 'practice' if missing)
-        // We look inside the new global variable you added
         let rawSource = (userMistakeSources && userMistakeSources[uid]) ? userMistakeSources[uid] : 'practice';
-        
-        // 3. Define Labels
         const isExam = (rawSource === 'test');
-        let labelSource = isExam ? '⚠️ EXAM' : '📝 Practice';
+        let labelSource = isExam ? 'Exam' : 'Practice';
         
-        // 4. Create a Sort Key (Put Exams 'A' first, Practice 'B' second)
-        // Key Format: "A_Exam|Subject|Topic"
+        // Sorting Key: Exams (A) first, then Practice (B)
         const sortPrefix = isExam ? 'A' : 'B';
         const uniqueKey = `${sortPrefix}_${labelSource}|${q.Subject}|${q.Topic}`;
 
-        // 5. Build Group Object
         if (!groups[uniqueKey]) {
             groups[uniqueKey] = {
                 id: uniqueKey,
@@ -2010,63 +2002,55 @@ function openMistakeSelectorModal() {
         groups[uniqueKey].count++;
     });
 
-    // --- SORTING & HTML GENERATION ---
-    // Sort alphabetically by the key (so Exams always come first)
     const sortedKeys = Object.keys(groups).sort();
     
-    let listHtml = "";
+    // --- GENERATE HTML CARDS ---
+    let cardsHtml = "";
 
     sortedKeys.forEach(key => {
         const g = groups[key];
+        const typeClass = g.type === 'exam' ? 'type-exam' : 'type-practice';
         
-        // Styling based on type
-        const bg = g.type === 'exam' ? '#fef2f2' : '#f8fafc'; // Red-ish vs Gray-ish
-        const border = g.type === 'exam' ? '4px solid #ef4444' : '4px solid #3b82f6'; // Red vs Blue
-        const tagColor = g.type === 'exam' ? 'color:#991b1b; background:#fee2e2;' : 'color:#475569; background:#e2e8f0;';
-
-        listHtml += `
-        <div onclick="launchMistakeSet('${key}')" 
-             style="background:${bg}; border-left:${border}; padding:12px; margin-bottom:8px; border-radius:6px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
-            
-            <div style="flex:1;">
-                <div style="display:flex; gap:8px; margin-bottom:4px; align-items:center;">
-                    <span style="font-size:10px; font-weight:800; padding:2px 6px; border-radius:4px; text-transform:uppercase; ${tagColor}">
-                        ${g.type === 'exam' ? 'EXAM' : 'PRACTICE'}
-                    </span>
-                    <span style="font-size:11px; color:#64748b; font-weight:600;">${g.subject}</span>
-                </div>
-                <div style="font-size:13px; font-weight:700; color:#1e293b;">${g.topic}</div>
+        cardsHtml += `
+        <div class="mistake-card ${typeClass}" onclick="launchMistakeSet('${key}')">
+            <div class="mistake-info">
+                <span class="source-badge">${g.type}</span>
+                <div class="mistake-subject">${g.subject}</div>
+                <div class="mistake-topic">${g.topic}</div>
             </div>
-
-            <div style="background:white; padding:5px 10px; border-radius:15px; font-weight:bold; font-size:12px; box-shadow:0 1px 2px rgba(0,0,0,0.1); border:1px solid #e2e8f0; min-width:30px; text-align:center;">
+            <div class="mistake-count">
                 ${g.count}
             </div>
         </div>`;
     });
 
-    // Save groups to window so the launcher can find them
+    // Save groups to window
     window.tempMistakeGroups = groups;
 
-    // --- RENDER MODAL ---
+    // --- RENDER MODAL STRUCTURE ---
     modal.innerHTML = `
-    <div class="admin-modal-content" style="max-height:80vh; overflow-y:auto; width:90%; max-width:450px; background:white; padding:20px; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #f1f5f9; padding-bottom:10px;">
-            <h3 style="margin:0; font-size:18px; color:#0f172a;">🎯 Review Mistakes</h3>
-            <button onclick="document.getElementById('${modalId}').classList.add('hidden')" style="background:none; border:none; font-size:24px; cursor:pointer; color:#64748b;">&times;</button>
+    <div class="mistake-modal-content">
+        <div class="mistake-header">
+            <div>
+                <h3>Review Mistakes</h3>
+                <div style="font-size:12px; color:#64748b;">${userMistakes.length} questions pending</div>
+            </div>
+            <button class="close-mistake-btn" onclick="document.getElementById('${modalId}').classList.add('hidden')">&times;</button>
         </div>
 
-        <button onclick="launchMistakeSet('ALL')" 
-            style="width:100%; padding:12px; background:#1e293b; color:white; border:none; border-radius:8px; margin-bottom:20px; font-weight:bold; font-size:14px; cursor:pointer;">
-            Review All Pending (${userMistakes.length})
-        </button>
+        <div class="mistake-grid">
+            ${cardsHtml}
+        </div>
 
-        <div style="display:flex; flex-direction:column; gap:2px;">
-            ${listHtml}
+        <div class="mistake-footer">
+            <button class="btn-review-all" onclick="launchMistakeSet('ALL')">
+                <span>🚀 Start Full Review</span>
+                <span style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:12px; font-size:12px;">${userMistakes.length}</span>
+            </button>
         </div>
     </div>
     `;
 }
-
 // 3. The Launcher (Starts the Quiz)
 function launchMistakeSet(groupKey) {
     // Hide Modal
@@ -4307,6 +4291,7 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
 
 
 
