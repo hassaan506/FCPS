@@ -2929,172 +2929,132 @@ button.secondary {
 }
 
 
-/* --- Mistake Modal Redesign --- */
+/* --- Mistake Modal Redesign (Fixed 3-Column Layout) --- */
 
-/* The Modal Container */
+/* 1. Wider Modal Container */
 .mistake-modal-content {
-    background: #f8fafc; /* Light gray background */
-    width: 90%;
-    max-width: 800px; /* Wider modal */
+    background: #f8fafc;
+    width: 95%;
+    max-width: 1200px; /* Wider to fit 3 columns */
     max-height: 85vh;
     border-radius: 16px;
-    padding: 0; /* We handle padding inside inner divs */
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 }
 
-/* Header Section */
+/* 2. Header */
 .mistake-header {
     background: white;
-    padding: 20px 25px;
+    padding: 15px 25px;
     border-bottom: 1px solid #e2e8f0;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    position: sticky;
-    top: 0;
-    z-index: 10;
 }
+.mistake-header h3 { margin: 0; font-size: 1.2rem; color: #0f172a; }
 
-.mistake-header h3 {
-    margin: 0;
-    font-size: 1.25rem;
-    color: #0f172a;
-    font-weight: 700;
-}
-
-.close-mistake-btn {
-    background: #f1f5f9;
-    border: none;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    color: #64748b;
-    font-size: 20px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-}
-.close-mistake-btn:hover { background: #e2e8f0; color: #0f172a; }
-
-/* The Grid Container */
+/* 3. The Grid (Forces 3 Columns) */
 .mistake-grid {
-    padding: 20px 25px;
+    padding: 20px;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Responsive Grid */
+    /* This creates exactly 3 columns on desktop */
+    grid-template-columns: repeat(3, 1fr); 
     gap: 15px;
     overflow-y: auto;
 }
 
-/* Individual Card */
+/* Mobile Responsiveness: Stack on phones */
+@media (max-width: 900px) {
+    .mistake-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+    .mistake-grid { grid-template-columns: 1fr; }
+}
+
+/* 4. The Card (Taller & Sturdier) */
 .mistake-card {
     background: white;
-    border-radius: 10px;
-    padding: 15px;
+    border-radius: 12px;
+    padding: 16px; /* More padding */
+    min-height: 110px; /* INCREASED HEIGHT */
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    align-items: flex-start; /* Align to top */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     border: 1px solid #e2e8f0;
-    transition: transform 0.2s, box-shadow 0.2s;
     cursor: pointer;
+    transition: all 0.2s ease;
     position: relative;
-    overflow: hidden;
 }
 
 .mistake-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    border-color: #cbd5e1;
+    transform: translateY(-3px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 
-/* Exam Style */
-.mistake-card.type-exam {
-    border-left: 5px solid #ef4444; /* Red Border */
-}
-.mistake-card.type-exam .source-badge {
-    background: #fee2e2; color: #991b1b;
-}
+/* Border & Badge Colors */
+.mistake-card.type-exam { border-left: 6px solid #ef4444; }
+.mistake-card.type-practice { border-left: 6px solid #3b82f6; }
 
-/* Practice Style */
-.mistake-card.type-practice {
-    border-left: 5px solid #3b82f6; /* Blue Border */
+/* 5. Typography Fixes */
+.mistake-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px; /* Space between lines */
+    flex: 1;
 }
-.mistake-card.type-practice .source-badge {
-    background: #dbeafe; color: #1e40af;
-}
-
-/* Card Content Typography */
-.mistake-info { flex: 1; padding-right: 10px; }
 
 .source-badge {
     display: inline-block;
     font-size: 10px;
     font-weight: 800;
     text-transform: uppercase;
-    padding: 3px 8px;
-    border-radius: 6px;
-    margin-bottom: 6px;
-    letter-spacing: 0.5px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    width: fit-content;
 }
+/* Exam Badge */
+.type-exam .source-badge { background: #fee2e2; color: #991b1b; }
+/* Practice Badge */
+.type-practice .source-badge { background: #dbeafe; color: #1e40af; }
 
 .mistake-subject {
     font-size: 11px;
-    color: #64748b;
     font-weight: 600;
+    color: #64748b;
     text-transform: uppercase;
-    margin-bottom: 2px;
+    letter-spacing: 0.5px;
 }
 
 .mistake-topic {
-    font-size: 15px;
+    font-size: 16px; /* Larger Topic Text */
     font-weight: 700;
-    color: #1e293b;
+    color: #0f172a;
+    line-height: 1.3;
 }
 
-/* The Number Bubble */
+/* Count Bubble (Top Right) */
 .mistake-count {
-    background: #f8fafc;
-    color: #0f172a;
+    background: #f1f5f9;
+    color: #334155;
     font-weight: 700;
     font-size: 14px;
-    width: 36px;
-    height: 36px;
+    min-width: 32px;
+    height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    border: 2px solid #e2e8f0;
+    margin-left: 10px;
+    border: 1px solid #e2e8f0;
 }
 
-/* Review All Button Area */
+/* Footer */
 .mistake-footer {
     padding: 15px 25px;
     background: white;
     border-top: 1px solid #e2e8f0;
-    position: sticky;
-    bottom: 0;
 }
-
-.btn-review-all {
-    width: 100%;
-    padding: 14px;
-    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-    color: white;
-    border: none;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 15px;
-    cursor: pointer;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    transition: opacity 0.2s;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
-}
-.btn-review-all:hover { opacity: 0.95; }
