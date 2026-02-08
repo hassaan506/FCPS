@@ -2564,7 +2564,7 @@ function updateTimer() {
 function submitTest() {
     if (testTimeRemaining > 0) {
         const confirmed = confirm("⚠️ Are you sure you want to submit?\n\nOnce submitted, you cannot go back and change answers.");
-        if (!confirmed) return; // User clicked "Cancel", so we stop here.
+        if (!confirmed) return; 
     }
     clearInterval(testTimer);
     let score = 0;
@@ -2594,81 +2594,80 @@ function submitTest() {
     const pct = Math.round((score/filteredQuestions.length)*100);
 
     // ---------------------------------------------------------
-    // 🔥 NEW: INTELLIGENT EXAM TITLING (Final Version)
+    // INTELLIGENT EXAM TITLING
     // ---------------------------------------------------------
-    let examTitle = `${currentCourse} Exam`; // Default
+    let examTitle = `${currentCourse} Exam`; 
 
     if (filteredQuestions.length > 0) {
-        // 1. Identify all Subjects and Topics in this specific test
         const uniqueSubjects = [...new Set(filteredQuestions.map(q => q.Subject))];
         const uniqueTopics = [...new Set(filteredQuestions.map(q => q.Topic))];
 
         if (uniqueSubjects.length === 1) {
-            // --- SCENARIO A: Single Subject (e.g., Anatomy) ---
             const subj = uniqueSubjects[0];
-
-            // 2. Count TOTAL topics available for this subject
-            const allPossibleTopics = new Set(
-                allQuestions.filter(q => q.Subject === subj).map(q => q.Topic)
-            );
-            
-            // 3. Compare Test Topics vs Total Available (>50% = Full)
+            const allPossibleTopics = new Set(allQuestions.filter(q => q.Subject === subj).map(q => q.Topic));
             const isFullSubject = uniqueTopics.length >= (allPossibleTopics.size * 0.5);
 
-            if (uniqueTopics.length === 1) {
-                // Specific: "Anatomy: Abdomen"
-                examTitle = `${subj}: ${uniqueTopics[0]}`;
-            } else if (isFullSubject) {
-                // Broad: "Anatomy (Full)"
-                examTitle = `${subj} (Full)`;
-            } else if (uniqueTopics.length <= 3) {
-                // List: "Anatomy: Abdomen, Pelvis"
-                examTitle = `${subj}: ${uniqueTopics.join(", ")}`;
-            } else {
-                // Random assortment: "Anatomy (Mixed)"
-                examTitle = `${subj} (Mixed)`;
-            }
+            if (uniqueTopics.length === 1) examTitle = `${subj}: ${uniqueTopics[0]}`;
+            else if (isFullSubject) examTitle = `${subj} (Full)`;
+            else if (uniqueTopics.length <= 3) examTitle = `${subj}: ${uniqueTopics.join(", ")}`;
+            else examTitle = `${subj} (Mixed)`;
 
         } else {
-            // --- SCENARIO B: Multiple Subjects ---
-            if (uniqueTopics.length === 1) {
-                 examTitle = `Topic: ${uniqueTopics[0]} (Mixed Subjects)`;
-            } 
-            else if (uniqueSubjects.length <= 3) {
-                examTitle = uniqueSubjects.join(" & ");
-            } else {
-                examTitle = "Mixed Subjects Exam";
-            }
+            if (uniqueTopics.length === 1) examTitle = `Topic: ${uniqueTopics[0]} (Mixed Subjects)`;
+            else if (uniqueSubjects.length <= 3) examTitle = uniqueSubjects.join(" & ");
+            else examTitle = "Mixed Subjects Exam";
         }
     }
-    // ---------------------------------------------------------
 
-    // --- SAVE TO DATABASE ---
+    // ---------------------------------------------------------
+    // ✅ SAVE TO DATABASE (THE FIX IS HERE)
+    // ---------------------------------------------------------
     if(currentUser && !isGuest) {
-        const batch = db.batch();
         const userRef = db.collection('users').doc(currentUser.uid);
+        
         const sKey = getStoreKey('solved');
         const mKey = getStoreKey('mistakes');
+        const sourcesKey = getStoreKey('mistakeSources'); // ✅ NEW KEY
 
         // 1. Save Result History
         userRef.collection('results').add({
             date: new Date(), 
             score: pct, 
             total: filteredQuestions.length, 
-            subject: examTitle,      // Saved the smart name
-            courseId: currentCourse  // <--- 🔥 THIS IS THE CRITICAL LINE YOU WERE MISSING
+            subject: examTitle,      
+            courseId: currentCourse  
         });
 
-        // 2. Bulk Add Solved
+        // 2. Prepare Updates Object (We combine everything into one update)
+        const updates = {};
+
+        // 3. Bulk Add Solved
         if(newSolved.length > 0) {
-            userRef.update({ [sKey]: firebase.firestore.FieldValue.arrayUnion(...newSolved) });
+            updates[sKey] = firebase.firestore.FieldValue.arrayUnion(...newSolved);
             userSolvedIDs.push(...newSolved); 
         }
 
-        // 3. Bulk Add Mistakes
+        // 4. Bulk Add Mistakes & TAG THEM AS EXAM
         if(newMistakes.length > 0) {
-            userRef.update({ [mKey]: firebase.firestore.FieldValue.arrayUnion(...newMistakes) });
+            // A. Add IDs to the list
+            updates[mKey] = firebase.firestore.FieldValue.arrayUnion(...newMistakes);
             userMistakes.push(...newMistakes); 
+
+            // B. ✅ LOOP AND TAG EACH AS 'test'
+            newMistakes.forEach(uid => {
+                // Update Local Variable
+                if(!userMistakeSources) userMistakeSources = {};
+                userMistakeSources[uid] = 'test';
+
+                // Update Database Object
+                // format: "mistakeSources.id_123": "test"
+                updates[`${sourcesKey}.${uid}`] = 'test';
+            });
+        }
+
+        // 5. Commit all updates
+        if (Object.keys(updates).length > 0) {
+            userRef.update(updates).catch(err => console.error("Save Error:", err));
         }
     }
 
@@ -4308,6 +4307,7 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
 
 
 
