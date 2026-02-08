@@ -1954,7 +1954,7 @@ function openMistakeSelectorModal() {
     const modalId = 'mistake-selector-modal';
     let modal = document.getElementById(modalId);
     
-    // Create Modal if not exists
+    // Create Modal on the fly if it doesn't exist
     if (!modal) {
         modal = document.createElement('div');
         modal.id = modalId;
@@ -1964,7 +1964,6 @@ function openMistakeSelectorModal() {
         modal.style.alignItems = 'center';
         modal.style.zIndex = '10000';
         
-        // Close on outside click
         modal.onclick = (e) => { 
             if(e.target.id === modalId) modal.classList.add('hidden'); 
         };
@@ -1973,7 +1972,7 @@ function openMistakeSelectorModal() {
     
     modal.classList.remove('hidden');
 
-    // --- GROUPING LOGIC (Same as before) ---
+    // --- GROUPING LOGIC ---
     const groups = {};
     
     userMistakes.forEach(uid => {
@@ -1984,7 +1983,6 @@ function openMistakeSelectorModal() {
         const isExam = (rawSource === 'test');
         let labelSource = isExam ? 'Exam' : 'Practice';
         
-        // Sorting Key: Exams (A) first, then Practice (B)
         const sortPrefix = isExam ? 'A' : 'B';
         const uniqueKey = `${sortPrefix}_${labelSource}|${q.Subject}|${q.Topic}`;
 
@@ -2004,7 +2002,7 @@ function openMistakeSelectorModal() {
 
     const sortedKeys = Object.keys(groups).sort();
     
-    // --- GENERATE HTML CARDS ---
+    // --- HTML GENERATION (Updated for 3-Column Grid) ---
     let cardsHtml = "";
 
     sortedKeys.forEach(key => {
@@ -2014,7 +2012,7 @@ function openMistakeSelectorModal() {
         cardsHtml += `
         <div class="mistake-card ${typeClass}" onclick="launchMistakeSet('${key}')">
             <div class="mistake-info">
-                <span class="source-badge">${g.type}</span>
+                <span class="source-badge">${g.type === 'exam' ? '⚠️ EXAM' : '📝 PRACTICE'}</span>
                 <div class="mistake-subject">${g.subject}</div>
                 <div class="mistake-topic">${g.topic}</div>
             </div>
@@ -2024,15 +2022,14 @@ function openMistakeSelectorModal() {
         </div>`;
     });
 
-    // Save groups to window
     window.tempMistakeGroups = groups;
 
-    // --- RENDER MODAL STRUCTURE ---
+    // --- RENDER MODAL ---
     modal.innerHTML = `
     <div class="mistake-modal-content">
         <div class="mistake-header">
             <div>
-                <h3>Review Mistakes</h3>
+                <h3>🎯 Review Mistakes</h3>
                 <div style="font-size:12px; color:#64748b;">${userMistakes.length} questions pending</div>
             </div>
             <button class="close-mistake-btn" onclick="document.getElementById('${modalId}').classList.add('hidden')">&times;</button>
@@ -2044,13 +2041,13 @@ function openMistakeSelectorModal() {
 
         <div class="mistake-footer">
             <button class="btn-review-all" onclick="launchMistakeSet('ALL')">
-                <span>🚀 Start Full Review</span>
-                <span style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:12px; font-size:12px;">${userMistakes.length}</span>
+                <span>🚀 Review All (${userMistakes.length})</span>
             </button>
         </div>
     </div>
     `;
 }
+
 // 3. The Launcher (Starts the Quiz)
 function launchMistakeSet(groupKey) {
     // Hide Modal
@@ -4291,6 +4288,7 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
 
 
 
