@@ -132,6 +132,7 @@ let filteredQuestions = [];
 let userBookmarks = [];
 let userSolvedIDs = [];
 let userMistakes = [];
+let userMistakeSources = {};
 
 let currentMode = 'practice';
 let isMistakeReview = false;
@@ -679,6 +680,7 @@ async function loadUserData() {
     userSolvedIDs = userProfile[getStoreKey('solved')] || [];
     userBookmarks = userProfile[getStoreKey('bookmarks')] || [];
     userMistakes = userProfile[getStoreKey('mistakes')] || [];
+    userMistakeSources = userProfile[getStoreKey('mistakeSources')] || {};
 
     // Update Stats UI
     renderStatsUI(statsBox); // (Helper function below to keep this clean)
@@ -715,7 +717,7 @@ async function updateUserStats(isCorrect, subject, questionUID) {
     if (isGuest || !currentUser) return;
     if (!userProfile) return;
 
-    // 2. Initialize Stats
+    // 2. Initialize Stats Keys
     const storeKey = getStoreKey('stats'); 
     if (!userProfile[storeKey]) userProfile[storeKey] = {};
     if (!userProfile[storeKey][subject]) userProfile[storeKey][subject] = { total: 0, correct: 0 };
@@ -724,75 +726,84 @@ async function updateUserStats(isCorrect, subject, questionUID) {
     userProfile[storeKey][subject].total += 1;
     if (isCorrect) userProfile[storeKey][subject].correct += 1;
 
-    // 4. Update Lists (The Database Object)
+    // 4. Define Database Keys
     const solvedKey = getStoreKey('solved');     
     const mistakesKey = getStoreKey('mistakes'); 
+    const sourcesKey = getStoreKey('mistakeSources'); // ✅ NEW KEY: To store "exam" or "practice"
     
+    // 5. Initialize Lists if missing
     if (!userProfile[solvedKey]) userProfile[solvedKey] = [];
     if (!userProfile[mistakesKey]) userProfile[mistakesKey] = [];
+    if (!userProfile[sourcesKey]) userProfile[sourcesKey] = {}; // ✅ Initialize object
 
-    // Add to 'Solved' Database Object
+    // 6. Add to 'Solved' Database Object & Global Variable
     if (!userProfile[solvedKey].includes(questionUID)) {
         userProfile[solvedKey].push(questionUID);
     }
-
-    // ============================================================
-    // ✅ 4.5. CRITICAL FIX: SYNC LIVE GLOBAL VARIABLES
-    // This makes the Navigator change color WITHOUT refreshing
-    // ============================================================
-    
-    // A. Sync Solved (Green)
-    // We check if the global array exists, then update it
     if (typeof userSolvedIDs !== 'undefined' && !userSolvedIDs.includes(questionUID)) {
         userSolvedIDs.push(questionUID);
     }
 
-    // B. Sync Mistakes (Red)
+    // ============================================================
+    // ✅ CRITICAL LOGIC: HANDLING MISTAKE SOURCES
+    // ============================================================
     if (!isCorrect) {
-        // Database Object
+        // --- A. Add to Mistakes List (DB) ---
         if (!userProfile[mistakesKey].includes(questionUID)) {
             userProfile[mistakesKey].push(questionUID);
         }
-        // ✅ Live Global Variable (Updates Navigator Red)
+        
+        // --- B. Add to Mistakes List (Global Live Variable) ---
         if (typeof userMistakes !== 'undefined' && !userMistakes.includes(questionUID)) {
             userMistakes.push(questionUID);
         }
+
+        // --- C. SAVE THE SOURCE (The New Feature) ---
+        // We save whether this mistake happened in 'test' mode or 'practice' mode
+        userProfile[sourcesKey][questionUID] = currentMode; 
+        
+        // Update the Global Variable immediately so the UI knows
+        if (typeof userMistakeSources !== 'undefined') {
+            userMistakeSources[questionUID] = currentMode;
+        }
+
     } else {
         // If Correct...
         if (isMistakeReview === true) {
-            // Remove from Database Object
+            // Remove from Database List
             userProfile[mistakesKey] = userProfile[mistakesKey].filter(id => id !== questionUID);
             
-            // ✅ Remove from Live Global Variable
+            // Remove from Global List
             if (typeof userMistakes !== 'undefined') {
                 const idx = userMistakes.indexOf(questionUID);
                 if (idx > -1) userMistakes.splice(idx, 1);
             }
+            // Note: We don't need to delete the source history, it's fine to keep it.
         }
         // Normal Mode: We do nothing (It stays in history)
     }
     // ============================================================
 
-
-    // 5. Save to Phone Memory
+    // 7. Save to Phone Memory
     localStorage.setItem('cached_user_profile', JSON.stringify(userProfile));
 
-    // 6. Sync to Cloud
+    // 8. Sync to Cloud
     try {
         await db.collection('users').doc(currentUser.uid).update({
             [storeKey]: userProfile[storeKey],
             [solvedKey]: userProfile[solvedKey],
-            [mistakesKey]: userProfile[mistakesKey]
+            [mistakesKey]: userProfile[mistakesKey],
+            [sourcesKey]: userProfile[sourcesKey] // ✅ Sync Sources to Firebase
         });
     } catch (e) {
         console.log("⚠️ Saved locally (Queueing for Cloud)");
     }
 
-    // 7. 🔥 OPTIONAL: INSTANT UI PAINT
-    // If you want the button to change color instantly before any other logic runs:
+    // 9. Instant UI Paint (Navigator Colors)
     try {
-        // Assuming your navigator buttons have IDs like 'nav-btn-0', 'nav-btn-1'
-        const navBtn = document.getElementById(`nav-btn-${currentQuestionIndex}`);
+        // Assuming your navigator buttons have IDs like 'nav-btn-0'
+        // using 'currentIndex' might differ from logic, but assuming global 'currentIndex' works here
+        const navBtn = document.getElementById(`nav-btn-${currentIndex}`);
         if(navBtn) {
             if(isCorrect) {
                 navBtn.classList.add('solved');
@@ -1926,10 +1937,151 @@ function startPractice(subject, topic) {
     renderPracticeNavigator();
 }
 
+// ======================================================
+// NEW MISTAKE REVIEW LOGIC (GROUPS)
+// ======================================================
+
+// 1. The Entry Point (Replaces your old function)
 function startMistakePractice() {
-    if (userMistakes.length === 0) return alert("No mistakes pending!");
-    filteredQuestions = allQuestions.filter(q => userMistakes.includes(q._uid));
+    if (!userMistakes || userMistakes.length === 0) return alert("No mistakes pending!");
     
+    // Instead of starting immediately, open the Group Selector
+    openMistakeSelectorModal();
+}
+
+// 2. The Logic to Group & Display the Menu
+function openMistakeSelectorModal() {
+    const modalId = 'mistake-selector-modal';
+    let modal = document.getElementById(modalId);
+    
+    // Create Modal on the fly if it doesn't exist
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = modalId;
+        // Use your existing 'admin-modal-overlay' class for styling
+        modal.className = 'admin-modal-overlay'; 
+        modal.style.display = 'flex'; 
+        modal.style.justifyContent = 'center';
+        modal.style.alignItems = 'center';
+        modal.style.zIndex = '10000';
+        
+        // Close on click outside
+        modal.onclick = (e) => { 
+            if(e.target.id === modalId) modal.classList.add('hidden'); 
+        };
+        document.body.appendChild(modal);
+    }
+    
+    modal.classList.remove('hidden');
+
+    // --- GROUPING LOGIC ---
+    const groups = {};
+    
+    userMistakes.forEach(uid => {
+        // 1. Find Question Data
+        const q = allQuestions.find(item => item._uid === uid);
+        if (!q) return;
+
+        // 2. Find Source (Default to 'practice' if missing)
+        // We look inside the new global variable you added
+        let rawSource = (userMistakeSources && userMistakeSources[uid]) ? userMistakeSources[uid] : 'practice';
+        
+        // 3. Define Labels
+        const isExam = (rawSource === 'test');
+        let labelSource = isExam ? '⚠️ EXAM' : '📝 Practice';
+        
+        // 4. Create a Sort Key (Put Exams 'A' first, Practice 'B' second)
+        // Key Format: "A_Exam|Subject|Topic"
+        const sortPrefix = isExam ? 'A' : 'B';
+        const uniqueKey = `${sortPrefix}_${labelSource}|${q.Subject}|${q.Topic}`;
+
+        // 5. Build Group Object
+        if (!groups[uniqueKey]) {
+            groups[uniqueKey] = {
+                id: uniqueKey,
+                type: isExam ? 'exam' : 'practice',
+                subject: q.Subject,
+                topic: q.Topic,
+                ids: [],
+                count: 0
+            };
+        }
+        groups[uniqueKey].ids.push(uid);
+        groups[uniqueKey].count++;
+    });
+
+    // --- SORTING & HTML GENERATION ---
+    // Sort alphabetically by the key (so Exams always come first)
+    const sortedKeys = Object.keys(groups).sort();
+    
+    let listHtml = "";
+
+    sortedKeys.forEach(key => {
+        const g = groups[key];
+        
+        // Styling based on type
+        const bg = g.type === 'exam' ? '#fef2f2' : '#f8fafc'; // Red-ish vs Gray-ish
+        const border = g.type === 'exam' ? '4px solid #ef4444' : '4px solid #3b82f6'; // Red vs Blue
+        const tagColor = g.type === 'exam' ? 'color:#991b1b; background:#fee2e2;' : 'color:#475569; background:#e2e8f0;';
+
+        listHtml += `
+        <div onclick="launchMistakeSet('${key}')" 
+             style="background:${bg}; border-left:${border}; padding:12px; margin-bottom:8px; border-radius:6px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+            
+            <div style="flex:1;">
+                <div style="display:flex; gap:8px; margin-bottom:4px; align-items:center;">
+                    <span style="font-size:10px; font-weight:800; padding:2px 6px; border-radius:4px; text-transform:uppercase; ${tagColor}">
+                        ${g.type === 'exam' ? 'EXAM' : 'PRACTICE'}
+                    </span>
+                    <span style="font-size:11px; color:#64748b; font-weight:600;">${g.subject}</span>
+                </div>
+                <div style="font-size:13px; font-weight:700; color:#1e293b;">${g.topic}</div>
+            </div>
+
+            <div style="background:white; padding:5px 10px; border-radius:15px; font-weight:bold; font-size:12px; box-shadow:0 1px 2px rgba(0,0,0,0.1); border:1px solid #e2e8f0; min-width:30px; text-align:center;">
+                ${g.count}
+            </div>
+        </div>`;
+    });
+
+    // Save groups to window so the launcher can find them
+    window.tempMistakeGroups = groups;
+
+    // --- RENDER MODAL ---
+    modal.innerHTML = `
+    <div class="admin-modal-content" style="max-height:80vh; overflow-y:auto; width:90%; max-width:450px; background:white; padding:20px; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #f1f5f9; padding-bottom:10px;">
+            <h3 style="margin:0; font-size:18px; color:#0f172a;">🎯 Review Mistakes</h3>
+            <button onclick="document.getElementById('${modalId}').classList.add('hidden')" style="background:none; border:none; font-size:24px; cursor:pointer; color:#64748b;">&times;</button>
+        </div>
+
+        <button onclick="launchMistakeSet('ALL')" 
+            style="width:100%; padding:12px; background:#1e293b; color:white; border:none; border-radius:8px; margin-bottom:20px; font-weight:bold; font-size:14px; cursor:pointer;">
+            Review All Pending (${userMistakes.length})
+        </button>
+
+        <div style="display:flex; flex-direction:column; gap:2px;">
+            ${listHtml}
+        </div>
+    </div>
+    `;
+}
+
+// 3. The Launcher (Starts the Quiz)
+function launchMistakeSet(groupKey) {
+    // Hide Modal
+    document.getElementById('mistake-selector-modal').classList.add('hidden');
+
+    // Filter Questions based on selection
+    if (groupKey === 'ALL') {
+        filteredQuestions = allQuestions.filter(q => userMistakes.includes(q._uid));
+    } else {
+        const groupData = window.tempMistakeGroups[groupKey];
+        if (!groupData) return alert("Error loading group.");
+        filteredQuestions = allQuestions.filter(q => groupData.ids.includes(q._uid));
+    }
+
+    // Standard Start Logic
     currentMode = 'practice';
     isMistakeReview = true;
     currentIndex = 0;
@@ -4156,6 +4308,7 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
 
 
 
