@@ -1591,8 +1591,13 @@ async function adminRevokePremium(uid) {
 function loadQuestions(url) {
     const storageKey = 'cached_questions_' + currentCourse; // Unique key (e.g. cached_questions_MBBS_1)
     
+    // --- FIX: CACHE BUSTER ---
+    // We add a random timestamp to the URL. This forces the browser 
+    // to download a FRESH copy from Google Sheets every time.
+    const uniqueUrl = url + "&t=" + new Date().getTime();
+
     // 1. Try to fetch from Internet
-    Papa.parse(url, {
+    Papa.parse(uniqueUrl, {  // <--- We use 'uniqueUrl' here instead of just 'url'
         download: true,
         header: true,
         skipEmptyLines: true,
@@ -1615,7 +1620,6 @@ function loadQuestions(url) {
         }
     });
 }
-
 function processData(data, reRenderOnly = false) {
     if(!reRenderOnly) {
         const seen = new Set();
@@ -2543,39 +2547,71 @@ function updateTimer() {
 }
 
 function submitTest() {
+    // 1. Confirm Submission
     if (testTimeRemaining > 0) {
         const confirmed = confirm("⚠️ Are you sure you want to submit?\n\nOnce submitted, you cannot go back and change answers.");
         if (!confirmed) return; 
     }
+    
+    // 2. Stop Timer
     clearInterval(testTimer);
     let score = 0;
     
-    // Arrays to collect data for Bulk Update
+    // Arrays for Database Update
     let newSolved = [];
     let newMistakes = [];
 
+    // 3. CHECK ANSWERS (The Fixed Logic)
     filteredQuestions.forEach(q => {
-        const user = testAnswers[q._uid];
-        const correctText = getOptionText(q, getCorrectLetter(q));
-        
-        if(user === correctText) {
-            // CORRECT
+        // Get what the user clicked (e.g., "Aspirin")
+        const user = testAnswers[q._uid]; 
+        let isCorrect = false;
+
+        if (user) {
+            // Get data from sheet (e.g., could be "A", "A ", or "Aspirin")
+            let correctData = (q.CorrectAnswer || "").trim(); 
+            let userText = String(user).trim(); 
+
+            // Check A: Direct Text Match (Case Insensitive)
+            // (Handles cases where Sheet says "Aspirin")
+            if (userText.toLowerCase() === correctData.toLowerCase()) {
+                isCorrect = true;
+            } 
+            // Check B: Letter Mapping
+            // (Handles cases where Sheet says "A")
+            else {
+                const map = {
+                    'A': (q.OptionA || "").trim(),
+                    'B': (q.OptionB || "").trim(),
+                    'C': (q.OptionC || "").trim(),
+                    'D': (q.OptionD || "").trim(),
+                    'E': (q.OptionE || "").trim()
+                };
+                // If Sheet says "A", does "OptionA" match what user clicked?
+                if (map[correctData] && map[correctData].toLowerCase() === userText.toLowerCase()) {
+                    isCorrect = true;
+                }
+            }
+        }
+
+        // 4. Update Score & Arrays
+        if(isCorrect) {
             score++;
             if(currentUser && !isGuest && !userSolvedIDs.includes(q._uid)) {
                 newSolved.push(q._uid);
             }
         } else {
-            // WRONG or LEFT (Unanswered)
+            // Wrong or Unanswered
             if(currentUser && !isGuest && !userMistakes.includes(q._uid)) {
                 newMistakes.push(q._uid);
             }
         }
     });
 
-    const pct = Math.round((score/filteredQuestions.length)*100);
+    const pct = filteredQuestions.length > 0 ? Math.round((score/filteredQuestions.length)*100) : 0;
 
     // ---------------------------------------------------------
-    // INTELLIGENT EXAM TITLING
+    // INTELLIGENT EXAM TITLING (Unchanged)
     // ---------------------------------------------------------
     let examTitle = `${currentCourse} Exam`; 
 
@@ -2601,16 +2637,16 @@ function submitTest() {
     }
 
     // ---------------------------------------------------------
-    // ✅ SAVE TO DATABASE (THE FIX IS HERE)
+    // SAVE TO DATABASE (Unchanged)
     // ---------------------------------------------------------
     if(currentUser && !isGuest) {
         const userRef = db.collection('users').doc(currentUser.uid);
         
         const sKey = getStoreKey('solved');
         const mKey = getStoreKey('mistakes');
-        const sourcesKey = getStoreKey('mistakeSources'); // ✅ NEW KEY
+        const sourcesKey = getStoreKey('mistakeSources');
 
-        // 1. Save Result History
+        // Save Result History
         userRef.collection('results').add({
             date: new Date(), 
             score: pct, 
@@ -2619,34 +2655,25 @@ function submitTest() {
             courseId: currentCourse  
         });
 
-        // 2. Prepare Updates Object (We combine everything into one update)
+        // Prepare Updates
         const updates = {};
 
-        // 3. Bulk Add Solved
         if(newSolved.length > 0) {
             updates[sKey] = firebase.firestore.FieldValue.arrayUnion(...newSolved);
             userSolvedIDs.push(...newSolved); 
         }
 
-        // 4. Bulk Add Mistakes & TAG THEM AS EXAM
         if(newMistakes.length > 0) {
-            // A. Add IDs to the list
             updates[mKey] = firebase.firestore.FieldValue.arrayUnion(...newMistakes);
             userMistakes.push(...newMistakes); 
 
-            // B. ✅ LOOP AND TAG EACH AS 'test'
             newMistakes.forEach(uid => {
-                // Update Local Variable
                 if(!userMistakeSources) userMistakeSources = {};
                 userMistakeSources[uid] = 'test';
-
-                // Update Database Object
-                // format: "mistakeSources.id_123": "test"
                 updates[`${sourcesKey}.${uid}`] = 'test';
             });
         }
 
-        // 5. Commit all updates
         if (Object.keys(updates).length > 0) {
             userRef.update(updates).catch(err => console.error("Save Error:", err));
         }
@@ -2655,7 +2682,6 @@ function submitTest() {
     showScreen('result-screen');
     document.getElementById('final-score').innerText = `${pct}% (${score}/${filteredQuestions.length})`;
 }
-
 // ======================================================
 // 10. ADMIN & PREMIUM FEATURES (UPDATED)
 // ======================================================
@@ -4288,6 +4314,7 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
 
 
 
