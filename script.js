@@ -4426,19 +4426,34 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
     }
 }
 
+// ============================================
+// 🚑 EMERGENCY FIX FOR MOBILE
+// ============================================
+async function emergencyHardReset() {
+    if(!confirm("⚠️ Fix App?\n\nThis will clear the cache and reload the latest version to fix the loading issue.")) return;
+    
+    document.body.innerHTML = "<div style='padding:50px; text-align:center;'>♻️ Cleaning up...</div>";
 
+    // 1. Unregister Service Worker (Kill the old cache manager)
+    if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for(let registration of registrations) {
+            await registration.unregister();
+        }
+    }
 
+    // 2. Clear Local Storage (Kill corrupt data)
+    // We KEEP your login info/device ID, but kill the question data
+    const keepKeys = ['fcps_device_id', 'last_active_course', 'fcps-theme'];
+    const keys = Object.keys(localStorage);
+    
+    for (let key of keys) {
+        // If it looks like cached question data, kill it
+        if (key.startsWith('cached_questions') || key.startsWith('cached_user')) {
+            localStorage.removeItem(key);
+        }
+    }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+    // 3. Force Reload from Server (Ignore Cache)
+    window.location.reload(true);
+}
