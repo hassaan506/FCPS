@@ -383,29 +383,40 @@ function selectCourse(courseName) {
     allQuestions = [];
     filteredQuestions = [];
     
-    // B. Wipe the Study Menu (So old course vanishes instantly)
+    // B. Wipe the Study Menu & ADD EMERGENCY BUTTON
     const menuContainer = document.getElementById('dynamic-menus');
     if(menuContainer) {
-        // This forces the mobile browser to repaint the area
         menuContainer.innerHTML = `
             <div style="padding:40px; text-align:center; color:#64748b; animation: pulse 1s infinite;">
                 <div style="font-size:40px; margin-bottom:10px;">⏳</div>
                 <div style="font-weight:bold;">Loading ${config.name}...</div>
                 <div style="font-size:12px; margin-top:5px;">Please wait...</div>
+                
+                <div style="margin-top: 20px;">
+                    <button onclick="emergencyHardReset()" style="
+                        background: transparent; 
+                        border: 1px solid #cbd5e1; 
+                        color: #94a3b8; 
+                        padding: 8px 15px; 
+                        border-radius: 20px; 
+                        font-size: 11px;
+                        cursor: pointer;">
+                        ⚠️ Stuck? Tap to Repair
+                    </button>
+                </div>
             </div>`;
     }
 
-    // C. Wipe the Exam Filters (The checkboxes)
+    // C. Wipe the Exam Filters
     const filterContainer = document.getElementById('filter-container');
     if(filterContainer) {
         filterContainer.innerHTML = "<div style='padding:20px; text-align:center; color:#94a3b8;'>Loading topics...</div>";
     }
 
     // 5. START FRESH DOWNLOAD
-    // (This uses the cache-busting loadQuestions function we fixed earlier)
     loadQuestions(config.sheet); 
     
-    // 6. RELOAD USER STATS (To update bookmarks/mistakes for the new course)
+    // 6. RELOAD USER STATS
     loadUserData(); 
 }
 
@@ -4414,6 +4425,7 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
 
 
 
