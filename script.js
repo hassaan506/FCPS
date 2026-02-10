@@ -1642,37 +1642,51 @@ async function adminRevokePremium(uid) {
 }
 
 function loadQuestions(url) {
-    const storageKey = 'cached_questions_' + currentCourse; // Unique key (e.g. cached_questions_MBBS_1)
+    const storageKey = 'cached_questions_' + currentCourse; 
     
-    // --- FIX: CACHE BUSTER ---
-    // We add a random timestamp to the URL. This forces the browser 
-    // to download a FRESH copy from Google Sheets every time.
+    // 1. Force fresh download (Cache Buster)
     const uniqueUrl = url + "&t=" + new Date().getTime();
 
-    // 1. Try to fetch from Internet
-    Papa.parse(uniqueUrl, {  // <--- We use 'uniqueUrl' here instead of just 'url'
+    console.log("🔄 downloading...");
+
+    // 2. TIMEOUT RETRY (Safety Net)
+    // If download hangs for 10 seconds, stop and try again.
+    const safetyTimeout = setTimeout(() => {
+        console.log("⏰ Loading timed out. Auto-retrying...");
+        loadQuestions(url); 
+    }, 10000); 
+
+    Papa.parse(uniqueUrl, { 
         download: true,
         header: true,
         skipEmptyLines: true,
         complete: function(results) {
-            console.log("✅ Online: Questions downloaded");
-            // SAVE to phone memory
-            localStorage.setItem(storageKey, JSON.stringify(results.data));
-            processData(results.data);
+            clearTimeout(safetyTimeout); // Cancel the safety timeout
+            
+            // Check if we actually got data
+            if (results.data && results.data.length > 0) {
+                console.log("✅ Questions loaded successfully");
+                // Save to phone for next time
+                localStorage.setItem(storageKey, JSON.stringify(results.data));
+                processData(results.data);
+            } else {
+                // 3. EMPTY DATA RETRY
+                // If Google sends back a blank file, wait 2s and try again.
+                console.log("⚠️ Received empty data. Retrying in 2s...");
+                setTimeout(() => loadQuestions(url), 2000); 
+            }
         },
         error: function(e) {
-            console.log("⚠️ Offline: Switching to saved data...");
-            // 2. If Offline, load from phone memory
-            const cached = localStorage.getItem(storageKey);
-            if (cached) {
-                alert("You are currently OFFLINE.\nLoaded saved questions.");
-                processData(JSON.parse(cached));
-            } else {
-                alert("You are Offline and no data is saved.\nPlease connect to internet once to download the course.");
-            }
+            clearTimeout(safetyTimeout); // Cancel the safety timeout
+            
+            // 4. NETWORK ERROR RETRY
+            // If internet fails, wait 2s and try again.
+            console.log("❌ Network Error. Retrying in 2s...");
+            setTimeout(() => loadQuestions(url), 2000);
         }
     });
 }
+
 function processData(data, reRenderOnly = false) {
     if(!reRenderOnly) {
         const seen = new Set();
@@ -1700,6 +1714,39 @@ function processData(data, reRenderOnly = false) {
             allQuestions.push(row);
         });
     }
+
+    // ============================================================
+    // 🔥 THE FIX: IF DATA IS EMPTY, KILL THE SPINNER & SHOW ERROR
+    // ============================================================
+    if (allQuestions.length === 0) {
+        const menu = document.getElementById('dynamic-menus');
+        if(menu) {
+            menu.innerHTML = `
+            <div style="padding:30px; text-align:center; color:#ef4444;">
+                <div style="font-size:30px; margin-bottom:10px;">⚠️</div>
+                <b>No Data Found</b>
+                <div style="font-size:12px; margin-top:5px; color:#64748b;">
+                    The course file loaded but appears empty.
+                </div>
+                <button onclick="location.reload()" style="
+                    margin-top:15px; 
+                    padding:12px 24px; 
+                    background:#ef4444; 
+                    color:white; 
+                    border:none; 
+                    border-radius:12px;
+                    font-weight:bold;
+                    font-size:14px;
+                ">
+                    🔄 Reload App
+                </button>
+            </div>`;
+        }
+        // Stop here so we don't try to render empty menus
+        return;
+    }
+
+    // --- Normal Rendering Continues Below ---
 
     const subjects = new Set();
     const map = {}; 
@@ -4367,6 +4414,7 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
 
 
 
