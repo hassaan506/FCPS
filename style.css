@@ -953,7 +953,7 @@ input[type="password"] {
 /* --- B. Exam Mode: Grid Layout --- */
 .filter-container {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    grid-template-columns: repeat(5, 1fr);
     gap: 12px;
 }
 
@@ -3058,3 +3058,4 @@ button.secondary {
     background: white;
     border-top: 1px solid #e2e8f0;
 }
+
