@@ -1,4 +1,4 @@
-const CACHE_NAME = "edeetos-v1"; // ✅ Reset to v1 (and stay there!)
+const CACHE_NAME = "edeetos-v2"; // ✅ Reset to v1 (and stay there!)
 
 // Core assets to pre-cache immediately
 const ASSETS_TO_CACHE = [
