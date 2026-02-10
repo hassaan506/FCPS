@@ -2235,8 +2235,9 @@ button.secondary {
 
 /* The Buttons */
 .nav-btn {
-    width: 35px;       /* Fixed small width */
-    height: 35px;      /* Fixed small height */
+    width: 100%;       /* Fixed small width */
+    aspect-ratio: 1
+    height: 100%;      /* Fixed small height */
     font-size: 12px;   /* Small text */
     font-weight: bold;
     padding: 0;        /* Remove default padding */
@@ -3058,5 +3059,6 @@ button.secondary {
     background: white;
     border-top: 1px solid #e2e8f0;
 }
+
 
 
