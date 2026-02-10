@@ -1,16 +1,45 @@
 // ======================================================
-// PWA & OFFLINE SETUP
+// PWA & OFFLINE SETUP (AGGRESSIVE AUTO-UPDATE)
 // ======================================================
 if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
+        // 1. Force a fresh download of sw.js every time using a timestamp
+        // This prevents the browser from using a stale sw.js from its internal cache
         navigator.serviceWorker
-            .register("sw.js")
-            .then((reg) => console.log("✅ Service Worker Registered"))
+            .register("sw.js?v=" + new Date().getTime()) 
+            .then((reg) => {
+                console.log("✅ Service Worker Registered");
+
+                // 2. Force an immediate check for updates
+                reg.update();
+
+                // 3. Log progress if a new version is found
+                reg.onupdatefound = () => {
+                    const newWorker = reg.installing;
+                    newWorker.onstatechange = () => {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            console.log("🔄 New update installed.");
+                            // The sw.js 'skipWaiting' will handle the activation
+                        }
+                    };
+                };
+            })
             .catch((err) => console.log("❌ SW Failed:", err));
+
+        // 4. RELOAD AUTOMATICALLY when the new Service Worker takes over
+        // This ensures the user instantly sees the new version
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (!refreshing) {
+                console.log("✨ App updated. Reloading...");
+                window.location.reload();
+                refreshing = true;
+            }
+        });
     });
 }
 
-// HANDLE PWA SHORTCUTS
+// HANDLE PWA SHORTCUTS (Unchanged)
 window.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(window.location.search);
     const action = params.get('action');
@@ -319,24 +348,22 @@ function setBadgeUI(element, isActive) {
 function selectCourse(courseName) {
     if (!COURSE_CONFIG[courseName]) return alert("Course coming soon!");
     
-    // 🔥 NEW: Save this course to memory
+    // 1. SAVE PREFERENCE
     localStorage.setItem('last_active_course', courseName);
-
     currentCourse = courseName;
     const config = COURSE_CONFIG[courseName];
 
-    // ... (rest of your existing code below is fine) ...
-    // 1. Apply Visual Theme
+    // 2. APPLY THEME
     document.body.className = config.theme; 
     
-    // 2. Update Header
+    // 3. UPDATE HEADER TEXT
     const badge = document.getElementById('active-course-badge');
     if(badge) badge.innerText = config.name; 
     
     const title = document.getElementById('stats-title');
     if(title) title.innerText = `📊 ${config.name} Progress`; 
 
-    // 3. Load Data & Dashboard (Your existing admin check)
+    // 4. CHECK ADMIN SCREEN STATUS
     const adminScreen = document.getElementById('admin-screen');
     const isAdminActive = adminScreen && 
                           !adminScreen.classList.contains('hidden') && 
@@ -347,12 +374,38 @@ function selectCourse(courseName) {
     } else {
         console.log("✅ Admin Panel is open: Staying on Admin Screen...");
     }
+
+    // ===============================================
+    // 🔥 THE FIX: FORCE-WIPE THE UI IMMEDIATELY
+    // ===============================================
     
-    // Reset Data
+    // A. Wipe the Data Variables
     allQuestions = [];
     filteredQuestions = [];
     
+    // B. Wipe the Study Menu (So old course vanishes instantly)
+    const menuContainer = document.getElementById('dynamic-menus');
+    if(menuContainer) {
+        // This forces the mobile browser to repaint the area
+        menuContainer.innerHTML = `
+            <div style="padding:40px; text-align:center; color:#64748b; animation: pulse 1s infinite;">
+                <div style="font-size:40px; margin-bottom:10px;">⏳</div>
+                <div style="font-weight:bold;">Loading ${config.name}...</div>
+                <div style="font-size:12px; margin-top:5px;">Please wait...</div>
+            </div>`;
+    }
+
+    // C. Wipe the Exam Filters (The checkboxes)
+    const filterContainer = document.getElementById('filter-container');
+    if(filterContainer) {
+        filterContainer.innerHTML = "<div style='padding:20px; text-align:center; color:#94a3b8;'>Loading topics...</div>";
+    }
+
+    // 5. START FRESH DOWNLOAD
+    // (This uses the cache-busting loadQuestions function we fixed earlier)
     loadQuestions(config.sheet); 
+    
+    // 6. RELOAD USER STATS (To update bookmarks/mistakes for the new course)
     loadUserData(); 
 }
 
@@ -4314,6 +4367,7 @@ async function adminRevokeSpecificCourse(uid, courseKey) {
         alert("Error: " + e.message);
     }
 }
+
 
 
 
