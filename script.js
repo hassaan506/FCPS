@@ -376,14 +376,14 @@ function selectCourse(courseName) {
     }
 
     // ===============================================
-    // 🔥 WIPE UI (Fix for Mobile Loading Bug)
+    // 🔥 MOBILE FIX: FORCE-WIPE THE UI IMMEDIATELY
     // ===============================================
     
     // A. Wipe the Data Variables
     allQuestions = [];
     filteredQuestions = [];
     
-    // B. Wipe the Study Menu & ADD EMERGENCY BUTTON
+    // B. Wipe the Study Menu & Add Emergency Reset Button
     const menuContainer = document.getElementById('dynamic-menus');
     if(menuContainer) {
         menuContainer.innerHTML = `
@@ -420,16 +420,15 @@ function selectCourse(courseName) {
     loadUserData(); 
 
     // ===============================================
-    // 7. 🔥 RESTORE ADMIN BUTTON (This is what was missing)
+    // 7. 🔥 RESTORE ADMIN BUTTON (The Fix)
     // ===============================================
-    // We wait 100ms just to be safe, then check if user is admin
+    // We check if the user is logged in as Admin and force the button to show
     setTimeout(() => {
         if (typeof userProfile !== 'undefined' && userProfile && (userProfile.role === 'admin' || userProfile.role === 'Admin')) {
             const btn = document.getElementById('admin-btn');
             if(btn) {
-                console.log("🔧 Admin detected: Showing Admin Button");
                 btn.classList.remove('hidden');
-                btn.style.display = 'flex'; 
+                btn.style.display = 'flex'; // Force it to be visible
             }
         }
     }, 100);
@@ -4472,4 +4471,5 @@ async function emergencyHardReset() {
     // 3. Force Reload from Server (Ignore Cache)
     window.location.reload(true);
 }
+
 
