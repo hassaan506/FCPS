@@ -376,14 +376,15 @@ function selectCourse(courseName) {
     }
 
     // ===============================================
-    // 🔥 MOBILE FIX: FORCE-WIPE THE UI IMMEDIATELY
+    // 🔥 MOBILE FIX: WIPE UI & ADD RESET BUTTON
     // ===============================================
+    // We must keep this to prevent the "Stuck on Loading" bug on phones
     
-    // A. Wipe the Data Variables
+    // A. Wipe Variables
     allQuestions = [];
     filteredQuestions = [];
     
-    // B. Wipe the Study Menu & Add Emergency Reset Button
+    // B. Wipe Menu & Add Emergency Reset
     const menuContainer = document.getElementById('dynamic-menus');
     if(menuContainer) {
         menuContainer.innerHTML = `
@@ -407,31 +408,27 @@ function selectCourse(courseName) {
             </div>`;
     }
 
-    // C. Wipe the Exam Filters
+    // C. Wipe Filters
     const filterContainer = document.getElementById('filter-container');
     if(filterContainer) {
         filterContainer.innerHTML = "<div style='padding:20px; text-align:center; color:#94a3b8;'>Loading topics...</div>";
     }
 
-    // 5. START FRESH DOWNLOAD
+    // 5. START DOWNLOAD
     loadQuestions(config.sheet); 
-    
-    // 6. RELOAD USER STATS
     loadUserData(); 
 
     // ===============================================
-    // 7. 🔥 RESTORE ADMIN BUTTON (The Fix)
+    // 6. 🔥 RESTORE ADMIN BUTTON (Direct Check)
     // ===============================================
-    // We check if the user is logged in as Admin and force the button to show
-    setTimeout(() => {
-        if (typeof userProfile !== 'undefined' && userProfile && (userProfile.role === 'admin' || userProfile.role === 'Admin')) {
-            const btn = document.getElementById('admin-btn');
-            if(btn) {
-                btn.classList.remove('hidden');
-                btn.style.display = 'flex'; // Force it to be visible
-            }
+    // No timeout. Checks immediately.
+    if (typeof userProfile !== 'undefined' && userProfile && (userProfile.role === 'admin' || userProfile.role === 'Admin')) {
+        const btn = document.getElementById('admin-btn');
+        if(btn) {
+            btn.classList.remove('hidden');
+            btn.style.display = 'flex'; 
         }
-    }, 100);
+    }
 }
 
 function returnToCourseSelection() {
@@ -4471,5 +4468,6 @@ async function emergencyHardReset() {
     // 3. Force Reload from Server (Ignore Cache)
     window.location.reload(true);
 }
+
 
 
