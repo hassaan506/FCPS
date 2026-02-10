@@ -376,7 +376,7 @@ function selectCourse(courseName) {
     }
 
     // ===============================================
-    // 🔥 THE FIX: FORCE-WIPE THE UI IMMEDIATELY
+    // 🔥 WIPE UI (Fix for Mobile Loading Bug)
     // ===============================================
     
     // A. Wipe the Data Variables
@@ -418,6 +418,21 @@ function selectCourse(courseName) {
     
     // 6. RELOAD USER STATS
     loadUserData(); 
+
+    // ===============================================
+    // 7. 🔥 RESTORE ADMIN BUTTON (This is what was missing)
+    // ===============================================
+    // We wait 100ms just to be safe, then check if user is admin
+    setTimeout(() => {
+        if (typeof userProfile !== 'undefined' && userProfile && (userProfile.role === 'admin' || userProfile.role === 'Admin')) {
+            const btn = document.getElementById('admin-btn');
+            if(btn) {
+                console.log("🔧 Admin detected: Showing Admin Button");
+                btn.classList.remove('hidden');
+                btn.style.display = 'flex'; 
+            }
+        }
+    }, 100);
 }
 
 function returnToCourseSelection() {
@@ -4457,3 +4472,4 @@ async function emergencyHardReset() {
     // 3. Force Reload from Server (Ignore Cache)
     window.location.reload(true);
 }
+
