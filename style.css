@@ -2226,7 +2226,7 @@ button.secondary {
 .nav-grid, #practice-nav-container {
     display: grid;
     /* This creates a responsive grid where items are at least 35px wide */
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(10, 1fr);
     gap: 6px; /* Small gap between buttons */
     padding: 10px;
     max-height: 300px; /* Limit height */
@@ -3059,6 +3059,7 @@ button.secondary {
     background: white;
     border-top: 1px solid #e2e8f0;
 }
+
 
 
 
