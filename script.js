@@ -1663,16 +1663,16 @@ async function adminRevokePremium(uid) {
     loadAllUsers();
 }
 
-function loadQuestions(url) {
+function loadQuestions(filePath) {
     const storageKey = 'cached_questions_' + currentCourse; 
     
     // 1. Force fresh download (Cache Buster)
-    const separator = url.includes('?') ? '&' : '?';
-    const uniqueUrl = url + separator + "t=" + new Date().getTime();
+    const separator = filePath.includes('?') ? '&' : '?';
+    const uniquePath = filePath + separator + "t=" + new Date().getTime();
 
-    console.log("🔄 downloading from:", uniqueUrl);
+    console.log("🔄 downloading from:", uniquePath);
 
-    Papa.parse(uniqueUrl, { 
+    Papa.parse(uniquePath, { 
         download: true,
         header: true,
         skipEmptyLines: true,
@@ -1691,7 +1691,7 @@ function loadQuestions(url) {
                         <div style="font-size:30px; margin-bottom:10px;">⚠️</div>
                         <b>File Not Found (404) or Empty</b>
                         <div style="font-size:12px; margin-top:10px; color:#64748b; word-break: break-all;">
-                            Tried to load:<br><b style="color:#000;">${url}</b><br><br>
+                            Tried to load:<br><b style="color:#000;">${filePath}</b><br><br>
                             Make sure the file name matches exactly.
                         </div>
                     </div>`;
@@ -1707,7 +1707,7 @@ function loadQuestions(url) {
                     <div style="font-size:30px; margin-bottom:10px;">❌</div>
                     <b>Network / Path Error</b>
                     <div style="font-size:12px; margin-top:10px; color:#64748b; word-break: break-all;">
-                        Tried to fetch:<br><b style="color:#000;">${url}</b><br><br>
+                        Tried to fetch:<br><b style="color:#000;">${filePath}</b><br><br>
                         Error: ${err.message || "File blocked or missing."}
                     </div>
                 </div>`;
@@ -4475,6 +4475,7 @@ async function emergencyHardReset() {
     // 3. Force Reload from Server (Ignore Cache)
     window.location.reload(true);
 }
+
 
 
 
