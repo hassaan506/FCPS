@@ -65,12 +65,12 @@ window.addEventListener('DOMContentLoaded', () => {
 // 1. CONFIGURATION & FIREBASE SETUP
 // ======================================================
 
-// --- NEW: MULTI-COURSE CONFIGURATION ---
+// --- NEW: MULTI-COURSE CONFIGURATION (Updated with exact folder and file names) ---
 const COURSE_CONFIG = {
     // --- MAIN COURSE: FCPS ---
     'FCPS': {
         name: "FCPS Part 1",
-        sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8aw1eGppF_fgvI5VAOO_3XEONyI-4QgWa0IgQg7K-VdxeFyn4XBpWT9tVDewbQ6PnMEQ80XpwbASh/pub?output=csv",
+        sheet: "./Data/FCPS%20Part%201.csv", 
         prefix: "", 
         theme: "" 
     },
@@ -79,35 +79,35 @@ const COURSE_CONFIG = {
     
     'MBBS_1': { 
         name: "First Year", 
-        sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQavpclI1-TLczhnGiPiF7g6rG32F542mmjCBIg612NcSAkdhXScIgsK6-4w6uGVM9l_XbQe6aCiOyE/pub?output=csv", 
+        sheet: "./Data/MBBS%201%20Year.csv", 
         prefix: "MBBS1_", 
         theme: "mbbs-mode" 
     },
 
     'MBBS_2': { 
         name: "Second Year", 
-        sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQvD7HQYS6gFFcwo4_DTkvR9BIh70xjM4M1XMTSD5DFeGv69BTXtGVchf3ON6CFxRJ3GIN7t2ojU5Gb/pub?output=csv", 
+        sheet: "./Data/MBBS%202%20Year.csv", 
         prefix: "MBBS2_", 
         theme: "mbbs-mode" 
     },
 
     'MBBS_3': { 
         name: "Third Year", 
-        sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSPwZrNWryh937oxXV1zwnBYtnhysGCiJ0wLaV7J941MFGVhaG_1BC-ZODYZlgDATW6UOXrJrac-bdV/pub?output=csv", 
+        sheet: "./Data/MBBS%203%20Year.csv", 
         prefix: "MBBS3_", 
         theme: "mbbs-mode" 
     },
 
     'MBBS_4': { 
         name: "Fourth Year", 
-        sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTTGsPZWg-U9_zG2_FWkQWDp5nsQ8OVGqQnoqdqxw4bQz2JSAYsgPvrgbrwX8gtiJj5LrY9MUaNvkBn/pub?output=csv", 
+        sheet: "./Data/MBBS%204%20Year.csv", 
         prefix: "MBBS4_", 
         theme: "mbbs-mode" 
     },
 
     'MBBS_5': { 
         name: "Final Year", 
-        sheet: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6fLWMz_k89yK_S8kfjqAGs9I_fGzBE-WQ-Ci8l-D5ownRGV0I1Tz-ifZZKBOTXZAx9bvs4wVuWLID/pub?output=csv", 
+        sheet: "./Data/MBBS%205%20Year.csv", 
         prefix: "MBBS_", 
         theme: "mbbs-mode" 
     }
@@ -1666,10 +1666,11 @@ async function adminRevokePremium(uid) {
 function loadQuestions(url) {
     const storageKey = 'cached_questions_' + currentCourse; 
     
-    // 1. Force fresh download (Cache Buster)
-    const uniqueUrl = url + "&t=" + new Date().getTime();
+    // 1. Force fresh download (Cache Buster) - FIXED FOR LOCAL FILES
+    const separator = url.includes('?') ? '&' : '?';
+    const uniqueUrl = url + separator + "t=" + new Date().getTime();
 
-    console.log("🔄 downloading...");
+    console.log("🔄 downloading from:", uniqueUrl);
 
     // 2. TIMEOUT RETRY (Safety Net)
     // If download hangs for 10 seconds, stop and try again.
@@ -1693,7 +1694,7 @@ function loadQuestions(url) {
                 processData(results.data);
             } else {
                 // 3. EMPTY DATA RETRY
-                // If Google sends back a blank file, wait 2s and try again.
+                // If the server sends back a blank file, wait 2s and try again.
                 console.log("⚠️ Received empty data. Retrying in 2s...");
                 setTimeout(() => loadQuestions(url), 2000); 
             }
@@ -4468,6 +4469,7 @@ async function emergencyHardReset() {
     // 3. Force Reload from Server (Ignore Cache)
     window.location.reload(true);
 }
+
 
 
 
