@@ -1664,7 +1664,6 @@ async function adminRevokePremium(uid) {
 }
 
 async function loadQuestions(filePath) {
-    const storageKey = 'cached_questions_' + currentCourse; 
     const menu = document.getElementById('dynamic-menus');
 
     try {
@@ -1674,30 +1673,31 @@ async function loadQuestions(filePath) {
         
         console.log("🔄 Fetching:", uniquePath);
 
-        // 2. Fetch the file manually (Native Web Request)
+        // 2. Fetch the file manually 
         const response = await fetch(uniquePath);
         
-        // 3. Catch missing files (404 errors) immediately
         if (!response.ok) {
             throw new Error(`Server returned: ${response.status} ${response.statusText}`);
         }
 
         const csvText = await response.text();
         
-        // 4. Catch GitHub's tricky 404 HTML pages
         if (csvText.trim().toLowerCase().startsWith("<!doctype html>")) {
             throw new Error("Received an HTML webpage instead of a CSV file. The file path is incorrect.");
         }
 
-        // 5. Parse the raw text we successfully downloaded
+        // 3. Parse the text
         Papa.parse(csvText, {
             header: true,
             skipEmptyLines: true,
             complete: function(results) {
                 if (results.data && results.data.length > 0) {
                     console.log("✅ Questions loaded!");
-                    localStorage.setItem(storageKey, JSON.stringify(results.data));
+                    
+                    // 🔥 THE FIX: We removed the localStorage.setItem() line here!
+                    // We just pass the data directly to your app:
                     processData(results.data);
+                    
                 } else {
                     throw new Error("File was found, but it appears to be empty.");
                 }
@@ -1706,16 +1706,14 @@ async function loadQuestions(filePath) {
 
     } catch (error) {
         console.error("❌ Load Error:", error);
-        // Display the exact error on the screen
         if (menu) {
             menu.innerHTML = `
             <div style="padding:30px; text-align:center; color:#ef4444;">
                 <div style="font-size:30px; margin-bottom:10px;">❌</div>
                 <b>Failed to Load Questions</b>
                 <div style="font-size:12px; margin-top:10px; color:#64748b; word-break: break-all;">
-                    Tried to fetch:<br><b style="color:#000;">${filePath}</b><br><br>
                     <b>Error details:</b> ${error.message}<br><br>
-                    <i>Ensure the 'Data' folder and exact file names are pushed to GitHub.</i>
+                    <button onclick="emergencyHardReset()" style="margin-top:15px; padding:8px 15px; border-radius:15px; border:1px solid #ef4444; background:transparent; color:#ef4444;">Tap to Repair Memory</button>
                 </div>
             </div>`;
         }
@@ -4481,6 +4479,7 @@ async function emergencyHardReset() {
     // 3. Force Reload from Server (Ignore Cache)
     window.location.reload(true);
 }
+
 
 
 
