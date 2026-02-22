@@ -1666,46 +1666,52 @@ async function adminRevokePremium(uid) {
 function loadQuestions(url) {
     const storageKey = 'cached_questions_' + currentCourse; 
     
-    // 1. Force fresh download (Cache Buster) - FIXED FOR LOCAL FILES
+    // 1. Force fresh download (Cache Buster)
     const separator = url.includes('?') ? '&' : '?';
     const uniqueUrl = url + separator + "t=" + new Date().getTime();
 
     console.log("🔄 downloading from:", uniqueUrl);
-
-    // 2. TIMEOUT RETRY (Safety Net)
-    // If download hangs for 10 seconds, stop and try again.
-    const safetyTimeout = setTimeout(() => {
-        console.log("⏰ Loading timed out. Auto-retrying...");
-        loadQuestions(url); 
-    }, 10000); 
 
     Papa.parse(uniqueUrl, { 
         download: true,
         header: true,
         skipEmptyLines: true,
         complete: function(results) {
-            clearTimeout(safetyTimeout); // Cancel the safety timeout
-            
             // Check if we actually got data
             if (results.data && results.data.length > 0) {
                 console.log("✅ Questions loaded successfully");
-                // Save to phone for next time
                 localStorage.setItem(storageKey, JSON.stringify(results.data));
                 processData(results.data);
             } else {
-                // 3. EMPTY DATA RETRY
-                // If the server sends back a blank file, wait 2s and try again.
-                console.log("⚠️ Received empty data. Retrying in 2s...");
-                setTimeout(() => loadQuestions(url), 2000); 
+                // 🛑 STOP LOOPING: Show exact empty/404 error
+                const menu = document.getElementById('dynamic-menus');
+                if(menu) {
+                    menu.innerHTML = `
+                    <div style="padding:30px; text-align:center; color:#ef4444;">
+                        <div style="font-size:30px; margin-bottom:10px;">⚠️</div>
+                        <b>File Not Found (404) or Empty</b>
+                        <div style="font-size:12px; margin-top:10px; color:#64748b; word-break: break-all;">
+                            Tried to load:<br><b style="color:#000;">${url}</b><br><br>
+                            Make sure the file name matches exactly.
+                        </div>
+                    </div>`;
+                }
             }
         },
-        error: function(e) {
-            clearTimeout(safetyTimeout); // Cancel the safety timeout
-            
-            // 4. NETWORK ERROR RETRY
-            // If internet fails, wait 2s and try again.
-            console.log("❌ Network Error. Retrying in 2s...");
-            setTimeout(() => loadQuestions(url), 2000);
+        error: function(err, file) {
+            // 🛑 STOP LOOPING: Show exact network error
+            const menu = document.getElementById('dynamic-menus');
+            if(menu) {
+                menu.innerHTML = `
+                <div style="padding:30px; text-align:center; color:#ef4444;">
+                    <div style="font-size:30px; margin-bottom:10px;">❌</div>
+                    <b>Network / Path Error</b>
+                    <div style="font-size:12px; margin-top:10px; color:#64748b; word-break: break-all;">
+                        Tried to fetch:<br><b style="color:#000;">${url}</b><br><br>
+                        Error: ${err.message || "File blocked or missing."}
+                    </div>
+                </div>`;
+            }
         }
     });
 }
@@ -4469,6 +4475,7 @@ async function emergencyHardReset() {
     // 3. Force Reload from Server (Ignore Cache)
     window.location.reload(true);
 }
+
 
 
 
