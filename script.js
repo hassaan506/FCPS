@@ -4103,27 +4103,30 @@ function getCourseOptionsHTML(selectedValue) {
 }
 
 // =========================================================
-// 🎮 UNIVERSAL INPUT MANAGER (v6 - Bookmarks & Double Tap)
+// UNIVERSAL INPUT MANAGER (v7 - Optimized)
 // =========================================================
 
-// --- 1. CONFIGURATION ---
-const SWIPE_THRESHOLD = 40; 
-const DOUBLE_TAP_DELAY = 300; // Time in ms to count as double tap
-let touchStartX = 0, touchStartY = 0;
-let lastTapTime = 0; // Tracks the last time you tapped
+// 1. CONFIGURATION
+const SWIPE_THRESHOLD = 150; 
+const VERTICAL_TOLERANCE = 50; 
+const DOUBLE_TAP_DELAY = 300; 
+const DOUBLE_TAP_DISTANCE = 30;
 
-// --- 2. KEYBOARD LISTENER ---
+let touchStartX = 0, touchStartY = 0;
+let lastTapTime = 0; 
+let lastTapX = 0, lastTapY = 0;
+
+// 2. KEYBOARD LISTENER
 document.addEventListener('keydown', function(e) {
     if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
 
-    // --- A. BOOKMARK SHORTCUT (Key: 'S') ---
+    // BOOKMARK SHORTCUT (Key: 'S')
     if (e.key.toLowerCase() === 's') {
-        // Look for bookmark button by ID or Icon/Text
         const bookmarkBtn = findButton('bookmark-btn', ['Bookmark', 'Save', '⭐', '★', 'Mark']);
-        triggerElement(bookmarkBtn);
+        if (bookmarkBtn) triggerElement(bookmarkBtn);
     }
 
-    // --- B. SMART ESCAPE (Close Popup OR Exit) ---
+    // SMART ESCAPE
     if (e.key === 'Escape') {
         if (closeActivePopups()) return;
         const exitBtn = findButton('exit-btn', ['Exit', 'Quit']);
@@ -4132,17 +4135,19 @@ document.addEventListener('keydown', function(e) {
         return;
     }
 
-    // --- C. NAVIGATION (Arrow Keys) ---
+    // NAVIGATION
     if (e.key === 'ArrowRight') {
         closeActivePopups(); 
-        triggerElement(findButton('next-btn', ['Next', '→', 'Skip', '>']));
+        const nextBtn = findButton('next-btn', ['Next', '→', 'Skip', '>']);
+        if (nextBtn) triggerElement(nextBtn);
     }
     if (e.key === 'ArrowLeft') {
         closeActivePopups();
-        triggerElement(findButton('prev-btn', ['Prev', 'Back', '←', '<']));
+        const prevBtn = findButton('prev-btn', ['Prev', 'Back', '←', '<']);
+        if (prevBtn) triggerElement(prevBtn);
     }
 
-    // --- D. OPTIONS (1-5) ---
+    // OPTIONS (1-5)
     const keyMap = {'1':0, '2':1, '3':2, '4':3, '5':4};
     if (keyMap.hasOwnProperty(e.key)) {
         const options = document.querySelectorAll('.option-btn, .answer-btn, #options-container button');
@@ -4150,15 +4155,19 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-// --- 3. TOUCH LISTENERS (Swipe + Double Tap) ---
+// 3. TOUCH LISTENERS
 window.addEventListener('touchstart', e => {
     touchStartX = e.changedTouches[0].screenX;
     touchStartY = e.changedTouches[0].screenY;
-}, {passive: false});
+}, {passive: true}); 
+
+window.addEventListener('touchcancel', () => {
+    touchStartX = 0;
+    touchStartY = 0;
+}); 
 
 window.addEventListener('touchend', e => {
     const nextBtn = document.getElementById('next-btn'); 
-    // Only run if we are in a quiz session
     if (!nextBtn || nextBtn.offsetParent === null) return;
 
     const touchEndX = e.changedTouches[0].screenX;
@@ -4168,30 +4177,39 @@ window.addEventListener('touchend', e => {
     const diffY = touchStartY - touchEndY;
     const currentTime = new Date().getTime();
 
-    // --- CHECK FOR SWIPE (Must be a long movement) ---
-    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > SWIPE_THRESHOLD) {
+    // CHECK FOR SWIPE (Strict horizontal distance, limited vertical drift)
+    if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(diffY) < VERTICAL_TOLERANCE) {
         closeActivePopups(); 
-        if (diffX > 0) triggerElement(findButton('next-btn', ['Next', '→'])); 
-        else triggerElement(findButton('prev-btn', ['Prev', 'Back']));
+        if (diffX > 0) {
+            const btn = findButton('next-btn', ['Next', '→']);
+            if (btn) triggerElement(btn);
+        } else {
+            const btn = findButton('prev-btn', ['Prev', 'Back']);
+            if (btn) triggerElement(btn);
+        }
+        return; 
     }
     
-    // --- CHECK FOR DOUBLE TAP (Must be very little movement) ---
-    else if (Math.abs(diffX) < 10 && Math.abs(diffY) < 10) {
+    // CHECK FOR DOUBLE TAP (Time AND Distance constraints)
+    if (Math.abs(diffX) < 10 && Math.abs(diffY) < 10) {
         const tapLength = currentTime - lastTapTime;
+        const tapDistance = Math.hypot(touchEndX - lastTapX, touchEndY - lastTapY);
         
-        if (tapLength < DOUBLE_TAP_DELAY && tapLength > 0) {
-            // DOUBLE TAP DETECTED! -> Trigger Bookmark
-            e.preventDefault(); // Stop zoom
+        if (tapLength < DOUBLE_TAP_DELAY && tapLength > 0 && tapDistance < DOUBLE_TAP_DISTANCE) {
+            e.preventDefault(); 
             const bookmarkBtn = findButton('bookmark-btn', ['Bookmark', 'Save', '⭐', '★']);
-            triggerElement(bookmarkBtn);
+            if (bookmarkBtn) triggerElement(bookmarkBtn);
+            lastTapTime = 0; 
+        } else {
+            lastTapTime = currentTime;
+            lastTapX = touchEndX;
+            lastTapY = touchEndY;
         }
-        lastTapTime = currentTime;
     }
 
-}, {passive: false});
+}, {passive: false}); 
 
-// --- 4. HELPER FUNCTIONS ---
-
+// 4. HELPER FUNCTIONS
 function closeActivePopups() {
     const popupIds = ['explanation-modal', 'explanation-box', 'modal-overlay'];
     let closedSomething = false;
@@ -4210,6 +4228,7 @@ function closeActivePopups() {
     }
     return closedSomething;
 }
+
 
 function findButton(id, keywords) {
     let btn = document.getElementById(id);
