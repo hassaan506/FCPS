@@ -3060,6 +3060,15 @@ button.secondary {
     border-top: 1px solid #e2e8f0;
 }
 
+/* =========================================
+   USER TEXT HIGHLIGHTER STYLE
+========================================= */
+.user-highlight {
+    background-color: #fef08a; /* A nice, soft marker yellow */
+    color: #000;               /* Ensure text stays readable */
+    border-radius: 3px;
+    padding: 0 2px;
+}
 
 
 
