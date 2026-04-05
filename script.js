@@ -4111,7 +4111,7 @@ function getCourseOptionsHTML(selectedValue) {
 // =========================================================
 
 // 1. CONFIGURATION
-const SWIPE_THRESHOLD = 150; 
+const SWIPE_THRESHOLD = 100; 
 const VERTICAL_TOLERANCE = 50; 
 const DOUBLE_TAP_DELAY = 300; 
 const DOUBLE_TAP_DISTANCE = 30;
