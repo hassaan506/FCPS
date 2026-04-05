@@ -4129,6 +4129,11 @@ document.addEventListener('keydown', function(e) {
         const bookmarkBtn = findButton('bookmark-btn', ['Bookmark', 'Save', '⭐', '★', 'Mark']);
         if (bookmarkBtn) triggerElement(bookmarkBtn);
     }
+    // --- HIGHLIGHT SHORTCUT (Key: 'H') ---
+    if (e.key.toLowerCase() === 'h') {
+        e.preventDefault(); // Stop the browser from doing anything else
+        applyUserHighlight(); // Directly trigger our highlight logic
+    }
 
     // SMART ESCAPE
     if (e.key === 'Escape') {
