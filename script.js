@@ -2367,6 +2367,10 @@ function createQuestionCard(q, index, showNumber = true) {
     header.innerHTML = `
         <span class="q-number-tag">Question ${index + 1}</span>
         <div class="q-actions">
+            <button class="action-icon-btn" onclick="applyUserHighlight()" title="Highlight Selected Text">
+                🖍️
+            </button>
+            
             <button class="action-icon-btn ${isBookmarked ? 'bookmark-active' : ''}" onclick="toggleBookmark('${q._uid}', this)" title="Save Question">
                 ${isBookmarked ? '⭐' : '☆'}
             </button>
@@ -4499,7 +4503,38 @@ async function emergencyHardReset() {
     window.location.reload(true);
 }
 
+// ======================================================
+// 12. TEXT HIGHLIGHTER TOOL
+// ======================================================
 
+function applyUserHighlight() {
+    // 1. Get the text the user has currently selected
+    const selection = window.getSelection();
+    
+    // 2. If they haven't selected anything, do nothing
+    if (!selection.rangeCount || selection.toString().trim() === "") {
+        return; 
+    }
+
+    // 3. Get the exact range of the selected text
+    const range = selection.getRangeAt(0);
+    
+    // 4. Create a new 'span' element with our CSS class
+    const highlightSpan = document.createElement('span');
+    highlightSpan.className = 'user-highlight';
+
+    // 5. Wrap the selected text inside our new span
+    try {
+        range.surroundContents(highlightSpan);
+    } catch (e) {
+        // This catch block prevents the app from crashing if the user 
+        // tries to highlight across multiple complex paragraphs or buttons.
+        console.log("Highlighting across complex paragraphs is currently restricted.");
+    }
+
+    // 6. Deselect the text so it looks clean immediately
+    selection.removeAllRanges();
+}
 
 
 
