@@ -2367,7 +2367,7 @@ function createQuestionCard(q, index, showNumber = true) {
     header.innerHTML = `
         <span class="q-number-tag">Question ${index + 1}</span>
         <div class="q-actions">
-            <button class="action-icon-btn" onclick="applyUserHighlight()" title="Highlight Selected Text">
+            <button class="action-icon-btn" onmousedown="event.preventDefault(); applyUserHighlight();" title="Highlight Selected Text">
                 🖍️
             </button>
             
@@ -2410,6 +2410,12 @@ function createQuestionCard(q, index, showNumber = true) {
     finalOpts.forEach(opt => {
         const btn = document.createElement('button');
         btn.className = "option-btn";
+        
+        // 🔥 ACTIVE RECALL FEATURE: Blur if there is only 1 option
+        if (finalOpts.length === 1) {
+            btn.classList.add('flashcard-blur');
+        }
+
         // The span ensures the text and the eye icon are separated correctly
         btn.innerHTML = `<span class="opt-text">${opt}</span><span class="elim-eye">👁️</span>`;
 
@@ -2420,6 +2426,10 @@ function createQuestionCard(q, index, showNumber = true) {
 
         btn.onclick = (e) => {
             if (e.target.classList.contains('elim-eye')) return;
+            
+            // 🔥 REMOVE BLUR when clicked
+            btn.classList.remove('flashcard-blur');
+            
             if (btn.classList.contains('eliminated')) btn.classList.remove('eliminated');
             checkAnswer(opt, btn, q);
         };
