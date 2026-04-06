@@ -2424,15 +2424,36 @@ function createQuestionCard(q, index, showNumber = true) {
             btn.classList.toggle('eliminated'); 
         };
 
-        btn.onclick = (e) => {
+btn.onclick = (e) => {
             if (e.target.classList.contains('elim-eye')) return;
             
-            // 🔥 REMOVE BLUR when clicked
-            btn.classList.remove('flashcard-blur');
+            // 🔥 FIRST CLICK (When text is blurred)
+            if (btn.classList.contains('flashcard-blur')) {
+                // 1. Reveal the text
+                btn.classList.remove('flashcard-blur'); 
+                
+                // 2. Turn the button green instantly
+                btn.classList.add('correct');
+                
+                // 3. Save to Firebase/Local Database silently!
+                if (typeof updateUserStats === 'function') {
+                    updateUserStats(true, q.Subject || "General", q._uid);
+                }
+                
+                // 4. Update the navigation bar to show it's completed
+                if (typeof renderPracticeNavigator === 'function') {
+                    renderPracticeNavigator();
+                }
+                
+                return; // 5. Stop here so the explanation popup DOES NOT open yet!
+            }
             
+            // 🔥 SECOND CLICK (When text is already revealed)
+            // Clicking it again will run the normal checkAnswer to open your explanation
             if (btn.classList.contains('eliminated')) btn.classList.remove('eliminated');
             checkAnswer(opt, btn, q);
         };
+        
 
         btn.addEventListener('contextmenu', (e) => { 
             e.preventDefault(); 
