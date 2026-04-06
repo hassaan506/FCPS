@@ -3070,5 +3070,13 @@ button.secondary {
     padding: 0 2px;
 }
 
+/* =========================================
+   FLASHCARD ACTIVE RECALL BLUR
+========================================= */
+.flashcard-blur .opt-text {
+    filter: blur(6px);
+    opacity: 0.5;
+    transition: filter 0.3s ease, opacity 0.3s ease;
+}
 
 
